@@ -42,6 +42,8 @@ backend_data/
 # Development artifacts
 .scratch/
 .opencode/
+AGENTS.md
+docs/
 
 # Compiled frontend
 frontend/dist/
