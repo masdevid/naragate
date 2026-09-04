@@ -6,9 +6,20 @@
 
 ## Problem
 
-Indonesian investors consume market narratives daily — from WhatsApp groups, Twitter threads, and news headlines. Claims like *"BBCA labanya jeblok"* (BBCA's profits collapsed) or *"TLKM bakal meroket"* (TLKM will skyrocket) spread fast, but verifying them requires manually checking financial reports, valuation metrics, and market data.
+Indonesian retail investors consume market narratives daily — from WhatsApp groups, social media, YouTube videos, and news headlines. Claims like *"BBCA labanya jeblok"* (BBCA's profits collapsed), *"PE-nya masih murah"* (its price-to-earnings ratio is still cheap), or *"TLKM bakal meroket"* (TLKM will skyrocket) can spread faster than a reader can verify them.
 
-Most investors don't have time for this. They either trust the narrative or ignore it.
+This is especially difficult for novice retail traders who have little or no knowledge of how to read a financial report. A financial report contains unfamiliar terms, multiple reporting periods, restatements, accounting categories, and figures that only make sense when compared with the previous quarter, previous year, or another company in the same sector. A beginner may not know:
+
+- where to find revenue, profit, debt, cash flow, or margins;
+- whether a number is quarterly, annual, trailing twelve-month, or year-to-date;
+- whether profit growth comes from the core business or a one-off event;
+- how valuation metrics such as PE or PB should be interpreted;
+- which benchmark or peer group makes a comparison meaningful; or
+- whether a confident statement is supported by evidence or is simply an opinion.
+
+The result is an information gap. Beginners may trust a persuasive narrative because they cannot quickly challenge it, reject useful information because it looks too technical, or make a decision based on a single number without understanding its context. Manually checking a claim means opening several reports, finding comparable periods, calculating changes, and deciding which evidence is relevant. That process is slow and intimidating even before a beginner reaches an investment decision.
+
+Naragate is designed to make this first verification step easier. It translates a market narrative into specific claims, connects each claim to relevant financial evidence, and explains whether the available data supports, contradicts, or only partially supports the statement. It does not remove the need to learn or perform personal research; it gives a novice a clearer starting point and questions to investigate.
 
 ## Solution
 
@@ -29,30 +40,25 @@ Naragate analyzes any Indonesian market narrative in real-time and produces a **
 | **Retail investors** | Paste a WhatsApp message, get instant fact-check |
 | **Financial analysts** | Verify claims before including in reports |
 | **Compliance teams** | Screen social media for misleading financial claims |
-| **Hackathon judges** | See multi-agent AI orchestration in action |
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Naragate Stack                        │
-│                                                         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐ │
-│  │ Angular  │  │ FastAPI  │  │ Pi Agent │  │ Redis  │ │
-│  │ Frontend │→ │ Backend  │→ │ Pipeline │  │ Cache  │ │
-│  │ (nginx)  │  │ (SQLite) │  │ (7 agents│  │        │ │
-│  └──────────┘  └──────────┘  └──────────┘  └────────┘ │
-│                       │                                 │
-│              ┌────────┴────────┐                        │
-│              │   Sectors v2    │  ← Financial data      │
-│              │   (1,600 cr.)   │                        │
-│              └─────────────────┘                        │
-└─────────────────────────────────────────────────────────┘
-                       │
-                ┌──────┴──────┐
-                │   Ollama    │  ← User's own LLM
-                │  (external) │     (or OpenRouter, etc.)
-                └─────────────┘
+```mermaid
+flowchart LR
+  User[Retail investor] --> App[Naragate app]
+  App --> Analysis[AI analysis]
+  Analysis --> Result[Evidence and Reality Gap Score]
+  Analysis --> Data[Financial data]
+  Data --> Sectors[Sectors v2]
+  Analysis --> Cache[Cached data]
+  Analysis --> LLM[AI language model]
+
+  subgraph Naragate[Naragate]
+    App
+    Analysis
+    Result
+    Cache
+  end
 ```
 
 ### Multi-Agent Pipeline
@@ -104,7 +110,7 @@ OLLAMA_MODEL=gemma4:12b
 docker-compose up
 ```
 
-Open http://localhost:4200
+Open http://localhost:4273
 
 ### First Analysis
 
@@ -164,16 +170,9 @@ System health check.
 | Data | Sectors v2 API |
 | Deployment | Docker Compose |
 
-## Credits Budget
+## Data Usage
 
-Naragate operates within a **1,600 credit budget** (1,000 hackathon + 600 onboarding) on the Sectors v2 API. Every API call is cached in Redis to minimize credit usage.
-
-| Operation | Credits | Cache TTL |
-|-----------|---------|-----------|
-| Company report | ~5 | 24 hours |
-| Quarterly financials | ~5 | 24 hours |
-| Subsector report | ~3 | 24 hours |
-| Daily transactions | ~2 | 1 hour |
+Naragate routes Sectors API requests through Redis caching to reduce repeated calls. Sectors controls the current API pricing, quotas, access requirements, and usage terms; check its official documentation before deploying the application.
 
 ## Development
 

@@ -3,18 +3,60 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import httpx
 import asyncio
+import time
+import json
 from datetime import datetime
+from pathlib import Path
 
 from app.config.settings import settings
 from app.api.v1.endpoints import claims, evidence, stream
+from app.api.v1.endpoints import settings as settings_router
+from app.api.v1.endpoints import usage as usage_router
+
+SETTINGS_FILE = Path(__file__).parent / "data" / "runtime_settings.json"
+
+def _bootstrap_runtime_settings():
+    """Auto-load .env values into runtime_settings.json if not already present."""
+    existing = {}
+    if SETTINGS_FILE.exists():
+        try:
+            existing = json.loads(SETTINGS_FILE.read_text())
+        except Exception:
+            existing = {}
+
+    changed = False
+
+    if settings.SECTORS_API_KEY and not existing.get("sectors_api_key"):
+        existing["sectors_api_key"] = settings.SECTORS_API_KEY
+        changed = True
+
+    if settings.OLLAMA_BASE_URL and not existing.get("llm_endpoint"):
+        endpoint = settings.OLLAMA_BASE_URL
+        if not endpoint.endswith("/v1") and not endpoint.endswith("/v1/"):
+            endpoint = endpoint.rstrip("/") + "/v1"
+        existing["llm_endpoint"] = endpoint
+        changed = True
+
+    if settings.OLLAMA_MODEL and not existing.get("llm_model"):
+        existing["llm_model"] = settings.OLLAMA_MODEL
+        changed = True
+
+    if changed:
+        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SETTINGS_FILE.write_text(json.dumps(existing, indent=2))
+
+# ── Healthcheck cache ──────────────────────────────────────────────
+_sectors_cache: dict = {"result": None, "ts": 0.0}
+_HEALTHCHECK_TTL = 86400  # 1 day
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _bootstrap_runtime_settings()
     yield
 
 app = FastAPI(
     title="Naragate",
-    description="AI evidence engine that detects financial claims in Indonesian market narratives and verifies them against Sectors v2 financial data",
+    description="AI evidence engine for Indonesian market narratives",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -30,6 +72,8 @@ app.add_middleware(
 app.include_router(claims.router, prefix="/api/v1/claims", tags=["claims"])
 app.include_router(evidence.router, prefix="/api/v1/evidence", tags=["evidence"])
 app.include_router(stream.router, prefix="/api/v1/stream", tags=["stream"])
+app.include_router(settings_router.router, prefix="/api/v1/settings", tags=["settings"])
+app.include_router(usage_router.router, prefix="/api/v1/usage", tags=["usage"])
 
 async def check_ollama() -> dict:
     try:
@@ -44,6 +88,11 @@ async def check_ollama() -> dict:
         return {"status": "error", "endpoint": settings.OLLAMA_BASE_URL, "error": str(e)}
 
 async def check_sectors() -> dict:
+    now = time.monotonic()
+    if _sectors_cache["result"] and (now - _sectors_cache["ts"]) < _HEALTHCHECK_TTL:
+        return _sectors_cache["result"]
+
+    result: dict
     try:
         async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
             r = await client.get(
@@ -51,10 +100,16 @@ async def check_sectors() -> dict:
                 headers={"Authorization": settings.SECTORS_API_KEY}
             )
             if r.status_code == 200:
-                return {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(settings.SECTORS_API_KEY)}
-            return {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": f"HTTP {r.status_code}"}
+                result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(settings.SECTORS_API_KEY)}
+            else:
+                result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": f"HTTP {r.status_code}"}
     except Exception as e:
-        return {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": str(e)}
+        result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": str(e)}
+
+    if result["status"] == "ok":
+        _sectors_cache["result"] = result
+        _sectors_cache["ts"] = now
+    return result
 
 @app.get("/health")
 async def health():

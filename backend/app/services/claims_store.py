@@ -70,6 +70,21 @@ class ClaimsStore:
     async def set_claim_data(self, claim_id: str, key: str, data: dict) -> Optional[dict]:
         return await self.update_claim(claim_id, {key: data})
 
+    async def delete_claim(self, claim_id: str) -> bool:
+        await self.connect()
+        assert self.redis is not None
+        deleted = await self.redis.delete(f"claim:{claim_id}")
+        return deleted > 0
+
+    async def delete_claims(self, claim_ids: list[str]) -> int:
+        await self.connect()
+        assert self.redis is not None
+        if not claim_ids:
+            return 0
+        keys = [f"claim:{cid}" for cid in claim_ids]
+        deleted = await self.redis.delete(*keys)
+        return deleted
+
     async def list_claims(self, limit: int = 20) -> list[dict]:
         await self.connect()
         assert self.redis is not None

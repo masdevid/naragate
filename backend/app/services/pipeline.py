@@ -11,6 +11,7 @@ from app.services.claim_parser import extract_claim
 from app.services.evidence_agents import get_evidence_for_claim
 from app.services.skeptic import run_skeptic
 from app.services.judge import evidence_judge, score_generator
+from app.core.usage_tracker import record_pipeline
 
 
 def make_event(event_type: str, claim_id: str, data: dict) -> PipelineEvent:
@@ -99,7 +100,9 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
             "verdict": score.verdict.value,
             "score": score.reality_gap_score,
         })
+        record_pipeline(completed=True)
 
     except Exception as e:
         await claims_store.update_claim(claim_id, {"error": str(e)})
         yield make_event("pipeline_error", claim_id, {"error": str(e)})
+        record_pipeline(completed=False)

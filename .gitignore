@@ -39,6 +39,10 @@ logs/
 redis_data/
 backend_data/
 
+# Runtime settings (contains API keys)
+backend/app/data/
+backend/app/api/data/
+
 # Development artifacts
 .scratch/
 .opencode/

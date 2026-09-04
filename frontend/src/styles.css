@@ -1,4 +1,90 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hallmark · genre: editorial · macrostructure: Manifesto · theme: Manifesto
+ * paper: dark warm (oklch 14%) · accent: signal orange-red · display: Anton
+ * nav: N9 edge-aligned · footer: Ft2 inline · enrichment: none
+ */
+
+:root {
+  /* Paper & Ink */
+  --color-paper:    oklch(14% 0.008 50);
+  --color-paper-2:  oklch(18% 0.010 50);
+  --color-paper-3:  oklch(22% 0.008 50);
+  --color-rule:     oklch(28% 0.008 50);
+  --color-ink:      oklch(93% 0.006 70);
+  --color-muted:    oklch(60% 0.006 50);
+  --color-dim:      oklch(42% 0.006 50);
+
+  /* Accent — signal orange-red */
+  --color-accent:   oklch(62% 0.22 35);
+  --color-accent-dim: oklch(50% 0.18 35);
+
+  /* Semantic */
+  --color-success:  oklch(65% 0.18 145);
+  --color-warning:  oklch(72% 0.16 85);
+  --color-danger:   oklch(62% 0.22 25);
+  --color-focus:    oklch(62% 0.22 35);
+
+  /* Verdict bands */
+  --verdict-contradicted-bg: oklch(22% 0.02 25);
+  --verdict-contradicted-fg: oklch(72% 0.16 25);
+  --verdict-mixed-bg: oklch(22% 0.02 85);
+  --verdict-mixed-fg: oklch(80% 0.14 85);
+  --verdict-supported-bg: oklch(20% 0.02 145);
+  --verdict-supported-fg: oklch(75% 0.15 145);
+  --verdict-strong-bg: oklch(18% 0.02 145);
+  --verdict-strong-fg: oklch(82% 0.14 145);
+
+  /* Typography */
+  --font-display:  "Anton", "Impact", sans-serif;
+  --font-body:     "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:     "JetBrains Mono", ui-monospace, monospace;
+
+  /* Type scale — major third 1.25 */
+  --text-xs:   0.64rem;
+  --text-sm:   0.8rem;
+  --text-base: 1rem;
+  --text-md:   1.25rem;
+  --text-lg:   1.5625rem;
+  --text-xl:   1.9531rem;
+  --text-2xl:  2.4414rem;
+  --text-3xl:  3.0518rem;
+  --text-4xl:  3.8147rem;
+  --text-display: clamp(2.75rem, 5vw + 1rem, 5.25rem);
+
+  /* Spacing — 4pt scale */
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs:  0.5rem;
+  --space-sm:  0.75rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+
+  /* Motion */
+  --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:   cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long:  420ms;
+
+  /* Z-index */
+  --z-base:     1;
+  --z-raised:   10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-modal:    400;
+  --z-toast:    500;
+}
+
+html { overflow-x: clip; }
+body { overflow-x: clip; }
 
 * {
   margin: 0;
@@ -7,7 +93,72 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0f172a;
-  color: #e2e8f0;
+  font-family: var(--font-body);
+  font-weight: 350;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Manifesto bleed-ink section */
+.bleed-ink {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.bleed-accent {
+  background: var(--color-accent);
+  color: var(--color-paper);
+}
+
+/* Page-load reveal animation */
+.reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: reveal var(--dur-long) var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes reveal {
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 150ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+  }
+  .reveal { animation: reveal-reduced 150ms linear forwards; }
+  @keyframes reveal-reduced { to { opacity: 1; transform: none; } }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-paper); }
+::-webkit-scrollbar-thumb { background: var(--color-rule); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-dim); }

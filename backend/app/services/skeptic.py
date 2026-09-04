@@ -3,6 +3,7 @@ import httpx
 
 from app.config.settings import settings
 from app.models.schemas import Claim, SkepticOutput
+from app.core.usage_tracker import record_llm_call
 
 SKEPTIC_PROMPT = """You are a skeptical financial analyst. Given the following evidence for a claim,
 find arguments that would DISPROVE or WEAKEN the claim.
@@ -53,6 +54,11 @@ async def run_skeptic(claim: Claim, evidence: dict) -> SkepticOutput:
             response.raise_for_status()
             data = response.json()
             raw = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
+            input_tokens = usage.get("prompt_tokens", 0)
+            output_tokens = usage.get("completion_tokens", 0)
+            if input_tokens or output_tokens:
+                record_llm_call(settings.skeptic_model, input_tokens, output_tokens)
 
             cleaned = raw.strip()
             if cleaned.startswith("```"):

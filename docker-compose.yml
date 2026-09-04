@@ -2,7 +2,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-5678}:5678"
     environment:
       - SECTORS_API_KEY=${SECTORS_API_KEY}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -18,12 +18,12 @@ services:
       - backend_data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 5678
 
   frontend:
     build: ./frontend
     ports:
-      - "${FRONTEND_PORT:-4200}:4200"
+      - "${FRONTEND_PORT:-4273}:4273"
     depends_on:
       - backend
 

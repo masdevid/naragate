@@ -1,119 +1,156 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { NarrativeService } from '../../services/narrative.service';
+import { I18nService } from '../../services/i18n.service';
 import { PipelineEvent } from '../../models/pipeline.model';
 import { PipelineProgressComponent } from '../../components/pipeline-progress/pipeline-progress.component';
+import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-claim',
   standalone: true,
-  imports: [PipelineProgressComponent],
+  imports: [PipelineProgressComponent, TPipe],
   template: `
-    <div class="min-h-screen bg-slate-900 p-8">
-      <div class="max-w-4xl mx-auto">
-        <button (click)="goBack()" class="text-slate-400 hover:text-white mb-4">← Back</button>
-        <h1 class="text-3xl font-bold text-white mb-6">Analyzing Narrative</h1>
+    <div class="claim">
+      <div class="claim__inner">
+        <button (click)="goBack()" class="claim__back">&larr; {{ 'claim.back' | t }}</button>
 
-        <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-6">
-          <p class="text-slate-300 italic">"{{ narrative }}"</p>
+        <div class="claim__narrative">
+          <p class="claim__quote">&ldquo;{{ narrative() }}&rdquo;</p>
         </div>
 
-        <div class="mb-6">
-          <app-pipeline-progress [currentStep]="currentStep" [completedSteps]="completedSteps"/>
+        <div class="claim__progress">
+          <app-pipeline-progress [currentStep]="currentStep()" [completedSteps]="completedSteps()"/>
         </div>
 
-        @if (currentEvent) {
-          <div class="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h2 class="text-lg font-semibold text-white mb-2">{{ getEventTitle() }}</h2>
-            <pre class="text-slate-400 text-sm overflow-auto">{{ formatEvent(currentEvent) }}</pre>
+        @if (currentEvent()) {
+          <div class="claim__event">
+            <h2 class="claim__event-title">{{ getEventTitle() }}</h2>
+            <pre class="claim__event-data">{{ formatEvent(currentEvent()) }}</pre>
           </div>
         }
 
-        @if (error) {
-          <div class="bg-red-900/50 rounded-lg p-4 border border-red-700">
-            <p class="text-red-300">{{ error }}</p>
+        @if (error()) {
+          <div class="claim__error">
+            <p>{{ error() }}</p>
           </div>
         }
       </div>
     </div>
   `,
+  styles: [`
+    .claim {
+      min-height: 100vh;
+      padding: var(--space-2xl) var(--space-lg);
+    }
+    .claim__inner {
+      max-width: 48rem;
+      margin: 0 auto;
+    }
+    .claim__back {
+      background: none;
+      border: none;
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: var(--space-xl);
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .claim__back:hover { color: var(--color-ink); }
+    .claim__narrative {
+      border-top: 1px solid var(--color-rule);
+      padding: var(--space-lg) 0;
+      margin-bottom: var(--space-xl);
+    }
+    .claim__quote {
+      font-size: var(--text-md);
+      color: var(--color-muted);
+      line-height: 1.55;
+      font-style: italic;
+    }
+    .claim__progress { margin-bottom: var(--space-xl); }
+    .claim__event {
+      border-top: 1px solid var(--color-rule);
+      padding-top: var(--space-lg);
+    }
+    .claim__event-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      text-transform: uppercase;
+      margin-bottom: var(--space-md);
+    }
+    .claim__event-data {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-muted);
+      background: var(--color-paper-2);
+      padding: var(--space-lg);
+      overflow-x: auto;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .claim__error {
+      border-top: 1px solid var(--color-danger);
+      padding-top: var(--space-lg);
+      margin-top: var(--space-lg);
+      color: var(--color-danger);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+    }
+    @media (max-width: 640px) { .claim { padding: var(--space-lg) var(--space-md); } }
+  `],
 })
 export class ClaimComponent implements OnInit, OnDestroy {
-  narrative = '';
-  currentStep = '';
-  completedSteps: string[] = [];
-  currentEvent: PipelineEvent | null = null;
-  error = '';
-  claimId = '';
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private narrativeService = inject(NarrativeService);
+  private i18n = inject(I18nService);
 
+  narrative = signal('');
+  currentStep = signal('');
+  completedSteps = signal<string[]>([]);
+  currentEvent = signal<PipelineEvent | null>(null);
+  error = signal('');
+  claimId = signal('');
   private sub?: Subscription;
-
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private narrativeService: NarrativeService,
-  ) {}
 
   ngOnInit() {
     this.sub = this.route.queryParams.subscribe(params => {
-      this.narrative = params['narrative'] || '';
-      if (this.narrative) {
-        this.startPipeline();
-      }
+      this.narrative.set(params['narrative'] || '');
+      if (this.narrative()) this.startPipeline();
     });
   }
 
-  ngOnDestroy() {
-    this.sub?.unsubscribe();
-  }
+  ngOnDestroy() { this.sub?.unsubscribe(); }
 
   startPipeline() {
-    this.narrativeService.analyze(this.narrative).subscribe({
+    this.narrativeService.analyze(this.narrative()).subscribe({
       next: (event) => {
-        this.currentEvent = event;
-        this.claimId = event.claim_id;
-
-        if (!this.completedSteps.includes(event.event_type) && event.event_type !== 'pipeline_started') {
-          this.completedSteps.push(event.event_type);
+        this.currentEvent.set(event);
+        this.claimId.set(event.claim_id);
+        if (!this.completedSteps().includes(event.event_type) && event.event_type !== 'pipeline_started') {
+          this.completedSteps.update(steps => [...steps, event.event_type]);
         }
-        this.currentStep = event.event_type;
-
+        this.currentStep.set(event.event_type);
         if (event.event_type === 'pipeline_complete') {
-          setTimeout(() => {
-            this.router.navigate(['/results', this.claimId]);
-          }, 1000);
+          setTimeout(() => this.router.navigate(['/results', this.claimId()]), 1000);
         }
       },
-      error: (err) => {
-        this.error = err.message || 'Pipeline failed';
-      },
+      error: (err) => { this.error.set(err.message || this.i18n.t('claim.failed')); },
     });
   }
 
   getEventTitle(): string {
-    const titles: Record<string, string> = {
-      pipeline_started: 'Pipeline Started',
-      claim_parsing: 'Parsing Claim...',
-      claim_parsed: 'Claim Extracted',
-      evidence_fetching: 'Fetching Evidence...',
-      evidence_ready: 'Evidence Retrieved',
-      skeptic_analysis: 'Running Skeptic...',
-      skeptic_ready: 'Skeptic Analysis Complete',
-      judge_assessment: 'Judging Evidence...',
-      assessment_ready: 'Assessment Complete',
-      score_computing: 'Computing Score...',
-      score_computed: 'Score Computed',
-      pipeline_complete: 'Pipeline Complete',
-    };
-    return titles[this.currentEvent?.event_type || ''] || 'Processing...';
+    return this.i18n.tEventTitle(this.currentEvent()?.event_type || '');
   }
 
-  formatEvent(event: PipelineEvent): string {
-    return JSON.stringify(event.data, null, 2);
+  formatEvent(event: PipelineEvent | null): string {
+    return event ? JSON.stringify(event.data, null, 2) : '';
   }
 
-  goBack() {
-    this.router.navigate(['/dashboard']);
-  }
+  goBack() { this.router.navigate(['/dashboard']); }
 }

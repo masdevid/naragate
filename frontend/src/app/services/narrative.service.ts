@@ -4,7 +4,7 @@ import { PipelineEvent } from '../models/pipeline.model';
 
 @Injectable({ providedIn: 'root' })
 export class NarrativeService {
-  private apiUrl = 'http://localhost:8000';
+  private apiUrl = '';
 
   analyze(narrative: string): Observable<PipelineEvent> {
     return new Observable(observer => {
@@ -97,6 +97,28 @@ export class NarrativeService {
   getClaim(claimId: string): Observable<any> {
     return new Observable(observer => {
       fetch(`${this.apiUrl}/api/v1/claims/${claimId}`)
+        .then(r => r.json())
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  deleteClaim(claimId: string): Observable<any> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/api/v1/claims/${claimId}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  deleteClaims(claimIds: string[]): Observable<any> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/api/v1/claims/`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ claim_ids: claimIds }),
+      })
         .then(r => r.json())
         .then(data => { observer.next(data); observer.complete(); })
         .catch(err => observer.error(err));

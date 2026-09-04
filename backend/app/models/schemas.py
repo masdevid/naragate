@@ -45,6 +45,9 @@ class ClaimCreate(BaseModel):
     ticker: Optional[str] = None
     narrative_source: Optional[str] = None
 
+class ClaimBulkDelete(BaseModel):
+    claim_ids: list[str]
+
 class EvidenceGraph(BaseModel):
     ticker: str
     company_report: Optional[dict] = None

@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.config.settings import settings
 from app.models.schemas import Claim, ClaimCategory, ClaimDirection
+from app.core.usage_tracker import record_llm_call
 
 CURATED_TICKERS = {"BBCA", "BBRI", "BMRI", "TLKM", "UNVR"}
 
@@ -62,6 +63,11 @@ async def call_ollama(prompt: str, user_message: str) -> str:
         )
         response.raise_for_status()
         data = response.json()
+        usage = data.get("usage", {})
+        input_tokens = usage.get("prompt_tokens", 0)
+        output_tokens = usage.get("completion_tokens", 0)
+        if input_tokens or output_tokens:
+            record_llm_call(settings.claim_parser_model, input_tokens, output_tokens)
         return data["choices"][0]["message"]["content"]
 
 

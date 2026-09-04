@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     SCORER_MODEL: str = Field(default="", validation_alias="SCORER_MODEL")
 
     # Ports
-    FRONTEND_PORT: int = Field(default=4200, validation_alias="FRONTEND_PORT")
-    BACKEND_PORT: int = Field(default=8000, validation_alias="BACKEND_PORT")
+    FRONTEND_PORT: int = Field(default=4273, validation_alias="FRONTEND_PORT")
+    BACKEND_PORT: int = Field(default=5678, validation_alias="BACKEND_PORT")
 
     # Redis (evidence cache only)
     REDIS_URL: str = Field(default="redis://localhost:6379", validation_alias="REDIS_URL")

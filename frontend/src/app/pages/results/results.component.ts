@@ -1,120 +1,129 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NarrativeService } from '../../services/narrative.service';
+import { I18nService } from '../../services/i18n.service';
 import { ScoreGaugeComponent } from '../../components/score-gauge/score-gauge.component';
 import { VerdictBadgeComponent } from '../../components/verdict-badge/verdict-badge.component';
 import { EvidenceCardComponent } from '../../components/evidence-card/evidence-card.component';
 import { SkepticPanelComponent } from '../../components/skeptic-panel/skeptic-panel.component';
+import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-results',
   standalone: true,
-  imports: [ScoreGaugeComponent, VerdictBadgeComponent, EvidenceCardComponent, SkepticPanelComponent],
+  imports: [ScoreGaugeComponent, VerdictBadgeComponent, EvidenceCardComponent, SkepticPanelComponent, TPipe],
   template: `
-    <div class="min-h-screen bg-slate-900 p-8">
-      <div class="max-w-4xl mx-auto">
-        <button (click)="goBack()" class="text-slate-400 hover:text-white mb-4">← Back</button>
+    <div class="results">
+      <div class="results__inner">
+        <button (click)="goBack()" class="results__back">&larr; {{ 'results.back' | t }}</button>
 
-        @if (loading) {
-          <div class="text-center py-16">
-            <p class="text-slate-400 text-lg">Loading results...</p>
+        @if (loading()) {
+          <div class="results__loading">
+            <p>{{ 'results.loading' | t }}</p>
           </div>
-        } @else if (error) {
-          <div class="bg-red-900/50 rounded-lg p-6 border border-red-700">
-            <p class="text-red-300">{{ error }}</p>
+        } @else if (error()) {
+          <div class="results__error">
+            <p>{{ error() }}</p>
           </div>
-        } @else if (claimData) {
-          <div class="mb-6">
-            <p class="text-slate-500 text-sm mb-2">Narrative</p>
-            <p class="text-slate-300 italic">"{{ claimData.narrative }}"</p>
+        } @else if (claimData()) {
+          <div class="results__narrative">
+            <p class="results__label">{{ 'results.narrative_label' | t }}</p>
+            <p class="results__quote">&ldquo;{{ claimData().narrative }}&rdquo;</p>
           </div>
 
-          @if (claimData.claim) {
-            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-6">
-              <p class="text-slate-500 text-sm mb-2">Extracted Claim</p>
-              <p class="text-white text-lg">{{ claimData.claim.assertion }}</p>
-              <div class="flex gap-4 mt-2">
-                <span class="text-slate-400 text-sm">Ticker: <span class="text-white">{{ claimData.claim.ticker }}</span></span>
-                <span class="text-slate-400 text-sm">Category: <span class="text-white">{{ claimData.claim.category }}</span></span>
-                <span class="text-slate-400 text-sm">Direction: <span class="text-white">{{ claimData.claim.direction }}</span></span>
+          @if (claimData().claim) {
+            <div class="results__claim">
+              <p class="results__label">{{ 'results.claim_label' | t }}</p>
+              <p class="results__assertion">{{ claimData().claim.assertion }}</p>
+              <div class="results__meta">
+                <span class="results__meta-item">
+                  <span class="results__meta-key">{{ 'results.ticker' | t }}</span>
+                  <span class="results__meta-value">{{ claimData().claim.ticker }}</span>
+                </span>
+                <span class="results__meta-item">
+                  <span class="results__meta-key">{{ 'results.category' | t }}</span>
+                  <span class="results__meta-value">{{ claimData().claim.category }}</span>
+                </span>
+                <span class="results__meta-item">
+                  <span class="results__meta-key">{{ 'results.direction' | t }}</span>
+                  <span class="results__meta-value">{{ claimData().claim.direction }}</span>
+                </span>
               </div>
             </div>
           }
 
-          @if (claimData.score) {
-            <div class="bg-slate-800 rounded-lg p-6 border border-slate-700 mb-6">
-              <div class="flex items-center gap-8">
-                <app-score-gauge [score]="claimData.score.reality_gap_score"/>
-                <div>
-                  <app-verdict-badge [verdict]="claimData.score.verdict"/>
-                  <p class="text-slate-400 text-sm mt-4 max-w-md">{{ claimData.score.explanation }}</p>
-                </div>
+          @if (claimData().score) {
+            <div class="results__verdict">
+              <app-score-gauge [score]="claimData().score.reality_gap_score"/>
+              <div class="results__verdict-text">
+                <app-verdict-badge [verdict]="claimData().score.verdict"/>
+                <p class="results__explanation">{{ claimData().score.explanation }}</p>
               </div>
             </div>
           }
 
-          @if (claimData.evidence) {
-            <div class="space-y-4 mb-6">
-              @if (claimData.evidence.valuation) {
-                <app-evidence-card title="Valuation Evidence" [cacheHit]="claimData.evidence.valuation.cache_hit">
-                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <p class="text-slate-500 text-xs">PE Ratio</p>
-                      <p class="text-white">{{ claimData.evidence.valuation.metrics.pe || 'N/A' }}</p>
+          @if (claimData().evidence) {
+            <div class="results__evidence">
+              @if (claimData().evidence.valuation) {
+                <app-evidence-card [title]="'results.valuation_title' | t" [cacheHit]="claimData().evidence.valuation.cache_hit">
+                  <div class="results__metrics">
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.pe_ratio' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.valuation.metrics.pe || '\u2014' }}</span>
                     </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">PB Ratio</p>
-                      <p class="text-white">{{ claimData.evidence.valuation.metrics.pb || 'N/A' }}</p>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.pb_ratio' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.valuation.metrics.pb || '\u2014' }}</span>
                     </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">PS Ratio</p>
-                      <p class="text-white">{{ claimData.evidence.valuation.metrics.ps || 'N/A' }}</p>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.ps_ratio' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.valuation.metrics.ps || '\u2014' }}</span>
                     </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">PE Premium vs Median</p>
-                      <p class="text-white">{{ claimData.evidence.valuation.premium_pct.pe || 'N/A' }}%</p>
-                    </div>
-                  </div>
-                </app-evidence-card>
-              }
-
-              @if (claimData.evidence.fundamental) {
-                <app-evidence-card title="Fundamental Evidence" [cacheHit]="claimData.evidence.fundamental.cache_hit">
-                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <p class="text-slate-500 text-xs">Revenue Trend</p>
-                      <p class="text-white">{{ claimData.evidence.fundamental.trend.revenue_trend }}</p>
-                    </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">Earnings Trend</p>
-                      <p class="text-white">{{ claimData.evidence.fundamental.trend.earnings_trend }}</p>
-                    </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">ROE</p>
-                      <p class="text-white">{{ claimData.evidence.fundamental.metrics.roe || 'N/A' }}</p>
-                    </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">Debt to Equity</p>
-                      <p class="text-white">{{ claimData.evidence.fundamental.metrics.debt_to_equity || 'N/A' }}</p>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.pe_premium' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.valuation.premium_pct.pe || '\u2014' }}%</span>
                     </div>
                   </div>
                 </app-evidence-card>
               }
 
-              @if (claimData.evidence.market) {
-                <app-evidence-card title="Market Evidence" [cacheHit]="claimData.evidence.market.cache_hit">
-                  <div class="grid grid-cols-3 gap-4">
-                    <div>
-                      <p class="text-slate-500 text-xs">1D Change</p>
-                      <p class="text-white">{{ claimData.evidence.market.performance['1d']?.price_change_pct || 'N/A' }}%</p>
+              @if (claimData().evidence.fundamental) {
+                <app-evidence-card [title]="'results.fundamental_title' | t" [cacheHit]="claimData().evidence.fundamental.cache_hit">
+                  <div class="results__metrics">
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.revenue_trend' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.fundamental.trend.revenue_trend }}</span>
                     </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">7D Change</p>
-                      <p class="text-white">{{ claimData.evidence.market.performance['7d']?.price_change_pct || 'N/A' }}%</p>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.earnings_trend' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.fundamental.trend.earnings_trend }}</span>
                     </div>
-                    <div>
-                      <p class="text-slate-500 text-xs">30D Change</p>
-                      <p class="text-white">{{ claimData.evidence.market.performance['30d']?.price_change_pct || 'N/A' }}%</p>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.roe' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.fundamental.metrics.roe || '\u2014' }}</span>
+                    </div>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.debt_equity' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.fundamental.metrics.debt_to_equity || '\u2014' }}</span>
+                    </div>
+                  </div>
+                </app-evidence-card>
+              }
+
+              @if (claimData().evidence.market) {
+                <app-evidence-card [title]="'results.market_title' | t" [cacheHit]="claimData().evidence.market.cache_hit">
+                  <div class="results__metrics">
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.change_1d' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.market.performance['1d']?.price_change_pct || '\u2014' }}%</span>
+                    </div>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.change_7d' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.market.performance['7d']?.price_change_pct || '\u2014' }}%</span>
+                    </div>
+                    <div class="results__metric">
+                      <span class="results__metric-key">{{ 'metric.change_30d' | t }}</span>
+                      <span class="results__metric-val">{{ claimData().evidence.market.performance['30d']?.price_change_pct || '\u2014' }}%</span>
                     </div>
                   </div>
                 </app-evidence-card>
@@ -122,53 +131,100 @@ import { SkepticPanelComponent } from '../../components/skeptic-panel/skeptic-pa
             </div>
           }
 
-          @if (claimData.skeptic) {
+          @if (claimData().skeptic) {
             <app-skeptic-panel
-              [counterArguments]="claimData.skeptic.counter_arguments"
-              [ambiguityPoints]="claimData.skeptic.ambiguity_points"
-              [missingEvidence]="claimData.skeptic.missing_evidence"/>
+              [counterArguments]="claimData().skeptic.counter_arguments"
+              [ambiguityPoints]="claimData().skeptic.ambiguity_points"
+              [missingEvidence]="claimData().skeptic.missing_evidence"/>
           }
         }
       </div>
     </div>
   `,
+  styles: [`
+    .results { padding: var(--space-2xl) var(--space-lg); }
+    .results__inner { max-width: 48rem; margin: 0 auto; }
+    .results__back {
+      background: none; border: none; color: var(--color-muted);
+      font-family: var(--font-mono); font-size: var(--text-sm);
+      cursor: pointer; padding: 0; margin-bottom: var(--space-xl);
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .results__back:hover { color: var(--color-ink); }
+    .results__loading, .results__error {
+      padding: var(--space-4xl) 0; text-align: center;
+      font-family: var(--font-mono); font-size: var(--text-sm); color: var(--color-muted);
+    }
+    .results__error { color: var(--color-danger); }
+    .results__narrative { border-top: 1px solid var(--color-rule); padding: var(--space-lg) 0; }
+    .results__label {
+      font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-dim);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: var(--space-sm);
+    }
+    .results__quote {
+      font-size: var(--text-md); color: var(--color-muted); line-height: 1.55; font-style: italic;
+    }
+    .results__claim { border-top: 1px solid var(--color-rule); padding: var(--space-lg) 0; }
+    .results__assertion { font-size: var(--text-xl); color: var(--color-ink); margin-bottom: var(--space-md); }
+    .results__meta { display: flex; flex-wrap: wrap; gap: var(--space-lg); }
+    .results__meta-item { display: flex; flex-direction: column; gap: var(--space-3xs); }
+    .results__meta-key {
+      font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-dim);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .results__meta-value {
+      font-family: var(--font-mono); font-size: var(--text-sm); color: var(--color-ink); text-transform: uppercase;
+    }
+    .results__verdict {
+      border-top: 1px solid var(--color-rule); padding: var(--space-xl) 0;
+      display: flex; align-items: flex-start; gap: var(--space-2xl);
+    }
+    .results__verdict-text { display: flex; flex-direction: column; gap: var(--space-md); }
+    .results__explanation { font-size: var(--text-sm); color: var(--color-muted); max-width: 40ch; line-height: 1.55; }
+    .results__metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-md); }
+    .results__metric { display: flex; flex-direction: column; gap: var(--space-3xs); }
+    .results__metric-key {
+      font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-dim);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .results__metric-val {
+      font-family: var(--font-mono); font-size: var(--text-sm); color: var(--color-ink); font-variant-numeric: tabular-nums;
+    }
+    .results__evidence { display: flex; flex-direction: column; }
+    @media (max-width: 640px) {
+      .results { padding: var(--space-lg) var(--space-md); }
+      .results__verdict { flex-direction: column; align-items: center; text-align: center; }
+      .results__explanation { max-width: none; }
+    }
+  `],
 })
 export class ResultsComponent implements OnInit {
-  claimId = '';
-  claimData: any = null;
-  loading = true;
-  error = '';
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private narrativeService = inject(NarrativeService);
+  private i18n = inject(I18nService);
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private narrativeService: NarrativeService,
-  ) {}
+  claimId = '';
+  claimData = signal<any>(null);
+  loading = signal(true);
+  error = signal('');
 
   ngOnInit() {
     this.claimId = this.route.snapshot.paramMap.get('id') || '';
     if (this.claimId) {
       this.loadClaim();
     } else {
-      this.loading = false;
-      this.error = 'No claim ID provided';
+      this.loading.set(false);
+      this.error.set(this.i18n.t('results.no_claim'));
     }
   }
 
   loadClaim() {
     this.narrativeService.getClaim(this.claimId).subscribe({
-      next: (data) => {
-        this.claimData = data;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err.message || 'Failed to load claim';
-        this.loading = false;
-      },
+      next: (data) => { this.claimData.set(data); this.loading.set(false); },
+      error: (err) => { this.error.set(err.message || this.i18n.t('results.load_error')); this.loading.set(false); },
     });
   }
 
-  goBack() {
-    this.router.navigate(['/dashboard']);
-  }
+  goBack() { this.router.navigate(['/dashboard']); }
 }
