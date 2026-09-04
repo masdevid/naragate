@@ -1,0 +1,13 @@
+{
+  "name": "naragate",
+  "version": "0.1.0",
+  "agents": [
+    { "name": "claim-parser", "skill": ".pi/skills/claim-parser/SKILL.md" },
+    { "name": "valuation-agent", "skill": ".pi/skills/valuation-agent/SKILL.md" },
+    { "name": "fundamental-agent", "skill": ".pi/skills/fundamental-agent/SKILL.md" },
+    { "name": "market-agent", "skill": ".pi/skills/market-agent/SKILL.md" },
+    { "name": "skeptic-agent", "skill": ".pi/skills/skeptic-agent/SKILL.md" },
+    { "name": "evidence-judge", "skill": ".pi/skills/evidence-judge/SKILL.md" },
+    { "name": "score-generator", "skill": ".pi/skills/score-generator/SKILL.md" }
+  ]
+}

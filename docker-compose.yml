@@ -1,0 +1,51 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - SECTORS_API_KEY=${SECTORS_API_KEY}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:12b}
+      - REDIS_URL=redis://redis:6379
+      - PI_AGENT_URL=http://pi-agent:3000
+      - DATABASE_URL=sqlite:///./data/naragate.db
+    depends_on:
+      - redis
+      - pi-agent
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-4200}:4200"
+    depends_on:
+      - backend
+
+  pi-agent:
+    build: ./pi-agent
+    ports:
+      - "3000:3000"
+    environment:
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:12b}
+    volumes:
+      - ./.pi:/app/.pi
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  backend_data:
+  redis_data:
