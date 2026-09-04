@@ -52,14 +52,13 @@ async def call_ollama(prompt: str, user_message: str) -> str:
         response = await client.post(
             f"{settings.OLLAMA_BASE_URL}/chat/completions",
             json={
-                "model": "qwen3-coder:30b",
+                "model": settings.claim_parser_model,
                 "messages": [
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": user_message},
                 ],
                 "response_format": {"type": "json_object"},
             },
-            headers={"Authorization": f"Bearer {settings.OLLAMA_BASE_URL}"},
         )
         response.raise_for_status()
         data = response.json()

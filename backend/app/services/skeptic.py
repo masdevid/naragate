@@ -45,11 +45,10 @@ async def run_skeptic(claim: Claim, evidence: dict) -> SkepticOutput:
             response = await client.post(
                 f"{settings.OLLAMA_BASE_URL}/chat/completions",
                 json={
-                    "model": "qwen2.5:7b",
+                    "model": settings.skeptic_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "response_format": {"type": "json_object"},
                 },
-                headers={"Authorization": f"Bearer {settings.OLLAMA_BASE_URL}"},
             )
             response.raise_for_status()
             data = response.json()

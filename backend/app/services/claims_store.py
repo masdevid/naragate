@@ -23,10 +23,11 @@ class ClaimsStore:
 
     async def create_claim(self, narrative: str, claim: Optional[Claim] = None) -> str:
         await self.connect()
+        assert self.redis is not None
         claim_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
 
-        state = {
+        state: dict = {
             "claim_id": claim_id,
             "narrative": narrative,
             "status": ClaimStatus.PENDING.value,
@@ -44,6 +45,7 @@ class ClaimsStore:
 
     async def get_claim(self, claim_id: str) -> Optional[dict]:
         await self.connect()
+        assert self.redis is not None
         raw = await self.redis.hget(f"claim:{claim_id}", "state")
         if raw is None:
             return None
@@ -51,6 +53,7 @@ class ClaimsStore:
 
     async def update_claim(self, claim_id: str, updates: dict) -> Optional[dict]:
         await self.connect()
+        assert self.redis is not None
         state = await self.get_claim(claim_id)
         if state is None:
             return None
@@ -69,6 +72,7 @@ class ClaimsStore:
 
     async def list_claims(self, limit: int = 20) -> list[dict]:
         await self.connect()
+        assert self.redis is not None
         keys = []
         async for key in self.redis.scan_iter("claim:*", count=100):
             keys.append(key)
