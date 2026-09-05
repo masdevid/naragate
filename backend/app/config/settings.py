@@ -41,8 +41,11 @@ class Settings(BaseSettings):
     # Curated stocks
     CURATED_STOCKS: list[str] = Field(default=["BBCA", "BBRI", "BMRI", "TLKM", "UNVR"], validation_alias="CURATED_STOCKS")
 
-    # Credit budget for Sectors API
+    # Credit budget for Sectors API (paid credits bucket)
     CREDIT_BUDGET: int = Field(default=600, validation_alias="CREDIT_BUDGET")
+
+    # Hackathon plan credit budget (Sectors Hackathon 2026900)
+    HACKATHON_BUDGET: int = Field(default=1000, validation_alias="HACKATHON_BUDGET")
 
     @field_validator("SECTORS_API_KEY", mode="before")
     @classmethod

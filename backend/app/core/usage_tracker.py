@@ -111,7 +111,7 @@ def estimate_llm_cost(model: str, input_tokens: int, output_tokens: int) -> floa
     return round(input_cost + output_cost, 6)
 
 
-def get_usage_summary(budget: int = 600) -> dict:
+def get_usage_summary(budget: int = 1600) -> dict:
     data = _ensure_structure(_load())
 
     sectors = data["sectors"]

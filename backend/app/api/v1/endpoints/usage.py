@@ -7,4 +7,4 @@ router = APIRouter()
 
 @router.get("")
 async def get_usage():
-    return get_usage_summary(budget=settings.CREDIT_BUDGET)
+    return get_usage_summary(budget=settings.CREDIT_BUDGET + settings.HACKATHON_BUDGET)

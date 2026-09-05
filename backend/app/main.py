@@ -133,6 +133,7 @@ async def health():
         },
         "config": {
             "credit_budget": settings.CREDIT_BUDGET,
+            "hackathon_budget": settings.HACKATHON_BUDGET,
             "curated_stocks": settings.CURATED_STOCKS,
             "cache_ttl_company": settings.EVIDENCE_CACHE_TTL_COMPANY,
             "cache_ttl_daily": settings.EVIDENCE_CACHE_TTL_DAILY,
