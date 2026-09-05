@@ -43,6 +43,10 @@ backend_data/
 backend/app/data/
 backend/app/api/data/
 
+# Local SQLite database
+backend/data/
+backend/test_data/
+
 # Development artifacts
 .scratch/
 .opencode/
