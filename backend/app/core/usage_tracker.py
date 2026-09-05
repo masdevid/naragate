@@ -52,6 +52,7 @@ def _save(data: dict):
 
 def _ensure_structure(data: dict) -> dict:
     data.setdefault("sectors", {"calls": 0, "cached_calls": 0, "daily": {}})
+    data["sectors"].setdefault("cached_calls", 0)
     data.setdefault("llm", {"calls": 0, "input_tokens": 0, "output_tokens": 0, "daily": {}})
     data.setdefault("pipelines", {"total": 0, "completed": 0, "failed": 0})
     return data
@@ -68,6 +69,8 @@ def record_sectors_call(endpoint: str = "", cached: bool = False):
     data = _ensure_structure(_load())
     today = datetime.now().strftime("%Y-%m-%d")
     data["sectors"]["calls"] += 1
+    if "remaining" in data["sectors"]:
+        data["sectors"]["remaining"] = max(data["sectors"]["remaining"] - 1, 0)
     data["sectors"]["daily"].setdefault(today, 0)
     data["sectors"]["daily"][today] += 1
     _save(data)
@@ -120,6 +123,7 @@ def get_usage_summary(budget: int = 1600) -> dict:
 
     sectors_used = sectors["calls"]
     sectors_pct = round(sectors_used / budget * 100, 1) if budget > 0 else 0
+    sectors_remaining = sectors.get("remaining", max(budget - sectors_used, 0))
 
     model = _load_model_name()
     llm_cost = estimate_llm_cost(model, llm["input_tokens"], llm["output_tokens"])
@@ -144,7 +148,7 @@ def get_usage_summary(budget: int = 1600) -> dict:
             "cached_calls": sectors.get("cached_calls", 0),
             "budget": budget,
             "budget_pct": sectors_pct,
-            "remaining": max(budget - sectors_used, 0),
+            "remaining": sectors_remaining,
         },
         "llm": {
             "model": model,
