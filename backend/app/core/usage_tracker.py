@@ -19,6 +19,20 @@ LLM_PRICING = {
 # Default pricing for unknown models
 DEFAULT_LLM_PRICING = {"input": 0.0, "output": 0.0}
 
+# In-memory counters for the currently running pipeline (reset per run)
+_session = {"sectors": 0, "llm": 0, "llm_input_tokens": 0, "llm_output_tokens": 0}
+
+
+def reset_session_usage():
+    _session["sectors"] = 0
+    _session["llm"] = 0
+    _session["llm_input_tokens"] = 0
+    _session["llm_output_tokens"] = 0
+
+
+def get_session_usage() -> dict:
+    return dict(_session)
+
 
 def _load() -> dict:
     if USAGE_FILE.exists():
@@ -44,6 +58,7 @@ def _ensure_structure(data: dict) -> dict:
 def record_sectors_call(endpoint: str = "", cached: bool = False):
     if cached:
         return
+    _session["sectors"] += 1
     data = _ensure_structure(_load())
     today = datetime.now().strftime("%Y-%m-%d")
     data["sectors"]["calls"] += 1
@@ -53,6 +68,9 @@ def record_sectors_call(endpoint: str = "", cached: bool = False):
 
 
 def record_llm_call(model: str, input_tokens: int, output_tokens: int):
+    _session["llm"] += 1
+    _session["llm_input_tokens"] += input_tokens
+    _session["llm_output_tokens"] += output_tokens
     data = _ensure_structure(_load())
     today = datetime.now().strftime("%Y-%m-%d")
     data["llm"]["calls"] += 1

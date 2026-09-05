@@ -1,7 +1,8 @@
+import asyncio
 import time
 import json
-from datetime import datetime
-from typing import AsyncGenerator
+from datetime import datetime, timedelta
+from typing import AsyncGenerator, Optional
 
 from app.models.schemas import (
     Claim, ClaimStatus, PipelineEvent, RealityGapScore
@@ -11,7 +12,45 @@ from app.services.claim_parser import extract_claim
 from app.services.evidence_agents import get_evidence_for_claim
 from app.services.skeptic import run_skeptic
 from app.services.judge import evidence_judge, score_generator
-from app.core.usage_tracker import record_pipeline
+from app.core.usage_tracker import (
+    record_pipeline, reset_session_usage, get_session_usage
+)
+
+_active_narratives: dict[str, str] = {}
+
+_ORPHAN_THRESHOLD = timedelta(minutes=10)
+
+
+async def _find_inflight_claim(narrative: str) -> Optional[dict]:
+    """Return an in-flight claim for the same narrative, or None.
+
+    Checks the in-process registry first, then Redis for non-terminal
+    claims with the same narrative. A stale non-terminal claim (orphaned by
+    a crash or restart) is marked failed so a fresh run can proceed.
+    """
+    active_id = _active_narratives.get(narrative)
+    if active_id:
+        return {"claim_id": active_id, "status": "active"}
+
+    existing = await claims_store.find_active_by_narrative(narrative)
+    if existing:
+        updated = existing.get("updated_at")
+        updated_dt = datetime.min
+        if isinstance(updated, str):
+            try:
+                updated_dt = datetime.fromisoformat(updated)
+            except ValueError:
+                updated_dt = datetime.min
+        if datetime.now() - updated_dt < _ORPHAN_THRESHOLD:
+            return {
+                "claim_id": existing["claim_id"],
+                "status": existing.get("status", ClaimStatus.PENDING.value),
+            }
+        await claims_store.update_claim(existing["claim_id"], {
+            "status": ClaimStatus.FAILED.value,
+            "error": "Pipeline was interrupted; superseded by a new run.",
+        })
+    return None
 
 
 def make_event(event_type: str, claim_id: str, data: dict) -> PipelineEvent:
@@ -23,21 +62,68 @@ def make_event(event_type: str, claim_id: str, data: dict) -> PipelineEvent:
     )
 
 
+async def _run_agent_with_thinking(claim_id: str, agent: str, coro_factory, result_holder: dict):
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def on_token(piece: str):
+        await queue.put(make_event("agent_thinking", claim_id, {"agent": agent, "delta": piece}))
+
+    task = asyncio.create_task(coro_factory(on_token))
+    while True:
+        while not queue.empty():
+            yield queue.get_nowait()
+        if task.done():
+            break
+        await asyncio.sleep(0.02)
+    while not queue.empty():
+        yield queue.get_nowait()
+    result_holder["result"] = task.result()
+
+
+def _usage_event(claim_id: str) -> PipelineEvent:
+    usage = get_session_usage()
+    return make_event("usage_update", claim_id, {
+        "sectors_calls": usage["sectors"],
+        "llm_calls": usage["llm"],
+        "llm_input_tokens": usage["llm_input_tokens"],
+        "llm_output_tokens": usage["llm_output_tokens"],
+    })
+
+
 async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
     start_time = time.time()
+    reset_session_usage()
+
+    inflight = await _find_inflight_claim(narrative)
+    if inflight:
+        yield make_event("pipeline_duplicate", inflight["claim_id"], {
+            "claim_id": inflight["claim_id"],
+            "narrative": narrative,
+            "status": inflight["status"],
+        })
+        return
 
     claim_id = await claims_store.create_claim(narrative)
+    _active_narratives[narrative] = claim_id
     yield make_event("pipeline_started", claim_id, {"narrative": narrative})
 
     try:
         yield make_event("claim_parsing", claim_id, {"stage": "claim_parser"})
-        claim = await extract_claim(narrative)
+        claim_holder = {}
+        async for event in _run_agent_with_thinking(
+            claim_id, "claim_parser",
+            lambda on_token: extract_claim(narrative, on_token=on_token),
+            claim_holder,
+        ):
+            yield event
+        claim = claim_holder["result"]
         claim.claim_id = claim_id
         await claims_store.update_claim(claim_id, {
             "claim": claim.model_dump(mode="json"),
             "status": ClaimStatus.PARSED.value,
         })
         yield make_event("claim_parsed", claim_id, claim.model_dump(mode="json"))
+        yield _usage_event(claim_id)
 
         yield make_event("evidence_fetching", claim_id, {
             "ticker": claim.ticker,
@@ -61,11 +147,19 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
             else:
                 evidence_data[k] = v
         yield make_event("evidence_ready", claim_id, evidence_data)
+        yield _usage_event(claim_id)
 
         yield make_event("skeptic_analysis", claim_id, {"stage": "skeptic"})
         skeptic = None
         try:
-            skeptic = await run_skeptic(claim, evidence)
+            skeptic_holder = {}
+            async for event in _run_agent_with_thinking(
+                claim_id, "skeptic",
+                lambda on_token: run_skeptic(claim, evidence, on_token=on_token),
+                skeptic_holder,
+            ):
+                yield event
+            skeptic = skeptic_holder["result"]
             await claims_store.update_claim(claim_id, {
                 "skeptic": skeptic.model_dump(mode="json"),
                 "status": ClaimStatus.SKEPTIC_REVIEWED.value,
@@ -73,6 +167,7 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
             yield make_event("skeptic_ready", claim_id, skeptic.model_dump(mode="json"))
         except Exception as e:
             yield make_event("skeptic_error", claim_id, {"error": str(e)})
+        yield _usage_event(claim_id)
 
         yield make_event("judge_assessment", claim_id, {"stage": "judge"})
         assessment = evidence_judge.assess(claim, evidence, skeptic)
@@ -89,6 +184,7 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
             "status": ClaimStatus.SCORED.value,
         })
         yield make_event("score_computed", claim_id, score.model_dump(mode="json"))
+        yield _usage_event(claim_id)
 
         duration_ms = int((time.time() - start_time) * 1000)
         await claims_store.update_claim(claim_id, {
@@ -103,6 +199,12 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
         record_pipeline(completed=True)
 
     except Exception as e:
-        await claims_store.update_claim(claim_id, {"error": str(e)})
-        yield make_event("pipeline_error", claim_id, {"error": str(e)})
+        message = str(e) or f"{type(e).__name__}"
+        await claims_store.update_claim(claim_id, {
+            "error": message,
+            "status": ClaimStatus.FAILED.value,
+        })
+        yield make_event("pipeline_error", claim_id, {"error": message})
         record_pipeline(completed=False)
+    finally:
+        _active_narratives.pop(narrative, None)

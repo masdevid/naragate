@@ -187,8 +187,10 @@ class TestScoreGenerator:
     def test_builds_explanation(self, generator, assessment):
         result = generator.compute(assessment, skeptic_score=50.0)
 
-        assert "Verdict:" in result.explanation
-        assert "Evidence confidence:" in result.explanation
+        assert "Verdik:" in result.explanation
+        assert "Keyakinan bukti:" in result.explanation
+        assert "Verdict:" in result.explanation_en
+        assert "Evidence confidence:" in result.explanation_en
 
     def test_fundamental_category_uses_earnings_gap(self, generator):
         assessment = EvidenceAssessment(

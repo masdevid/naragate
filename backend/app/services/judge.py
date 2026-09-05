@@ -139,7 +139,8 @@ class ScoreGenerator:
                 verdict = band
                 break
 
-        explanation = self._build_explanation(assessment, dimensions, verdict)
+        explanation = self._build_explanation(assessment, dimensions, verdict, "id")
+        explanation_en = self._build_explanation(assessment, dimensions, verdict, "en")
 
         return RealityGapScore(
             claim_ticker=assessment.claim_ticker,
@@ -148,23 +149,47 @@ class ScoreGenerator:
             verdict=verdict,
             dimensions=dimensions,
             explanation=explanation,
+            explanation_en=explanation_en,
             confidence=assessment.evidence_confidence,
         )
 
-    def _build_explanation(self, assessment: EvidenceAssessment, dimensions: dict, verdict: VerdictBand) -> str:
-        parts = [f"Verdict: {verdict.value.replace('_', ' ').title()}"]
+    def _build_explanation(self, assessment: EvidenceAssessment, dimensions: dict, verdict: VerdictBand, language: str = "id") -> str:
+        if language == "en":
+            parts = [f"Verdict: {verdict.value.replace('_', ' ').title()}"]
+
+            if assessment.contradictions:
+                parts.append(f"Contradictions found: {'; '.join(assessment.contradictions[:2])}")
+
+            if assessment.skeptic_challenges:
+                parts.append(f"Skeptic challenges: {len(assessment.skeptic_challenges)} counter-arguments")
+
+            top_dim = max(dimensions.items(), key=lambda x: x[1]) if dimensions else None
+            if top_dim:
+                parts.append(f"Strongest dimension: {top_dim[0]} ({top_dim[1]:.0f}/100)")
+
+            parts.append(f"Evidence confidence: {assessment.evidence_confidence:.0%}")
+            return ". ".join(parts) + "."
+
+        verdict_names = {
+            "contradicted": "Bertentangan",
+            "mixed": "Campuran",
+            "supported": "Didukung",
+            "strongly_supported": "Sangat Didukung",
+        }
+        verdict_label = verdict_names.get(verdict.value, verdict.value.replace("_", " ").title())
+        parts = [f"Verdik: {verdict_label}"]
 
         if assessment.contradictions:
-            parts.append(f"Contradictions found: {'; '.join(assessment.contradictions[:2])}")
+            parts.append(f"Kontradiksi ditemukan: {'; '.join(assessment.contradictions[:2])}")
 
         if assessment.skeptic_challenges:
-            parts.append(f"Skeptic challenges: {len(assessment.skeptic_challenges)} counter-arguments")
+            parts.append(f"Tantangan skeptis: {len(assessment.skeptic_challenges)} argumen balasan")
 
         top_dim = max(dimensions.items(), key=lambda x: x[1]) if dimensions else None
         if top_dim:
-            parts.append(f"Strongest dimension: {top_dim[0]} ({top_dim[1]:.0f}/100)")
+            parts.append(f"Dimensi terkuat: {top_dim[0]} ({top_dim[1]:.0f}/100)")
 
-        parts.append(f"Evidence confidence: {assessment.evidence_confidence:.0%}")
+        parts.append(f"Keyakinan bukti: {assessment.evidence_confidence:.0%}")
         return ". ".join(parts) + "."
 
 

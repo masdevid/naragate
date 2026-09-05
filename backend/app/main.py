@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from app.config.settings import settings
+from app.core.sectors_client import sectors_client
 from app.api.v1.endpoints import claims, evidence, stream
 from app.api.v1.endpoints import settings as settings_router
 from app.api.v1.endpoints import usage as usage_router
@@ -94,15 +95,8 @@ async def check_sectors() -> dict:
 
     result: dict
     try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            r = await client.get(
-                "https://api.sectors.app/v2/company/corporate-actions/BBCA/",
-                headers={"Authorization": settings.SECTORS_API_KEY}
-            )
-            if r.status_code == 200:
-                result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(settings.SECTORS_API_KEY)}
-            else:
-                result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": f"HTTP {r.status_code}"}
+        await sectors_client.get_daily_transaction("BBCA")
+        result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(settings.SECTORS_API_KEY)}
     except Exception as e:
         result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": str(e)}
 

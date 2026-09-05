@@ -2,6 +2,7 @@ export default {
   // Nav
   'nav.dashboard': 'Dasbor',
   'nav.settings': 'Pengaturan',
+  'nav.usage': 'Pemakaian',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -10,6 +11,7 @@ export default {
   'dashboard.sub': 'Masukkan klaim pasar Indonesia. Nara Agent akan memverifikasinya dengan data keuangan aktual dan menguji keakuratannya.',
   'dashboard.textarea_placeholder': 'BBCA labanya jeblok tapi PE-nya mahal...',
   'dashboard.analyze_btn': 'Analisis Narasi Ini',
+  'dashboard.analyzing': 'Menganalisis...',
   'dashboard.recent_title': 'Analisis Sebelumnya',
   'dashboard.selected': '{{count}} dipilih',
   'dashboard.delete_selected': 'Hapus yang Dipilih',
@@ -59,6 +61,32 @@ export default {
   'settings.no_models': 'Tidak ada model ditemukan',
   'settings.auto_saved': 'Tersimpan otomatis',
 
+  // Usage
+  'usage.title': 'Pemakaian',
+  'usage.sub': 'Pantau kredit API Sectors, konsumsi token LLM, dan estimasi biaya.',
+  'usage.back': 'Kembali',
+  'usage.section_sectors': 'API Sectors',
+  'usage.section_llm': 'Pemakaian LLM',
+  'usage.section_pipelines': 'Pipeline',
+  'usage.section_daily': '7 Hari Terakhir',
+  'usage.calls': 'Panggilan',
+  'usage.budget': 'Anggaran',
+  'usage.used': 'Terpakai',
+  'usage.remaining': 'Sisa',
+  'usage.model': 'Model',
+  'usage.input_tokens': 'Token Input',
+  'usage.output_tokens': 'Token Output',
+  'usage.total_tokens': 'Total Token',
+  'usage.est_cost': 'Est. Biaya',
+  'usage.total': 'Total',
+  'usage.completed': 'Selesai',
+  'usage.failed': 'Gagal',
+  'usage.date': 'Tanggal',
+  'usage.sectors_calls': 'Sectors',
+  'usage.llm_calls': 'Panggilan LLM',
+  'usage.loading': 'Memuat pemakaian...',
+  'usage.load_error': 'Gagal memuat data pemakaian',
+
   // Pipeline steps
   'pipeline.parse': 'Parse',
   'pipeline.evidence': 'Bukti',
@@ -82,6 +110,10 @@ export default {
   'claim.event_title.pipeline_complete': 'Pipeline Selesai',
   'claim.processing': 'Memproses...',
   'claim.failed': 'Pipeline gagal',
+  'claim.starting': 'Memulai analisis...',
+  'claim.stream_ended': 'Koneksi analisis terputus sebelum selesai. Coba lagi.',
+  'claim.thinking': 'Pemikiran Agen',
+  'claim.usage': 'Pemakaian Live',
 
   // Results page
   'results.back': 'Kembali',
@@ -90,6 +122,11 @@ export default {
   'results.load_error': 'Gagal memuat klaim',
   'results.narrative_label': 'Narasi',
   'results.claim_label': 'Klaim yang Diekstrak',
+  'results.failed_title': 'Analisis Gagal',
+  'results.failed_message': 'Pipeline gagal memproses narasi ini.',
+  'results.retry': 'Coba Lagi',
+  'results.pending_title': 'Masih Diproses',
+  'results.pending_message': 'Analisis ini belum selesai. Kembali ke dasbor dan tunggu hingga selesai, atau jalankan ulang.',
   'results.ticker': 'Ticker',
   'results.category': 'Kategori',
   'results.direction': 'Arah',
@@ -97,11 +134,24 @@ export default {
   'results.fundamental_title': 'Bukti Fundamental',
   'results.market_title': 'Bukti Pasar',
 
+  // Claim directions
+  'direction.above': 'Di Atas',
+  'direction.below': 'Di Bawah',
+  'direction.between': 'Di Antara',
+  'direction.neutral': 'Netral',
+
+  // Trends
+  'trend.improving': 'Membaik',
+  'trend.declining': 'Menurun',
+  'trend.stable': 'Stabil',
+
   // Evidence metrics
   'metric.pe_ratio': 'Rasio PE',
   'metric.pb_ratio': 'Rasio PB',
   'metric.ps_ratio': 'Rasio PS',
   'metric.pe_premium': 'Premi PE',
+  'metric.revenue': 'Pendapatan',
+  'metric.earnings': 'Laba Bersih',
   'metric.revenue_trend': 'Tren Pendapatan',
   'metric.earnings_trend': 'Tren Laba',
   'metric.roe': 'ROE',
@@ -124,4 +174,9 @@ export default {
 
   // Cache
   'cache.hit': 'cache',
+
+  // Status
+  'status.completed': 'Selesai',
+  'status.failed': 'Gagal',
+  'status.pending': 'Diproses',
 } as Record<string, string>;

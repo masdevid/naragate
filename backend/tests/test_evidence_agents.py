@@ -20,19 +20,18 @@ class TestValuationAgent:
     @pytest.mark.asyncio
     async def test_returns_valuation_evidence(self, claim):
         company_data = {
+            "overview": {"sub_sector": "Banks"},
             "valuation": {
-                "pe_ratio": 25.5,
-                "pb_ratio": 3.2,
-                "ps_ratio": 8.1,
-                "pcf_ratio": 18.3,
+                "historical_valuation": [
+                    {"year": 2025, "pe": 25.5, "pb": 3.2, "ps": 8.1, "pcf": 18.3}
+                ],
+                "forward_pe": 22.0,
+                "last_close_price": 6775,
             }
         }
         subsector_data = {
-            "median": {
-                "pe_ratio": 20.0,
-                "pb_ratio": 2.5,
-                "ps_ratio": 6.0,
-            }
+            "statistics": {"filtered_median_pe": 20.0},
+            "valuation": {"historical_valuation": {"2025": {"pe": 20.0, "pb": 2.5, "ps": 6.0}}},
         }
 
         with patch("app.services.evidence_agents.cache") as mock_cache, \
@@ -49,14 +48,21 @@ class TestValuationAgent:
             assert evidence.category == "valuation"
             assert evidence.metrics["pe"] == 25.5
             assert evidence.subsector_median["pe"] == 20.0
+            mock_sectors.get_subsector_report.assert_called_once_with("banks", ["statistics", "valuation"])
 
     @pytest.mark.asyncio
     async def test_calculates_premium_pct(self, claim):
         company_data = {
-            "valuation": {"pe_ratio": 25.0, "pb_ratio": 3.0, "ps_ratio": 8.0, "pcf_ratio": 18.0}
+            "overview": {"sub_sector": "Banks"},
+            "valuation": {
+                "historical_valuation": [
+                    {"year": 2025, "pe": 25.0, "pb": 3.0, "ps": 8.0, "pcf": 18.0}
+                ]
+            }
         }
         subsector_data = {
-            "median": {"pe_ratio": 20.0, "pb_ratio": 2.0, "ps_ratio": 5.0}
+            "statistics": {"filtered_median_pe": 20.0},
+            "valuation": {"historical_valuation": {"2025": {"pe": 20.0, "pb": 2.0, "ps": 5.0}}},
         }
 
         with patch("app.services.evidence_agents.cache") as mock_cache, \
@@ -76,8 +82,11 @@ class TestValuationAgent:
     @pytest.mark.asyncio
     async def test_uses_cache_when_available(self, claim):
         cached_data = {
-            "company_report": {"valuation": {"pe_ratio": 30.0}},
-            "subsector_report": {"median": {"pe_ratio": 20.0}},
+            "company_report": {
+                "overview": {"sub_sector": "Banks"},
+                "valuation": {"historical_valuation": [{"year": 2025, "pe": 30.0}]},
+            },
+            "subsector_report": {"statistics": {"filtered_median_pe": 20.0}},
         }
 
         with patch("app.services.evidence_agents.cache") as mock_cache, \
@@ -98,8 +107,10 @@ class TestValuationAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
-            mock_sectors.get_company_report = AsyncMock(return_value={"valuation": {}})
-            mock_sectors.get_subsector_report = AsyncMock(return_value={"median": {}})
+            mock_sectors.get_company_report = AsyncMock(
+                return_value={"overview": {"sub_sector": "Banks"}, "valuation": {}}
+            )
+            mock_sectors.get_subsector_report = AsyncMock(return_value={"statistics": {}})
 
             agent = ValuationAgent()
             evidence = await agent.analyze(claim)
@@ -125,18 +136,22 @@ class TestFundamentalAgent:
     async def test_returns_fundamental_evidence(self, claim):
         company_data = {
             "financials": {
-                "revenue": 120_000_000_000,
-                "net_income": 45_000_000_000,
                 "eps": 375,
-                "gross_margin": 0.62,
-                "roe": 0.25,
-                "roa": 0.03,
-                "debt_to_equity": 0.8,
+                "historical_financials": [
+                    {"year": 2025, "revenue": 120_000_000_000, "earnings": 45_000_000_000}
+                ],
+                "historical_financial_ratio": [
+                    {
+                        "year": 2025,
+                        "profitability": {"roe": 0.25, "roa": 0.03, "net_profit_margin": 0.4},
+                        "leverage": {"debt_to_equity_ratio": 0.8},
+                    }
+                ],
             }
         }
         quarterly_data = [
-            {"revenue": 30_000_000_000, "net_income": 11_000_000_000},
-            {"revenue": 31_000_000_000, "net_income": 12_000_000_000},
+            {"revenue": 30_000_000_000, "earnings": 11_000_000_000},
+            {"revenue": 31_000_000_000, "earnings": 12_000_000_000},
         ]
 
         with patch("app.services.evidence_agents.cache") as mock_cache, \
@@ -153,12 +168,13 @@ class TestFundamentalAgent:
             assert evidence.category == "fundamental"
             assert evidence.metrics["revenue"] == 120_000_000_000
             assert evidence.metrics["earnings"] == 45_000_000_000
+            assert evidence.metrics["roe"] == 0.25
 
     @pytest.mark.asyncio
     async def test_calculates_revenue_trend_declining(self, claim):
         quarterly_data = [
-            {"revenue": 25_000_000_000, "net_income": 10_000_000_000},
-            {"revenue": 30_000_000_000, "net_income": 12_000_000_000},
+            {"revenue": 25_000_000_000, "earnings": 10_000_000_000},
+            {"revenue": 30_000_000_000, "earnings": 12_000_000_000},
         ]
 
         with patch("app.services.evidence_agents.cache") as mock_cache, \
@@ -177,8 +193,8 @@ class TestFundamentalAgent:
     @pytest.mark.asyncio
     async def test_calculates_revenue_trend_improving(self, claim):
         quarterly_data = [
-            {"revenue": 35_000_000_000, "net_income": 10_000_000_000},
-            {"revenue": 30_000_000_000, "net_income": 12_000_000_000},
+            {"revenue": 35_000_000_000, "earnings": 10_000_000_000},
+            {"revenue": 30_000_000_000, "earnings": 12_000_000_000},
         ]
 
         with patch("app.services.evidence_agents.cache") as mock_cache, \
@@ -210,8 +226,8 @@ class TestMarketAgent:
     @pytest.mark.asyncio
     async def test_returns_market_evidence(self, claim):
         tx_data = [
-            {"close": 9500, "volume": 15_000_000},
             {"close": 9400, "volume": 12_000_000},
+            {"close": 9500, "volume": 15_000_000},
         ]
 
         with patch("app.services.evidence_agents.cache") as mock_cache, \

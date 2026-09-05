@@ -15,6 +15,7 @@ import { TPipe } from './pipes/t.pipe';
         <a routerLink="/dashboard" routerLinkActive="nav__link--active"
           [routerLinkActiveOptions]="{ exact: true }" class="nav__link">{{ 'nav.dashboard' | t }}</a>
         <a routerLink="/settings" routerLinkActive="nav__link--active" class="nav__link">{{ 'nav.settings' | t }}</a>
+        <a routerLink="/usage" routerLinkActive="nav__link--active" class="nav__link">{{ 'nav.usage' | t }}</a>
         <div class="nav__lang">
           @for (lang of langs; track lang.code) {
             <button class="nav__lang-btn" [class.nav__lang-btn--active]="i18n.language() === lang.code"

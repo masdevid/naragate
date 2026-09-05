@@ -21,6 +21,7 @@ class ClaimStatus(str, Enum):
     SKEPTIC_REVIEWED = "skeptic_reviewed"
     SCORED = "scored"
     COMPLETED = "completed"
+    FAILED = "failed"
 
 class VerdictBand(str, Enum):
     CONTRADICTED = "contradicted"
@@ -33,6 +34,7 @@ class Claim(BaseModel):
     ticker: str
     category: ClaimCategory
     assertion: str
+    assertion_en: Optional[str] = None
     direction: ClaimDirection
     time_window: Optional[str] = None
     magnitude: Optional[float] = None
@@ -87,7 +89,9 @@ class SkepticOutput(BaseModel):
     claim_ticker: str
     counter_arguments: list[dict]
     ambiguity_points: list[str]
+    ambiguity_points_en: Optional[list[str]] = None
     missing_evidence: list[str]
+    missing_evidence_en: Optional[list[str]] = None
     skepticism_score: float
 
 class EvidenceAssessment(BaseModel):
@@ -106,6 +110,7 @@ class RealityGapScore(BaseModel):
     verdict: VerdictBand
     dimensions: dict
     explanation: str
+    explanation_en: Optional[str] = None
     confidence: float
 
 class PipelineEvent(BaseModel):

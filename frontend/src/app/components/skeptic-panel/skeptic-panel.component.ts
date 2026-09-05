@@ -12,7 +12,7 @@ import { TPipe } from '../../pipes/t.pipe';
 
       @for (arg of counterArguments; track arg.point) {
         <div class="skeptic__arg">
-          <p class="skeptic__point">{{ arg.point }}</p>
+          <p class="skeptic__point">{{ pointText(arg) }}</p>
           <div class="skeptic__bar-row">
             <span class="skeptic__label">{{ 'skeptic.strength' | t }}</span>
             <div class="skeptic__bar">
@@ -24,19 +24,19 @@ import { TPipe } from '../../pipes/t.pipe';
         </div>
       }
 
-      @if (ambiguityPoints.length) {
+      @if (ambiguityList().length) {
         <div class="skeptic__section">
           <h4 class="skeptic__heading">{{ 'skeptic.ambiguity' | t }}</h4>
-          @for (point of ambiguityPoints; track point) {
+          @for (point of ambiguityList(); track point) {
             <p class="skeptic__item">{{ point }}</p>
           }
         </div>
       }
 
-      @if (missingEvidence.length) {
+      @if (missingList().length) {
         <div class="skeptic__section">
           <h4 class="skeptic__heading">{{ 'skeptic.missing' | t }}</h4>
-          @for (item of missingEvidence; track item) {
+          @for (item of missingList(); track item) {
             <p class="skeptic__item">{{ item }}</p>
           }
         </div>
@@ -78,11 +78,27 @@ import { TPipe } from '../../pipes/t.pipe';
   `],
 })
 export class SkepticPanelComponent {
-  @Input() counterArguments: { point: string; evidence_ref: string; strength: number }[] = [];
+  @Input() counterArguments: { point: string; point_en?: string; evidence_ref: string; strength: number }[] = [];
   @Input() ambiguityPoints: string[] = [];
+  @Input() ambiguityPointsEn: string[] = [];
   @Input() missingEvidence: string[] = [];
+  @Input() missingEvidenceEn: string[] = [];
 
   private i18n = inject(I18nService);
+
+  private isEn() { return this.i18n.language() === 'en'; }
+
+  pointText(arg: any): string {
+    return this.isEn() && arg.point_en ? arg.point_en : arg.point;
+  }
+
+  ambiguityList(): string[] {
+    return this.isEn() && this.ambiguityPointsEn?.length ? this.ambiguityPointsEn : this.ambiguityPoints;
+  }
+
+  missingList(): string[] {
+    return this.isEn() && this.missingEvidenceEn?.length ? this.missingEvidenceEn : this.missingEvidence;
+  }
 
   getLevel(strength: number): string {
     if (strength > 70) return 'high';

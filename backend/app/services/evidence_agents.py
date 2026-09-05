@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from app.core.sectors_client import sectors_client
+from app.core.sectors_client import sectors_client, to_slug
 from app.core.evidence_cache import cache
 from app.config.settings import settings
 from app.models.schemas import (
@@ -14,41 +14,59 @@ class ValuationAgent:
         ticker = claim.ticker
 
         cached = await cache.get(ticker)
-        if cached and "company_report" in cached:
-            company_data = cached["company_report"]
+        company_data = (cached or {}).get("company_report")
+        if company_data and "overview" in company_data and "valuation" in company_data:
             cache_hit = True
         else:
-            company_data = await sectors_client.get_company_report(ticker, ["valuation"])
-            await cache.set(ticker, {"company_report": company_data})
+            company_data = await sectors_client.get_company_report(ticker, ["valuation", "overview"])
+            existing = cached or {}
+            existing["company_report"] = company_data
+            await cache.set(ticker, existing)
             cache_hit = False
 
+        sub_sector_name = ((company_data or {}).get("overview") or {}).get("sub_sector")
+        sub_sector_slug = to_slug(sub_sector_name) if sub_sector_name else None
+
         subsector_data = None
-        if cached and "subsector_report" in cached:
-            subsector_data = cached["subsector_report"]
-        else:
-            subsector_data = await sectors_client.get_subsector_report(ticker)
-            existing = cached or {}
-            existing["subsector_report"] = subsector_data
-            await cache.set(ticker, existing)
+        if sub_sector_slug:
+            if cached and "subsector_report" in cached:
+                subsector_data = cached["subsector_report"]
+            else:
+                subsector_data = await sectors_client.get_subsector_report(
+                    sub_sector_slug, ["statistics", "valuation"]
+                )
+                existing = cached or {}
+                existing["subsector_report"] = subsector_data
+                await cache.set(ticker, existing)
 
         valuation = {}
         if company_data and "valuation" in company_data:
             v = company_data["valuation"]
+            hv = v.get("historical_valuation") or []
+            latest = hv[-1] if hv else {}
             valuation = {
-                "pe": v.get("pe_ratio"),
-                "pb": v.get("pb_ratio"),
-                "ps": v.get("ps_ratio"),
-                "pcf": v.get("pcf_ratio"),
+                "pe": latest.get("pe"),
+                "pb": latest.get("pb"),
+                "ps": latest.get("ps"),
+                "pcf": latest.get("pcf"),
+                "forward_pe": v.get("forward_pe"),
+                "last_close_price": v.get("last_close_price"),
             }
 
         subsector_median = {}
-        if subsector_data and "median" in subsector_data:
-            m = subsector_data["median"]
-            subsector_median = {
-                "pe": m.get("pe_ratio"),
-                "pb": m.get("pb_ratio"),
-                "ps": m.get("ps_ratio"),
-            }
+        if subsector_data:
+            hv = ((subsector_data.get("valuation") or {}).get("historical_valuation") or {})
+            if hv:
+                latest_year = max(hv.keys())
+                m = hv[latest_year]
+                subsector_median = {
+                    "pe": m.get("pe"),
+                    "pb": m.get("pb"),
+                    "ps": m.get("ps"),
+                }
+            if not subsector_median.get("pe"):
+                stats = subsector_data.get("statistics") or {}
+                subsector_median["pe"] = stats.get("filtered_median_pe")
 
         premium_pct = {}
         for metric in ["pe", "pb", "ps"]:
@@ -95,14 +113,22 @@ class FundamentalAgent:
         metrics = {}
         if company_data and "financials" in company_data:
             f = company_data["financials"]
+            hf = f.get("historical_financials") or []
+            latest_f = hf[-1] if hf else {}
+            hfr = f.get("historical_financial_ratio") or []
+            latest_r = hfr[-1] if hfr else {}
+            profitability = latest_r.get("profitability") or {}
+            leverage = latest_r.get("leverage") or {}
             metrics = {
-                "revenue": f.get("revenue"),
-                "earnings": f.get("net_income"),
+                "revenue": latest_f.get("revenue"),
+                "earnings": latest_f.get("earnings"),
                 "eps": f.get("eps"),
-                "gross_margin": f.get("gross_margin"),
-                "roe": f.get("roe"),
-                "roa": f.get("roa"),
-                "debt_to_equity": f.get("debt_to_equity"),
+                "net_profit_margin": profitability.get("net_profit_margin"),
+                "roe": profitability.get("roe"),
+                "roa": profitability.get("roa"),
+                "debt_to_equity": leverage.get("debt_to_equity_ratio"),
+                "yoy_quarter_earnings_growth": f.get("yoy_quarter_earnings_growth"),
+                "yoy_quarter_revenue_growth": f.get("yoy_quarter_revenue_growth"),
             }
 
         trend = {"revenue_trend": "stable", "earnings_trend": "stable", "quarters_analyzed": 0}
@@ -111,7 +137,7 @@ class FundamentalAgent:
             trend["quarters_analyzed"] = len(quarters)
 
             revenues = [q.get("revenue", 0) for q in quarters if q.get("revenue")]
-            earnings = [q.get("net_income", 0) for q in quarters if q.get("net_income")]
+            earnings = [q.get("earnings", 0) for q in quarters if q.get("earnings")]
 
             if len(revenues) >= 2:
                 if revenues[0] > revenues[-1] * 1.05:
@@ -144,7 +170,7 @@ class MarketAgent:
             tx_data = cached["daily_transaction"]
             cache_hit = True
         else:
-            tx_data = await sectors_client.get_daily_transaction(ticker, window="30D")
+            tx_data = await sectors_client.get_daily_transaction(ticker)
             existing = cached or {}
             existing["daily_transaction"] = tx_data
             await cache.set(ticker, existing, ttl=settings.EVIDENCE_CACHE_TTL_DAILY)
@@ -154,6 +180,7 @@ class MarketAgent:
         volatility = 0.0
 
         if tx_data and isinstance(tx_data, list) and len(tx_data) > 0:
+            tx_data = list(reversed(tx_data))
             prices = [d.get("close", 0) for d in tx_data if d.get("close")]
             volumes = [d.get("volume", 0) for d in tx_data if d.get("volume")]
 

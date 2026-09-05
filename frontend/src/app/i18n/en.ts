@@ -2,6 +2,7 @@ export default {
   // Nav
   'nav.dashboard': 'Dashboard',
   'nav.settings': 'Settings',
+  'nav.usage': 'Usage',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -10,6 +11,7 @@ export default {
   'dashboard.sub': 'Paste an Indonesian market claim. Nara Agent will verify it against real financial data and test its accuracy.',
   'dashboard.textarea_placeholder': 'BBCA revenue is crashing but its PE is expensive...',
   'dashboard.analyze_btn': 'Analyze This Narrative',
+  'dashboard.analyzing': 'Analyzing...',
   'dashboard.recent_title': 'Previous Analyses',
   'dashboard.selected': '{{count}} selected',
   'dashboard.delete_selected': 'Delete Selected',
@@ -59,6 +61,32 @@ export default {
   'settings.no_models': 'No models found',
   'settings.auto_saved': 'Auto-saved',
 
+  // Usage
+  'usage.title': 'Usage',
+  'usage.sub': 'Monitor Sectors API credits, LLM token consumption, and estimated cost.',
+  'usage.back': 'Back',
+  'usage.section_sectors': 'Sectors API',
+  'usage.section_llm': 'LLM Usage',
+  'usage.section_pipelines': 'Pipelines',
+  'usage.section_daily': 'Last 7 Days',
+  'usage.calls': 'Calls',
+  'usage.budget': 'Budget',
+  'usage.used': 'Used',
+  'usage.remaining': 'Remaining',
+  'usage.model': 'Model',
+  'usage.input_tokens': 'Input Tokens',
+  'usage.output_tokens': 'Output Tokens',
+  'usage.total_tokens': 'Total Tokens',
+  'usage.est_cost': 'Est. Cost',
+  'usage.total': 'Total',
+  'usage.completed': 'Completed',
+  'usage.failed': 'Failed',
+  'usage.date': 'Date',
+  'usage.sectors_calls': 'Sectors',
+  'usage.llm_calls': 'LLM Calls',
+  'usage.loading': 'Loading usage...',
+  'usage.load_error': 'Failed to load usage data',
+
   // Pipeline steps
   'pipeline.parse': 'Parse',
   'pipeline.evidence': 'Evidence',
@@ -82,6 +110,10 @@ export default {
   'claim.event_title.pipeline_complete': 'Pipeline Complete',
   'claim.processing': 'Processing...',
   'claim.failed': 'Pipeline failed',
+  'claim.starting': 'Starting analysis...',
+  'claim.stream_ended': 'Analysis connection ended before completion. Please try again.',
+  'claim.thinking': 'Agent Thinking',
+  'claim.usage': 'Live Usage',
 
   // Results page
   'results.back': 'Back',
@@ -90,6 +122,11 @@ export default {
   'results.load_error': 'Failed to load claim',
   'results.narrative_label': 'Narrative',
   'results.claim_label': 'Extracted Claim',
+  'results.failed_title': 'Analysis Failed',
+  'results.failed_message': 'The pipeline failed to process this narrative.',
+  'results.retry': 'Retry',
+  'results.pending_title': 'Still Processing',
+  'results.pending_message': 'This analysis has not finished yet. Return to the dashboard and wait for it to complete, or re-run it.',
   'results.ticker': 'Ticker',
   'results.category': 'Category',
   'results.direction': 'Direction',
@@ -97,11 +134,24 @@ export default {
   'results.fundamental_title': 'Fundamental Evidence',
   'results.market_title': 'Market Evidence',
 
+  // Claim directions
+  'direction.above': 'Above',
+  'direction.below': 'Below',
+  'direction.between': 'Between',
+  'direction.neutral': 'Neutral',
+
+  // Trends
+  'trend.improving': 'Improving',
+  'trend.declining': 'Declining',
+  'trend.stable': 'Stable',
+
   // Evidence metrics
   'metric.pe_ratio': 'PE Ratio',
   'metric.pb_ratio': 'PB Ratio',
   'metric.ps_ratio': 'PS Ratio',
   'metric.pe_premium': 'PE Premium',
+  'metric.revenue': 'Revenue',
+  'metric.earnings': 'Net Earnings',
   'metric.revenue_trend': 'Revenue Trend',
   'metric.earnings_trend': 'Earnings Trend',
   'metric.roe': 'ROE',
@@ -124,4 +174,9 @@ export default {
 
   // Cache
   'cache.hit': 'cached',
+
+  // Status
+  'status.completed': 'Completed',
+  'status.failed': 'Failed',
+  'status.pending': 'Processing',
 } as Record<string, string>;

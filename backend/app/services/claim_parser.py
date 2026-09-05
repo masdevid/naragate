@@ -1,10 +1,9 @@
 import json
-import httpx
+import re
 from typing import Optional
 
-from app.config.settings import settings
 from app.models.schemas import Claim, ClaimCategory, ClaimDirection
-from app.core.usage_tracker import record_llm_call
+from app.core import llm_client
 
 CURATED_TICKERS = {"BBCA", "BBRI", "BMRI", "TLKM", "UNVR"}
 
@@ -29,7 +28,8 @@ EXTRACTION_PROMPT = """You are a financial claim extractor for Indonesian market
 Extract a structured financial claim from the narrative. Return ONLY a JSON object with these fields:
 - ticker: Indonesian stock ticker (4 letters, e.g., BBCA, BBRI, BMRI, TLKM, UNVR)
 - category: one of "valuation", "fundamental", "market", "peer_comparison"
-- assertion: the core financial claim in English
+- assertion: the core financial claim in Indonesian (Bahasa Indonesia)
+- assertion_en: the same claim translated to English
 - direction: one of "above", "below", "between", "neutral"
 - time_window: optional time period (e.g., "1D", "7D", "30D", "quarterly")
 - magnitude: optional numeric qualifier
@@ -44,31 +44,8 @@ Indonesian term mappings:
 - "labanya jeblok" = earnings deterioration
 - "untung besar" = strong profitability
 
-The assertion MUST be in English even if the narrative is in Indonesian.
+Provide both assertion and assertion_en.
 Return ONLY valid JSON, no other text."""
-
-
-async def call_ollama(prompt: str, user_message: str) -> str:
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            f"{settings.OLLAMA_BASE_URL}/chat/completions",
-            json={
-                "model": settings.claim_parser_model,
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": user_message},
-                ],
-                "response_format": {"type": "json_object"},
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-        usage = data.get("usage", {})
-        input_tokens = usage.get("prompt_tokens", 0)
-        output_tokens = usage.get("completion_tokens", 0)
-        if input_tokens or output_tokens:
-            record_llm_call(settings.claim_parser_model, input_tokens, output_tokens)
-        return data["choices"][0]["message"]["content"]
 
 
 def parse_llm_response(raw: str) -> dict:
@@ -88,8 +65,46 @@ def parse_llm_response(raw: str) -> dict:
         }
 
 
-async def extract_claim(narrative: str) -> Claim:
-    raw = await call_ollama(EXTRACTION_PROMPT, narrative)
+def _parse_magnitude(value) -> Optional[float]:
+    """Coerce an LLM magnitude into a float, tolerating strings like '3x', '3x lipat', 'double'."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        s = value.strip().lower().replace(",", ".")
+        m = re.search(r"(\d+(?:\.\d+)?)", s)
+        if m:
+            return float(m.group(1))
+        if "double" in s or "dua kali" in s:
+            return 2.0
+        if "triple" in s or "tiga kali" in s:
+            return 3.0
+    return None
+
+
+def _parse_confidence(value) -> float:
+    try:
+        return min(max(float(value), 0.0), 1.0)
+    except (TypeError, ValueError):
+        return 0.5
+
+
+async def extract_claim(
+    narrative: str,
+    on_token=None,
+) -> Claim:
+    raw = await llm_client.stream_chat(
+        "claim_parser",
+        [
+            {"role": "system", "content": EXTRACTION_PROMPT},
+            {"role": "user", "content": narrative},
+        ],
+        response_format={"type": "json_object"},
+        on_token=on_token,
+    )
     data = parse_llm_response(raw)
 
     ticker = data.get("ticker", "UNKNOWN").upper().replace(".JK", "")
@@ -107,14 +122,17 @@ async def extract_claim(narrative: str) -> Claim:
     except ValueError:
         direction = ClaimDirection.NEUTRAL
 
+    assertion = data.get("assertion") or narrative
+
     return Claim(
         ticker=ticker,
         category=category,
-        assertion=data.get("assertion", narrative),
+        assertion=assertion,
+        assertion_en=data.get("assertion_en") or assertion,
         direction=direction,
         time_window=data.get("time_window"),
-        magnitude=data.get("magnitude"),
-        confidence=min(max(float(data.get("confidence", 0.5)), 0.0), 1.0),
+        magnitude=_parse_magnitude(data.get("magnitude")),
+        confidence=_parse_confidence(data.get("confidence", 0.5)),
         ticker_valid=ticker_valid,
         narrative_source=narrative,
     )

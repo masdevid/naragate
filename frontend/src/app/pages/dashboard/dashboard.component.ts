@@ -62,9 +62,9 @@ import { TPipe } from '../../pipes/t.pipe';
           rows="4"></textarea>
         <button
           (click)="startAnalysis()"
-          [disabled]="!narrative.trim()"
+          [disabled]="!narrative.trim() || analyzing()"
           class="input-section__btn">
-          {{ 'dashboard.analyze_btn' | t }}
+          {{ analyzing() ? ('dashboard.analyzing' | t) : ('dashboard.analyze_btn' | t) }}
         </button>
       </div>
     </section>
@@ -93,7 +93,10 @@ import { TPipe } from '../../pipes/t.pipe';
                   [attr.aria-label]="'dashboard.select_claim' | t">
                 <button (click)="viewClaim(claim.claim_id)" class="recent__main">
                   <span class="recent__narrative">{{ claim.narrative }}</span>
-                  <span class="recent__meta">{{ claim.status }} &middot; {{ claim.created_at | date:'short' }}</span>
+                  <span class="recent__meta" [class.recent__meta--failed]="claim.status === 'failed'"
+                    [class.recent__meta--pending]="claim.status === 'pending'">
+                    {{ statusLabel(claim.status) }} &middot; {{ claim.created_at | date:'short' }}
+                  </span>
                 </button>
                 <button
                   class="recent__delete"
@@ -359,6 +362,8 @@ import { TPipe } from '../../pipes/t.pipe';
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
+    .recent__meta--failed { color: var(--color-danger); }
+    .recent__meta--pending { color: var(--color-warning); }
     .recent__delete {
       background: none;
       border: none;
@@ -401,6 +406,7 @@ export class DashboardComponent implements OnInit {
   sectorsConfigured = signal(true);
   headlineParts = signal<string[]>([]);
   selectedIds = signal<string[]>([]);
+  analyzing = signal(false);
   pendingDelete: any = null;
   bulkDelete = false;
 
@@ -437,8 +443,18 @@ export class DashboardComponent implements OnInit {
   }
 
   startAnalysis() {
-    if (this.narrative.trim()) {
+    if (this.narrative.trim() && !this.analyzing()) {
+      this.analyzing.set(true);
       this.router.navigate(['/claim'], { queryParams: { narrative: this.narrative } });
+    }
+  }
+
+  statusLabel(status: string): string {
+    switch (status) {
+      case 'completed': return this.i18n.t('status.completed');
+      case 'failed': return this.i18n.t('status.failed');
+      case 'pending': return this.i18n.t('status.pending');
+      default: return status;
     }
   }
 

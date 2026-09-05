@@ -48,7 +48,7 @@ class TestExtractClaim:
     @pytest.mark.asyncio
     async def test_extracts_claim_from_valid_llm_response(self):
         llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "profits declined", "direction": "below", "confidence": 0.9}'
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("BBCA labanya jeblok")
             assert claim.ticker == "BBCA"
@@ -60,7 +60,7 @@ class TestExtractClaim:
     @pytest.mark.asyncio
     async def test_validates_curated_tickers(self):
         llm_response = '{"ticker": "BBCA", "category": "valuation", "assertion": "expensive", "direction": "above", "confidence": 0.8}'
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("BBCA mahal")
             assert claim.ticker_valid is True
@@ -68,7 +68,7 @@ class TestExtractClaim:
     @pytest.mark.asyncio
     async def test_marks_unknown_ticker_as_invalid(self):
         llm_response = '{"ticker": "XYZZ", "category": "valuation", "assertion": "cheap", "direction": "below", "confidence": 0.7}'
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("XYZZ murah")
             assert claim.ticker == "XYZZ"
@@ -77,7 +77,7 @@ class TestExtractClaim:
     @pytest.mark.asyncio
     async def test_clamps_confidence_to_valid_range(self):
         llm_response = '{"ticker": "BBCA", "category": "market", "assertion": "price up", "direction": "above", "confidence": 1.5}'
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("BBCA naik")
             assert claim.confidence == 1.0  # Clamped to max
@@ -85,7 +85,7 @@ class TestExtractClaim:
     @pytest.mark.asyncio
     async def test_handles_negative_confidence(self):
         llm_response = '{"ticker": "BBCA", "category": "market", "assertion": "price down", "direction": "below", "confidence": -0.5}'
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("BBCA turun")
             assert claim.confidence == 0.0  # Clamped to min
@@ -93,7 +93,7 @@ class TestExtractClaim:
     @pytest.mark.asyncio
     async def test_falls_back_on_invalid_category(self):
         llm_response = '{"ticker": "BBCA", "category": "invalid_category", "assertion": "test", "direction": "neutral", "confidence": 0.5}'
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("BBCA test")
             assert claim.category == ClaimCategory.VALUATION  # Fallback
@@ -101,7 +101,7 @@ class TestExtractClaim:
     @pytest.mark.asyncio
     async def test_strips_jk_suffix_from_ticker(self):
         llm_response = '{"ticker": "BBCA.JK", "category": "fundamental", "assertion": "test", "direction": "neutral", "confidence": 0.5}'
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("BBCA test")
             assert claim.ticker == "BBCA"
@@ -110,7 +110,56 @@ class TestExtractClaim:
     async def test_preserves_narrative_source(self):
         llm_response = '{"ticker": "BBCA", "category": "market", "assertion": "price up", "direction": "above", "confidence": 0.6}'
         narrative = "BBCA meroket hari ini"
-        with patch("app.services.claim_parser.call_ollama", new_callable=AsyncMock) as mock_ollama:
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
             mock_ollama.return_value = llm_response
             claim = await extract_claim(narrative)
             assert claim.narrative_source == narrative
+
+    @pytest.mark.asyncio
+    async def test_maps_bilingual_assertion(self):
+        llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "laba menurun", "assertion_en": "profits declined", "direction": "below", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("BBCA labanya jeblok")
+            assert claim.assertion == "laba menurun"
+            assert claim.assertion_en == "profits declined"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_assertion_en_to_assertion(self):
+        llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "laba menurun", "direction": "below", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("BBCA labanya jeblok")
+            assert claim.assertion_en == "laba menurun"
+
+    @pytest.mark.asyncio
+    async def test_parses_string_magnitude(self):
+        llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "naik 3x lipat", "direction": "above", "magnitude": "3x", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("BBCA naik 3x lipat")
+            assert claim.magnitude == 3.0
+
+    @pytest.mark.asyncio
+    async def test_parses_verbose_magnitude_string(self):
+        llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "naik lebih dari 3x lipat", "direction": "above", "magnitude": "lebih dari 3x lipat", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("Kami mengestimasikan laba bersih BBCA naik lebih dari 3x lipat pada FY24.")
+            assert claim.magnitude == 3.0
+
+    @pytest.mark.asyncio
+    async def test_drops_unparseable_magnitude(self):
+        llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "naik", "direction": "above", "magnitude": "banyak banget", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("BBCA naik banyak banget")
+            assert claim.magnitude is None
+
+    @pytest.mark.asyncio
+    async def test_handles_non_numeric_confidence(self):
+        llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "naik", "direction": "above", "confidence": "high"}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("BBCA naik")
+            assert claim.confidence == 0.5  # Fallback default

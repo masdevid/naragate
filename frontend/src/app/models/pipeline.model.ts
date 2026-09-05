@@ -3,6 +3,7 @@ export interface Claim {
   ticker: string;
   category: 'valuation' | 'fundamental' | 'market' | 'peer_comparison';
   assertion: string;
+  assertion_en?: string;
   direction: 'above' | 'below' | 'between' | 'neutral';
   time_window?: string;
   magnitude?: number;
@@ -48,9 +49,11 @@ export interface MarketEvidence {
 
 export interface SkepticOutput {
   claim_ticker: string;
-  counter_arguments: { point: string; evidence_ref: string; strength: number }[];
+  counter_arguments: { point: string; point_en?: string; evidence_ref: string; strength: number }[];
   ambiguity_points: string[];
+  ambiguity_points_en?: string[];
   missing_evidence: string[];
+  missing_evidence_en?: string[];
   skepticism_score: number;
 }
 
@@ -71,6 +74,7 @@ export interface RealityGapScore {
   verdict: 'contradicted' | 'mixed' | 'supported' | 'strongly_supported';
   dimensions: Record<string, number>;
   explanation: string;
+  explanation_en?: string;
   confidence: number;
 }
 

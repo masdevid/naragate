@@ -1,6 +1,7 @@
 import pytest
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
-from app.services.pipeline import run_pipeline, make_event
+from app.services.pipeline import run_pipeline, make_event, _active_narratives
 from app.models.schemas import (
     Claim, ClaimCategory, ClaimDirection, ClaimStatus,
     PipelineEvent, ValuationEvidence, FundamentalEvidence, SkepticOutput, RealityGapScore, VerdictBand
@@ -66,6 +67,7 @@ class TestRunPipeline:
             
             mock_store.create_claim = AsyncMock(return_value="test-claim-id")
             mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
             mock_extract.return_value = mock_claim
             mock_evidence_fn.return_value = mock_evidence
             mock_skeptic_fn.return_value = mock_skeptic
@@ -87,6 +89,7 @@ class TestRunPipeline:
             
             mock_store.create_claim = AsyncMock(return_value="test-claim-id")
             mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
             mock_extract.return_value = mock_claim
             mock_evidence_fn.return_value = mock_evidence
             mock_skeptic_fn.return_value = mock_skeptic
@@ -107,6 +110,7 @@ class TestRunPipeline:
             
             mock_store.create_claim = AsyncMock(return_value="test-claim-id")
             mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
             mock_extract.side_effect = Exception("LLM unavailable")
 
             events = []
@@ -115,6 +119,13 @@ class TestRunPipeline:
 
             event_types = [e.event_type for e in events]
             assert "pipeline_error" in event_types
+
+            error_event = next(e for e in events if e.event_type == "pipeline_error")
+            assert error_event.data["error"] == "LLM unavailable"
+
+            # Claim must be marked failed, not left pending forever
+            failed_update = mock_store.update_claim.call_args_list[-1]
+            assert failed_update.args[1]["status"] == ClaimStatus.FAILED.value
 
     @pytest.mark.asyncio
     async def test_pipeline_handles_evidence_error(self, mock_claim):
@@ -125,6 +136,7 @@ class TestRunPipeline:
             
             mock_store.create_claim = AsyncMock(return_value="test-claim-id")
             mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
             mock_extract.return_value = mock_claim
             mock_evidence_fn.side_effect = Exception("API error")
             mock_skeptic_fn.return_value = SkepticOutput(
@@ -151,6 +163,7 @@ class TestRunPipeline:
             
             mock_store.create_claim = AsyncMock(return_value="test-claim-id")
             mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
             mock_extract.return_value = mock_claim
             mock_evidence_fn.return_value = mock_evidence
             mock_skeptic_fn.return_value = mock_skeptic
@@ -172,6 +185,7 @@ class TestRunPipeline:
             
             mock_store.create_claim = AsyncMock(return_value="test-claim-id")
             mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
             mock_extract.return_value = mock_claim
             mock_evidence_fn.return_value = mock_evidence
             mock_skeptic_fn.return_value = mock_skeptic
@@ -184,3 +198,105 @@ class TestRunPipeline:
             assert "verdict" in complete_event.data
             assert "score" in complete_event.data
             assert 0 <= complete_event.data["score"] <= 100
+
+    @pytest.mark.asyncio
+    async def test_pipeline_skips_duplicate_narrative_in_memory(self, mock_claim):
+        _active_narratives["BBCA labanya jeblok"] = "existing-claim-id"
+        try:
+            with patch("app.services.pipeline.claims_store") as mock_store, \
+                 patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract:
+                mock_store.create_claim = AsyncMock(return_value="test-claim-id")
+                mock_store.update_claim = AsyncMock()
+                mock_extract.return_value = mock_claim
+
+                events = []
+                async for event in run_pipeline("BBCA labanya jeblok"):
+                    events.append(event)
+
+                event_types = [e.event_type for e in events]
+                assert "pipeline_duplicate" in event_types
+                assert "pipeline_started" not in event_types
+                duplicate = next(e for e in events if e.event_type == "pipeline_duplicate")
+                assert duplicate.data["claim_id"] == "existing-claim-id"
+                mock_store.create_claim.assert_not_called()
+        finally:
+            _active_narratives.pop("BBCA labanya jeblok", None)
+
+    @pytest.mark.asyncio
+    async def test_pipeline_skips_duplicate_narrative_in_store(self, mock_claim):
+        _active_narratives.clear()
+        with patch("app.services.pipeline.claims_store") as mock_store, \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract:
+            mock_store.create_claim = AsyncMock(return_value="test-claim-id")
+            mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+            mock_store.find_active_by_narrative = AsyncMock(return_value={
+                "claim_id": "existing-claim-id",
+                "narrative": "BBCA labanya jeblok",
+                "status": "pending",
+                "updated_at": datetime.now().isoformat(),
+            })
+            mock_extract.return_value = mock_claim
+
+            events = []
+            async for event in run_pipeline("BBCA labanya jeblok"):
+                events.append(event)
+
+            event_types = [e.event_type for e in events]
+            assert "pipeline_duplicate" in event_types
+            assert "pipeline_started" not in event_types
+            mock_store.create_claim.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_pipeline_marks_stale_orphan_failed_and_proceeds(self, mock_claim, mock_evidence, mock_skeptic):
+        _active_narratives.clear()
+        with patch("app.services.pipeline.claims_store") as mock_store, \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract, \
+             patch("app.services.pipeline.get_evidence_for_claim", new_callable=AsyncMock) as mock_evidence_fn, \
+             patch("app.services.pipeline.run_skeptic", new_callable=AsyncMock) as mock_skeptic_fn:
+            mock_store.create_claim = AsyncMock(return_value="test-claim-id")
+            mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+            mock_store.find_active_by_narrative = AsyncMock(return_value={
+                "claim_id": "orphan-claim-id",
+                "narrative": "BBCA labanya jeblok",
+                "status": "parsed",
+                "updated_at": (datetime.now() - timedelta(minutes=30)).isoformat(),
+            })
+            mock_extract.return_value = mock_claim
+            mock_evidence_fn.return_value = mock_evidence
+            mock_skeptic_fn.return_value = mock_skeptic
+
+            events = []
+            async for event in run_pipeline("BBCA labanya jeblok"):
+                events.append(event)
+
+            event_types = [e.event_type for e in events]
+            assert "pipeline_duplicate" not in event_types
+            assert "pipeline_started" in event_types
+
+            orphan_update = next(
+                c for c in mock_store.update_claim.call_args_list
+                if c.args[0] == "orphan-claim-id"
+            )
+            assert orphan_update.args[1]["status"] == ClaimStatus.FAILED.value
+
+    @pytest.mark.asyncio
+    async def test_pipeline_clears_active_registry_after_run(self, mock_claim, mock_evidence, mock_skeptic):
+        _active_narratives.clear()
+        with patch("app.services.pipeline.claims_store") as mock_store, \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract, \
+             patch("app.services.pipeline.get_evidence_for_claim", new_callable=AsyncMock) as mock_evidence_fn, \
+             patch("app.services.pipeline.run_skeptic", new_callable=AsyncMock) as mock_skeptic_fn:
+            mock_store.create_claim = AsyncMock(return_value="test-claim-id")
+            mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+            mock_extract.return_value = mock_claim
+            mock_evidence_fn.return_value = mock_evidence
+            mock_skeptic_fn.return_value = mock_skeptic
+
+            async for _ in run_pipeline("BBCA labanya jeblok"):
+                pass
+
+            assert "BBCA labanya jeblok" not in _active_narratives

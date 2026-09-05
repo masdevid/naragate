@@ -7,6 +7,11 @@ import redis.asyncio as redis
 from app.config.settings import settings
 from app.models.schemas import Claim, ClaimStatus
 
+NON_TERMINAL_STATUSES = {
+    s.value for s in ClaimStatus
+    if s not in (ClaimStatus.COMPLETED, ClaimStatus.FAILED)
+}
+
 
 class ClaimsStore:
     def __init__(self):
@@ -102,6 +107,27 @@ class ClaimsStore:
 
         claims.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return claims
+
+    async def find_active_by_narrative(self, narrative: str, limit: int = 50) -> Optional[dict]:
+        await self.connect()
+        assert self.redis is not None
+        keys = []
+        async for key in self.redis.scan_iter("claim:*", count=100):
+            keys.append(key)
+            if len(keys) >= limit:
+                break
+
+        for key in keys:
+            raw = await self.redis.hget(key, "state")
+            if not raw:
+                continue
+            state = json.loads(raw)
+            if (
+                state.get("narrative") == narrative
+                and state.get("status") in NON_TERMINAL_STATUSES
+            ):
+                return state
+        return None
 
 
 claims_store = ClaimsStore()
