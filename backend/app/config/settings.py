@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     CURATED_STOCKS: list[str] = Field(default=["BBCA", "BBRI", "BMRI", "TLKM", "UNVR"], validation_alias="CURATED_STOCKS")
 
     # Credit budget for Sectors API
-    CREDIT_BUDGET: int = Field(default=1600, validation_alias="CREDIT_BUDGET")
+    CREDIT_BUDGET: int = Field(default=600, validation_alias="CREDIT_BUDGET")
 
     @field_validator("SECTORS_API_KEY", mode="before")
     @classmethod
