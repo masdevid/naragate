@@ -17,6 +17,15 @@ export class NarrativeService {
         body: body,
       }).then(response => {
         if (!response.ok) {
+          if (response.status === 409) {
+            response.json().then(body => {
+              const err: any = new Error('setup_incomplete');
+              err.code = 'setup_incomplete';
+              err.missing = body?.detail?.missing || [];
+              observer.error(err);
+            }).catch(() => observer.error(new Error(`HTTP ${response.status}`)));
+            return;
+          }
           observer.error(new Error(`HTTP ${response.status}`));
           return;
         }

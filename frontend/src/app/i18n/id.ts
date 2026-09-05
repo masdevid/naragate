@@ -28,8 +28,12 @@ export default {
   // Dashboard warnings
   'dashboard.warn_sectors': 'Kunci API Sectors belum diatur. Analisis tidak akan berfungsi tanpa kunci ini.',
   'dashboard.warn_llm': 'LLM provider belum dikonfigurasi. Atur endpoint di halaman Pengaturan.',
+  'dashboard.warn_setup': 'Pengaturan awal belum selesai. Selesaikan untuk mulai menganalisis.',
+  'dashboard.start_setup': 'Mulai Pengaturan',
   'dashboard.fix': 'Buka Pengaturan',
   'dashboard.dismiss': 'Tutup',
+  'dashboard.try_example': 'Coba Contoh',
+  'dashboard.example_narrative': 'BBCA labanya jeblok tapi PE-nya mahal. Padahal pendapatan dan laba bersihnya tumbuh dua digit kuartal ke kuartal.',
 
   // Settings
   'settings.title': 'Pengaturan',
@@ -53,6 +57,9 @@ export default {
   'settings.section_sectors': 'Sectors API',
   'settings.field_sectors_key': 'Kunci API',
   'settings.sectors_key_placeholder': 'Masukkan kunci API Sectors v2',
+  'settings.sectors_validate': 'Validasi',
+  'settings.sectors_valid_ok': 'Kunci valid',
+  'settings.sectors_valid_error': 'Kunci tidak valid',
   'settings.btn_reset': 'Atur Ulang ke Default',
   'settings.validating': 'Memvalidasi...',
   'settings.valid_ok': 'Terhubung \u2014 {{count}} model',
@@ -114,6 +121,26 @@ export default {
   'claim.stream_ended': 'Koneksi analisis terputus sebelum selesai. Coba lagi.',
   'claim.thinking': 'Pemikiran Agen',
   'claim.usage': 'Pemakaian Live',
+  'claim.setup_incomplete': 'Pengaturan awal belum selesai. Selesaikan pengaturan untuk mulai menganalisis.',
+  'claim.go_setup': 'Buka Pengaturan Awal',
+
+  // Setup wizard
+  'setup.welcome_title': 'Selamat Datang',
+  'setup.welcome_text': 'Naragate memverifikasi klaim pasar Indonesia dengan data keuangan aktual. Sebelum mulai, selesaikan pengaturan singkat berikut.',
+  'setup.welcome_need': 'Kamu butuh dua hal:',
+  'setup.need_llm': 'LLM lokal (Ollama) atau endpoint OpenAI-compatible',
+  'setup.need_sectors': 'Kunci API Sectors v2 (dari sectors.app)',
+  'setup.skip': 'Lewati',
+  'setup.start': 'Mulai',
+  'setup.next': 'Lanjut',
+  'setup.back': 'Kembali',
+  'setup.llm_title': 'LLM Provider',
+  'setup.llm_text': 'Masukkan endpoint OpenAI-compatible. Untuk Ollama lokal, biarkan kunci API kosong.',
+  'setup.sectors_title': 'Sectors API',
+  'setup.sectors_text': 'Masukkan kunci API Sectors v2 untuk mengakses data keuangan. Dapatkan di sectors.app.',
+  'setup.done_title': 'Selesai',
+  'setup.done_text': 'Pengaturan selesai. Kamu siap menganalisis narasi pasar.',
+  'setup.finish': 'Buka Dasbor',
 
   // Results page
   'results.back': 'Kembali',

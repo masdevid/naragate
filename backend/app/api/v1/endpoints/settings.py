@@ -5,6 +5,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
+from app.core.setup import missing_setup_items
+
 router = APIRouter()
 
 SETTINGS_FILE = Path(__file__).parent.parent.parent.parent / "data" / "runtime_settings.json"
@@ -27,6 +29,34 @@ class ValidateEndpointResponse(BaseModel):
     endpoint: str
     models: list[str] = []
     error: Optional[str] = None
+
+class ValidateSectorsRequest(BaseModel):
+    api_key: str
+
+class ValidateSectorsResponse(BaseModel):
+    ok: bool
+    error: Optional[str] = None
+
+@router.get("/status")
+async def setup_status():
+    missing = missing_setup_items()
+    return {"complete": len(missing) == 0, "missing": missing}
+
+@router.post("/validate-sectors", response_model=ValidateSectorsResponse)
+async def validate_sectors(req: ValidateSectorsRequest):
+    headers = {"Authorization": req.api_key}
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get("https://api.sectors.app/v2/daily/BBCA/", headers=headers)
+            if r.status_code == 200:
+                return ValidateSectorsResponse(ok=True)
+            return ValidateSectorsResponse(ok=False, error=f"HTTP {r.status_code}: {r.text[:200]}")
+    except httpx.ConnectError:
+        return ValidateSectorsResponse(ok=False, error="Connection refused — check your network")
+    except httpx.TimeoutException:
+        return ValidateSectorsResponse(ok=False, error="Request timed out after 8s")
+    except Exception as e:
+        return ValidateSectorsResponse(ok=False, error=str(e)[:200])
 
 @router.post("/validate-llm", response_model=ValidateEndpointResponse)
 async def validate_llm_endpoint(req: ValidateEndpointRequest):

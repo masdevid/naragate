@@ -28,8 +28,12 @@ export default {
   // Dashboard warnings
   'dashboard.warn_sectors': 'Sectors API key not set. Analysis will not work without this key.',
   'dashboard.warn_llm': 'LLM provider not configured. Set the endpoint in Settings.',
+  'dashboard.warn_setup': 'Setup is not complete. Finish it to start analyzing.',
+  'dashboard.start_setup': 'Start Setup',
   'dashboard.fix': 'Open Settings',
   'dashboard.dismiss': 'Dismiss',
+  'dashboard.try_example': 'Try an Example',
+  'dashboard.example_narrative': 'BBCA earnings are crashing but its PE is expensive. Yet revenue and net profit keep growing double digits quarter over quarter.',
 
   // Settings
   'settings.title': 'Settings',
@@ -53,6 +57,9 @@ export default {
   'settings.section_sectors': 'Sectors API',
   'settings.field_sectors_key': 'API Key',
   'settings.sectors_key_placeholder': 'Enter your Sectors v2 API key',
+  'settings.sectors_validate': 'Validate',
+  'settings.sectors_valid_ok': 'Key is valid',
+  'settings.sectors_valid_error': 'Key is invalid',
   'settings.btn_reset': 'Reset to Defaults',
   'settings.validating': 'Validating...',
   'settings.valid_ok': 'Connected \u2014 {{count}} models',
@@ -114,6 +121,26 @@ export default {
   'claim.stream_ended': 'Analysis connection ended before completion. Please try again.',
   'claim.thinking': 'Agent Thinking',
   'claim.usage': 'Live Usage',
+  'claim.setup_incomplete': 'Setup is not complete. Finish setup to start analyzing.',
+  'claim.go_setup': 'Go to Setup',
+
+  // Setup wizard
+  'setup.welcome_title': 'Welcome',
+  'setup.welcome_text': 'Naragate verifies Indonesian market claims against real financial data. Before you start, complete this short setup.',
+  'setup.welcome_need': 'You will need two things:',
+  'setup.need_llm': 'A local LLM (Ollama) or any OpenAI-compatible endpoint',
+  'setup.need_sectors': 'A Sectors v2 API key (from sectors.app)',
+  'setup.skip': 'Skip',
+  'setup.start': 'Start',
+  'setup.next': 'Next',
+  'setup.back': 'Back',
+  'setup.llm_title': 'LLM Provider',
+  'setup.llm_text': 'Enter an OpenAI-compatible endpoint. For local Ollama, leave the API key blank.',
+  'setup.sectors_title': 'Sectors API',
+  'setup.sectors_text': 'Enter your Sectors v2 API key to access financial data. Get one at sectors.app.',
+  'setup.done_title': 'Done',
+  'setup.done_text': 'Setup complete. You are ready to analyze market narratives.',
+  'setup.finish': 'Open Dashboard',
 
   // Results page
   'results.back': 'Back',

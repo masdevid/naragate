@@ -2,7 +2,7 @@ import re
 from typing import Any
 
 import httpx
-from app.config.settings import settings
+from app.core.sectors_config import sectors_api_key
 from app.core.usage_tracker import record_sectors_call
 
 
@@ -14,16 +14,15 @@ def to_slug(name: str) -> str:
 class SectorsClient:
     def __init__(self):
         self.base_url = "https://api.sectors.app"
-        self.api_key = settings.SECTORS_API_KEY
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
-            headers={"Authorization": self.api_key},
             follow_redirects=True,
             timeout=10.0
         )
 
     async def _get(self, path: str, params: dict | None = None) -> Any:
-        response = await self.client.get(path, params=params)
+        headers = {"Authorization": sectors_api_key()}
+        response = await self.client.get(path, params=params, headers=headers)
         record_sectors_call(endpoint=path)
         response.raise_for_status()
         return response.json()

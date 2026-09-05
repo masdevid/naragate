@@ -19,6 +19,16 @@ export interface ValidateResult {
   error?: string;
 }
 
+export interface SectorsValidateResult {
+  ok: boolean;
+  error?: string;
+}
+
+export interface SetupStatus {
+  complete: boolean;
+  missing: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
   private apiUrl = '/api/v1/settings';
@@ -61,6 +71,28 @@ export class SettingsService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint, api_key: apiKey || null }),
       })
+        .then(r => r.json())
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  validateSectors(apiKey: string): Observable<SectorsValidateResult> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/validate-sectors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey }),
+      })
+        .then(r => r.json())
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  getSetupStatus(): Observable<SetupStatus> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/status`)
         .then(r => r.json())
         .then(data => { observer.next(data); observer.complete(); })
         .catch(err => observer.error(err));

@@ -11,7 +11,7 @@ import httpx
 app = FastAPI(title="Pi Agent Service")
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:12b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "")
 
 class NarrativeRequest(BaseModel):
     narrative: str

@@ -10,7 +10,8 @@ class Settings(BaseSettings):
 
     # LLM Provider (OpenAI-compatible)
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", validation_alias="OLLAMA_BASE_URL")
-    OLLAMA_MODEL: str = Field(default="gemma4:12b", validation_alias="OLLAMA_MODEL")
+    # Empty by default: the model is configured via the web UI settings page.
+    OLLAMA_MODEL: str = Field(default="", validation_alias="OLLAMA_MODEL")
 
     # Per-agent model overrides (optional, defaults to OLLAMA_MODEL)
     CLAIM_PARSER_MODEL: str = Field(default="", validation_alias="CLAIM_PARSER_MODEL")
@@ -59,7 +60,9 @@ class Settings(BaseSettings):
         global_secret = Path(os.path.expanduser("~/.secrets/sectors_api_key"))
         if global_secret.exists():
             return global_secret.read_text().strip()
-        raise ValueError("SECTORS_API_KEY not found. Set it via ENV, .env, .secrets/sectors_api_key, or ~/.secrets/sectors_api_key")
+        # No key found anywhere: return empty so the app still starts.
+        # The key can be set later via the web UI settings page.
+        return ""
 
     @property
     def claim_parser_model(self) -> str:

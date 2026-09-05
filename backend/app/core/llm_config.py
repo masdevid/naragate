@@ -34,6 +34,11 @@ def llm_endpoint() -> str:
     return _normalize_endpoint(endpoint)
 
 
+def llm_api_key() -> str:
+    runtime = _load_runtime()
+    return runtime.get("llm_api_key") or ""
+
+
 def llm_model(role: str = "default") -> str:
     runtime = _load_runtime()
     model = runtime.get(_ROLE_MODEL_KEYS.get(role, "")) or runtime.get("llm_model")

@@ -10,6 +10,8 @@ from pathlib import Path
 
 from app.config.settings import settings
 from app.core.sectors_client import sectors_client
+from app.core.llm_config import llm_endpoint
+from app.core.sectors_config import sectors_api_key
 from app.api.v1.endpoints import claims, evidence, stream
 from app.api.v1.endpoints import settings as settings_router
 from app.api.v1.endpoints import usage as usage_router
@@ -77,16 +79,17 @@ app.include_router(settings_router.router, prefix="/api/v1/settings", tags=["set
 app.include_router(usage_router.router, prefix="/api/v1/usage", tags=["usage"])
 
 async def check_ollama() -> dict:
+    endpoint = llm_endpoint()
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get(f"{settings.OLLAMA_BASE_URL}/models")
+            r = await client.get(f"{endpoint}/models")
             if r.status_code == 200:
                 data = r.json()
                 models = [m["id"] for m in data.get("data", [])]
-                return {"status": "ok", "endpoint": settings.OLLAMA_BASE_URL, "models": models, "model_count": len(models)}
-            return {"status": "error", "endpoint": settings.OLLAMA_BASE_URL, "error": f"HTTP {r.status_code}"}
+                return {"status": "ok", "endpoint": endpoint, "models": models, "model_count": len(models)}
+            return {"status": "error", "endpoint": endpoint, "error": f"HTTP {r.status_code}"}
     except Exception as e:
-        return {"status": "error", "endpoint": settings.OLLAMA_BASE_URL, "error": str(e)}
+        return {"status": "error", "endpoint": endpoint, "error": str(e)}
 
 async def check_sectors() -> dict:
     now = time.monotonic()
@@ -94,11 +97,15 @@ async def check_sectors() -> dict:
         return _sectors_cache["result"]
 
     result: dict
-    try:
-        await sectors_client.get_daily_transaction("BBCA")
-        result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(settings.SECTORS_API_KEY)}
-    except Exception as e:
-        result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": str(e)}
+    key = sectors_api_key()
+    if not key:
+        result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": "No API key configured"}
+    else:
+        try:
+            await sectors_client.get_daily_transaction("BBCA")
+            result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(key)}
+        except Exception as e:
+            result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": str(e)}
 
     if result["status"] == "ok":
         _sectors_cache["result"] = result

@@ -14,6 +14,15 @@ import { TPipe } from '../../pipes/t.pipe';
   imports: [FormsModule, DatePipe, ConfirmModalComponent, TPipe],
   template: `
     <!-- Warnings -->
+    @if (!setupComplete()) {
+      <div class="warn warn--yellow reveal" style="--i: 0">
+        <div class="warn__inner">
+          <span class="warn__icon">!</span>
+          <span class="warn__text">{{ 'dashboard.warn_setup' | t }}</span>
+          <button class="warn__btn" (click)="goSetup()">{{ 'dashboard.start_setup' | t }}</button>
+        </div>
+      </div>
+    }
     @if (!llmConfigured()) {
       <div class="warn reveal" style="--i: 0">
         <div class="warn__inner">
@@ -66,6 +75,7 @@ import { TPipe } from '../../pipes/t.pipe';
           class="input-section__btn">
           {{ analyzing() ? ('dashboard.analyzing' | t) : ('dashboard.analyze_btn' | t) }}
         </button>
+        <button (click)="tryExample()" class="input-section__example">{{ 'dashboard.try_example' | t }}</button>
       </div>
     </section>
 
@@ -265,6 +275,25 @@ import { TPipe } from '../../pipes/t.pipe';
     }
     .input-section__btn:hover { opacity: 0.9; }
     .input-section__btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .input-section__example {
+      display: inline-block;
+      margin-top: var(--space-lg);
+      margin-left: var(--space-md);
+      background: none;
+      border: 1px solid var(--color-rule);
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: var(--space-md) var(--space-lg);
+      cursor: pointer;
+      transition: all var(--dur-short) var(--ease-out);
+    }
+    .input-section__example:hover {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
 
     /* Recent */
     .recent {
@@ -402,6 +431,7 @@ import { TPipe } from '../../pipes/t.pipe';
 export class DashboardComponent implements OnInit {
   narrative = '';
   recentClaims = signal<any[]>([]);
+  setupComplete = signal(true);
   llmConfigured = signal(true);
   sectorsConfigured = signal(true);
   headlineParts = signal<string[]>([]);
@@ -432,7 +462,7 @@ export class DashboardComponent implements OnInit {
 
     this.settingsService.getSettings().subscribe({
       next: (settings: RuntimeSettings) => {
-        this.llmConfigured.set(!!(settings.llm_endpoint && settings.llm_endpoint.trim()));
+        this.llmConfigured.set(!!(settings.llm_endpoint && settings.llm_endpoint.trim() && settings.llm_model && settings.llm_model.trim()));
         this.sectorsConfigured.set(!!(settings.sectors_api_key && settings.sectors_api_key.trim()));
       },
       error: () => {
@@ -440,6 +470,15 @@ export class DashboardComponent implements OnInit {
         this.sectorsConfigured.set(false);
       },
     });
+
+    this.settingsService.getSetupStatus().subscribe({
+      next: (status) => this.setupComplete.set(status.complete),
+      error: () => this.setupComplete.set(false),
+    });
+  }
+
+  tryExample() {
+    this.narrative = this.i18n.t('dashboard.example_narrative');
   }
 
   startAnalysis() {
@@ -505,6 +544,10 @@ export class DashboardComponent implements OnInit {
 
   goSettings() {
     this.router.navigate(['/settings']);
+  }
+
+  goSetup() {
+    this.router.navigate(['/setup']);
   }
 
   private updateHeadline() {

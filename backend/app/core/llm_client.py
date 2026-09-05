@@ -3,7 +3,7 @@ from typing import Awaitable, Callable, Optional
 
 import httpx
 
-from app.core.llm_config import llm_endpoint, llm_model
+from app.core.llm_config import llm_endpoint, llm_model, llm_api_key
 from app.core.usage_tracker import record_llm_call
 
 LANGUAGE_NAMES = {
@@ -35,7 +35,12 @@ async def stream_chat(
     input_tokens = 0
     output_tokens = 0
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    headers = {}
+    api_key = llm_api_key()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    async with httpx.AsyncClient(timeout=120.0, headers=headers) as client:
         async with client.stream(
             "POST", f"{llm_endpoint()}/chat/completions", json=payload
         ) as response:

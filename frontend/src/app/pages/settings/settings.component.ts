@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription, Subject, debounceTime, switchMap, tap } from 'rxjs';
-import { SettingsService, RuntimeSettings, ValidateResult } from '../../services/settings.service';
+import { SettingsService, RuntimeSettings, ValidateResult, SectorsValidateResult } from '../../services/settings.service';
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
 
@@ -158,9 +158,26 @@ import { TPipe } from '../../pipes/t.pipe';
 
           <div class="settings__field">
             <label class="settings__label">{{ 'settings.field_sectors_key' | t }}</label>
-            <input [ngModel]="form().sectors_api_key" (ngModelChange)="onFieldChange('sectors_api_key', $event)"
-              class="settings__input" type="password"
-              [placeholder]="'settings.sectors_key_placeholder' | t">
+            <div class="settings__input-row">
+              <input [ngModel]="form().sectors_api_key" (ngModelChange)="onFieldChange('sectors_api_key', $event)"
+                class="settings__input settings__input--flex" type="password"
+                [placeholder]="'settings.sectors_key_placeholder' | t">
+              <button (click)="validateSectorsKey()" [disabled]="!form().sectors_api_key || sectorsValidating()"
+                class="settings__validate-btn">
+                {{ 'settings.sectors_validate' | t }}
+              </button>
+            </div>
+            <span class="settings__status" [class.settings__status--ok]="sectorsValidation()?.ok === true"
+              [class.settings__status--err]="sectorsValidation()?.ok === false"
+              [class.settings__status--loading]="sectorsValidating()">
+              @if (sectorsValidating()) {
+                {{ 'settings.validating' | t }}
+              } @else if (sectorsValidation()?.ok === true) {
+                {{ 'settings.sectors_valid_ok' | t }}
+              } @else if (sectorsValidation()?.ok === false) {
+                {{ 'settings.sectors_valid_error' | t }}
+              }
+            </span>
           </div>
         </section>
       </div>
@@ -304,6 +321,28 @@ import { TPipe } from '../../pipes/t.pipe';
       font-size: 0.6rem;
       padding: var(--space-3xs) var(--space-xs);
     }
+    .settings__validate-btn {
+      background: none;
+      border: 1px solid var(--color-accent);
+      color: var(--color-accent);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: var(--space-2xs) var(--space-sm);
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+    }
+    .settings__validate-btn:hover {
+      background: var(--color-accent);
+      color: var(--color-paper);
+    }
+    .settings__validate-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
 
     @media (max-width: 640px) {
       .settings { padding: var(--space-lg) var(--space-md); }
@@ -321,6 +360,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   validating = signal(false);
   validation = signal<ValidateResult | null>(null);
   availableModels = signal<string[]>([]);
+  sectorsValidating = signal(false);
+  sectorsValidation = signal<SectorsValidateResult | null>(null);
 
   private endpoint$ = new Subject<string>();
   private pendingSave: RuntimeSettings | null = null;
@@ -425,6 +466,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.validating.set(false);
+      },
+    });
+  }
+
+  validateSectorsKey() {
+    const key = this.form().sectors_api_key;
+    if (!key) return;
+    this.sectorsValidating.set(true);
+    this.sectorsValidation.set(null);
+    this.settingsService.validateSectors(key).subscribe({
+      next: (result) => {
+        this.sectorsValidation.set(result);
+        this.sectorsValidating.set(false);
+      },
+      error: () => {
+        this.sectorsValidation.set({ ok: false, error: 'Request failed' });
+        this.sectorsValidating.set(false);
       },
     });
   }

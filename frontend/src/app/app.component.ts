@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, OnInit, inject } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { UpperCasePipe } from '@angular/common';
 import { I18nService } from './services/i18n.service';
+import { SettingsService } from './services/settings.service';
 import { TPipe } from './pipes/t.pipe';
 
 @Component({
@@ -89,7 +90,23 @@ import { TPipe } from './pipes/t.pipe';
     }
   `],
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   i18n = inject(I18nService);
   langs = this.i18n.getLanguages();
+  private router = inject(Router);
+  private settingsService = inject(SettingsService);
+
+  ngOnInit() {
+    let dismissed = false;
+    try { dismissed = localStorage.getItem('naragate_setup_dismissed') === '1'; } catch {}
+    if (dismissed || this.router.url.startsWith('/setup')) return;
+    this.settingsService.getSetupStatus().subscribe({
+      next: (status) => {
+        if (!status.complete) {
+          this.router.navigate(['/setup']);
+        }
+      },
+      error: () => {},
+    });
+  }
 }

@@ -58,7 +58,12 @@ import { TPipe } from '../../pipes/t.pipe';
 
         @if (error()) {
           <div class="claim__error">
-            <p>{{ error() }}</p>
+            @if (errorCode() === 'setup_incomplete') {
+              <p>{{ 'claim.setup_incomplete' | t }}</p>
+              <button (click)="goSetup()" class="claim__setup-btn">{{ 'claim.go_setup' | t }}</button>
+            } @else {
+              <p>{{ error() }}</p>
+            }
           </div>
         }
       </div>
@@ -163,6 +168,23 @@ import { TPipe } from '../../pipes/t.pipe';
       font-family: var(--font-mono);
       font-size: var(--text-sm);
     }
+    .claim__setup-btn {
+      margin-top: var(--space-md);
+      background: none;
+      border: 1px solid var(--color-danger);
+      color: var(--color-danger);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: var(--space-2xs) var(--space-sm);
+      cursor: pointer;
+      transition: background var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+    }
+    .claim__setup-btn:hover {
+      background: var(--color-danger);
+      color: var(--color-paper);
+    }
     @media (max-width: 640px) { .claim { padding: var(--space-lg) var(--space-md); } }
   `],
 })
@@ -181,6 +203,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
   usage = signal<any>(null);
   connecting = signal(true);
   error = signal('');
+  errorCode = signal('');
   claimId = signal('');
   private sub?: Subscription;
   private thinkingMap = new Map<string, string>();
@@ -231,6 +254,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.connecting.set(false);
+        this.errorCode.set(err?.code || '');
         this.error.set(err.message || this.i18n.t('claim.failed'));
       },
       complete: () => {
@@ -264,4 +288,5 @@ export class ClaimComponent implements OnInit, OnDestroy {
   }
 
   goBack() { this.router.navigate(['/dashboard']); }
+  goSetup() { this.router.navigate(['/setup']); }
 }

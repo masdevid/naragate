@@ -6,7 +6,7 @@ services:
     environment:
       - SECTORS_API_KEY=${SECTORS_API_KEY}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:12b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
       - REDIS_URL=redis://redis:6379
       - PI_AGENT_URL=http://pi-agent:3000
       - DATABASE_URL=sqlite:///./data/naragate.db
@@ -29,11 +29,9 @@ services:
 
   pi-agent:
     build: ./pi-agent
-    ports:
-      - "3000:3000"
     environment:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma4:12b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
     volumes:
       - ./.pi:/app/.pi
     extra_hosts:
@@ -41,8 +39,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
 
