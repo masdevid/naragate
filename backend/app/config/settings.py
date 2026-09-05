@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     # Empty by default: the model is configured via the web UI settings page.
     OLLAMA_MODEL: str = Field(default="", validation_alias="OLLAMA_MODEL")
 
+    # Pi Agent harness gateway. When set, all LLM calls are routed through the
+    # Pi Coding Agent harness (pi-agent service) instead of calling the LLM
+    # endpoint directly. The pi-agent maps each agent role to its .pi/skills/*
+    # definition and runs it through the Pi CLI.
+    PI_AGENT_URL: str = Field(default="", validation_alias="PI_AGENT_URL")
+
     # Per-agent model overrides (optional, defaults to OLLAMA_MODEL)
     CLAIM_PARSER_MODEL: str = Field(default="", validation_alias="CLAIM_PARSER_MODEL")
     SKEPTIC_MODEL: str = Field(default="", validation_alias="SKEPTIC_MODEL")
@@ -24,9 +30,6 @@ class Settings(BaseSettings):
 
     # Redis (evidence cache only)
     REDIS_URL: str = Field(default="redis://localhost:6379", validation_alias="REDIS_URL")
-
-    # Pi Agent
-    PI_AGENT_URL: str = Field(default="http://localhost:3000", validation_alias="PI_AGENT_URL")
 
     # SQLite
     DATABASE_URL: str = Field(default="sqlite:///./data/naragate.db", validation_alias="DATABASE_URL")

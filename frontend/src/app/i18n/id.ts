@@ -34,6 +34,11 @@ export default {
   'dashboard.dismiss': 'Tutup',
   'dashboard.try_example': 'Coba Contoh',
   'dashboard.example_narrative': 'BBCA labanya jeblok tapi PE-nya mahal. Padahal pendapatan dan laba bersihnya tumbuh dua digit kuartal ke kuartal.',
+  'dashboard.examples_title': 'Atau mulai dari contoh kurasi',
+  'dashboard.examples.valuation': 'PE BBCA mahal di 25x, jauh di atas rata-rata sektor 18x.',
+  'dashboard.examples.fundamental': 'Pendapatan TLKM terus tumbuh tapi laba bersihnya menyusut setiap kuartal.',
+  'dashboard.examples.market': 'Saham UNVR turun 15% dalam seminggu, investor panik.',
+  'dashboard.examples.news': 'BMRI disebut bank terbaik di Indonesia saat ini setelah berita laba rekor.',
 
   // Settings
   'settings.title': 'Pengaturan',
@@ -160,6 +165,29 @@ export default {
   'results.valuation_title': 'Bukti Valuasi',
   'results.fundamental_title': 'Bukti Fundamental',
   'results.market_title': 'Bukti Pasar',
+  'results.news_title': 'Korelasi Berita',
+  'results.corp_actions_title': 'Aksi Korporasi',
+
+  // Radar chart
+  'radar.title': 'Dimensi Bukti',
+  'dimension.valuation_gap': 'Gap Valuasi',
+  'dimension.peer_relative_gap': 'Relatif Peer',
+  'dimension.evidence_confidence': 'Keyakinan',
+  'dimension.earnings_gap': 'Gap Laba',
+  'dimension.market_momentum_gap': 'Momentum',
+
+  // News corroboration
+  'news.corroboration.supports': 'Berita Mendukung Klaim',
+  'news.corroboration.contradicts': 'Berita Bertentangan',
+  'news.corroboration.neutral': 'Berita Netral',
+  'news.corroboration.no_news': 'Tidak Ada Berita Terbaru',
+
+  // Follow-up chat
+  'chat.title': 'Tanya Lanjutan',
+  'chat.placeholder': 'Tanya tentang analisis ini…',
+  'chat.send': 'Tanya',
+  'chat.sending': '…',
+  'chat.error': 'Tidak dapat menjawab saat ini.',
 
   // Claim directions
   'direction.above': 'Di Atas',
@@ -171,6 +199,21 @@ export default {
   'trend.improving': 'Membaik',
   'trend.declining': 'Menurun',
   'trend.stable': 'Stabil',
+  'trend.title': 'Riwayat & Tren',
+  'trend.total': '{{count}} analisis',
+  'trend.avg_score': 'Rata-rata Skor Reality Gap',
+
+  // Bulk scanner
+  'bulk.title': 'Pemindai Massal',
+  'bulk.placeholder': 'Satu narasi per baris. Setiap baris dianalisis secara independen.',
+  'bulk.scan_btn': 'Pindai semua',
+  'bulk.running': 'Memindai…',
+  'bulk.progress': '{{current}}/{{total}}',
+  'bulk.status_pending': 'antre',
+  'bulk.status_running': 'menganalisis…',
+  'bulk.status_done': 'selesai',
+  'bulk.status_duplicate': 'duplikat',
+  'bulk.status_failed': 'gagal',
 
   // Evidence metrics
   'metric.pe_ratio': 'Rasio PE',
@@ -206,4 +249,7 @@ export default {
   'status.completed': 'Selesai',
   'status.failed': 'Gagal',
   'status.pending': 'Diproses',
+
+  // Disclaimer
+  'disclaimer.text': 'Naragate adalah alat informasi dan analisis, bukan rekomendasi investasi. Tidak ada konten di situs ini yang merupakan saran keuangan. Selalu lakukan riset sendiri sebelum mengambil keputusan investasi.',
 } as Record<string, string>;

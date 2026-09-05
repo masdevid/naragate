@@ -71,6 +71,10 @@ flowchart LR
 6. **Evidence Judge** — Aggregates evidence from all agents
 7. **Score Generator** — Computes Reality Gap Score (0–100)
 
+### Pi Coding Agent Harness
+
+The LLM-driven agents (Claim Parser, Skeptic, News, Chat) run through the **Pi Coding Agent** harness (`pi-agent` service). Each agent's `.pi/skills/*` definition is loaded into the Pi CLI as its system prompt, and results stream back to the backend as OpenAI-compatible SSE. The deterministic data agents (Valuation, Fundamental, Market, Judge, Score) run in the backend in Python. When `PI_AGENT_URL` is unset (local dev, tests), the backend calls the LLM endpoint directly.
+
 ## Quick Start (no coding required)
 
 Naragate runs entirely in Docker. You do **not** need to install Python, Node.js, or anything else — just Docker and Ollama.
@@ -159,8 +163,8 @@ Untuk menghentikan: jalankan `stop.sh` atau `stop.bat`.
 | Layer | Technology |
 |-------|------------|
 | Frontend | Angular 22, Tailwind CSS |
-| Backend | FastAPI, Python 3.11 |
-| Orchestration | Pi Coding Agent |
+| Backend | FastAPI, Python 3.12 |
+| Orchestration | Multi-agent pipeline (7 agents) via Pi Coding Agent harness |
 | Persistence | SQLite (claims), Redis (cache) |
 | LLM | Any OpenAI-compatible provider |
 | Data | Sectors v2 API |
@@ -170,6 +174,10 @@ Untuk menghentikan: jalankan `stop.sh` atau `stop.bat`.
 
 Naragate routes Sectors API requests through Redis caching to reduce repeated calls. Sectors controls the current API pricing, quotas, access requirements, and usage terms; check its official documentation before deploying the application.
 
+## Disclaimer
+
+Naragate is an information and analysis tool, not an investment recommendation. Nothing in this application constitutes financial advice. Always conduct your own research before making investment decisions. Naragate does not place, execute, or automate buy or sell orders on any account.
+
 ## Development
 
 ```bash
@@ -178,9 +186,6 @@ cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
 
 # Frontend only
 cd frontend && npm install && ng serve
-
-# Pi Agent only
-cd pi-agent && pip install -r requirements.txt && python server.py
 ```
 
 ## License

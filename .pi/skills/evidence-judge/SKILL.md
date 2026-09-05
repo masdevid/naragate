@@ -1,3 +1,8 @@
+---
+name: evidence-judge
+description: Aggregate evidence from all validating agents and the Skeptic, then produce a structured assessment.
+---
+
 # Evidence Judge
 
 Aggregate evidence from all validating agents and the Skeptic, then produce a structured assessment.

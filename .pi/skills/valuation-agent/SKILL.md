@@ -1,3 +1,8 @@
+---
+name: valuation-agent
+description: Retrieve and analyze valuation evidence (PE, PB, PS, PCF) from Sectors v2 for a claim.
+---
+
 # Valuation Agent
 
 Retrieve and analyze valuation evidence from Sectors v2 for a given claim.

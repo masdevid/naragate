@@ -34,6 +34,11 @@ export default {
   'dashboard.dismiss': 'Dismiss',
   'dashboard.try_example': 'Try an Example',
   'dashboard.example_narrative': 'BBCA earnings are crashing but its PE is expensive. Yet revenue and net profit keep growing double digits quarter over quarter.',
+  'dashboard.examples_title': 'Or start from a curated example',
+  'dashboard.examples.valuation': 'BBCA PE is expensive at 25x, far above the sector average of 18x.',
+  'dashboard.examples.fundamental': 'TLKM revenue keeps growing but net profit is shrinking every quarter.',
+  'dashboard.examples.market': 'UNVR stock has dropped 15% in a week, investors are panicking.',
+  'dashboard.examples.news': 'BMRI is being called the best bank in Indonesia right now after record profit news.',
 
   // Settings
   'settings.title': 'Settings',
@@ -160,6 +165,29 @@ export default {
   'results.valuation_title': 'Valuation Evidence',
   'results.fundamental_title': 'Fundamental Evidence',
   'results.market_title': 'Market Evidence',
+  'results.news_title': 'News Corroboration',
+  'results.corp_actions_title': 'Corporate Actions',
+
+  // Radar chart
+  'radar.title': 'Evidence Dimensions',
+  'dimension.valuation_gap': 'Valuation Gap',
+  'dimension.peer_relative_gap': 'Peer Relative',
+  'dimension.evidence_confidence': 'Confidence',
+  'dimension.earnings_gap': 'Earnings Gap',
+  'dimension.market_momentum_gap': 'Momentum',
+
+  // News corroboration
+  'news.corroboration.supports': 'News Supports Claim',
+  'news.corroboration.contradicts': 'News Contradicts Claim',
+  'news.corroboration.neutral': 'News Neutral',
+  'news.corroboration.no_news': 'No Recent News',
+
+  // Follow-up chat
+  'chat.title': 'Ask a Follow-Up',
+  'chat.placeholder': 'Ask about this analysis…',
+  'chat.send': 'Ask',
+  'chat.sending': '…',
+  'chat.error': 'Unable to get an answer right now.',
 
   // Claim directions
   'direction.above': 'Above',
@@ -171,6 +199,21 @@ export default {
   'trend.improving': 'Improving',
   'trend.declining': 'Declining',
   'trend.stable': 'Stable',
+  'trend.title': 'History & Trend',
+  'trend.total': '{{count}} analyses',
+  'trend.avg_score': 'Avg Reality Gap Score',
+
+  // Bulk scanner
+  'bulk.title': 'Bulk Scanner',
+  'bulk.placeholder': 'One narrative per line. Each line is analyzed independently.',
+  'bulk.scan_btn': 'Scan all',
+  'bulk.running': 'Scanning…',
+  'bulk.progress': '{{current}}/{{total}}',
+  'bulk.status_pending': 'queued',
+  'bulk.status_running': 'analyzing…',
+  'bulk.status_done': 'done',
+  'bulk.status_duplicate': 'duplicate',
+  'bulk.status_failed': 'failed',
 
   // Evidence metrics
   'metric.pe_ratio': 'PE Ratio',
@@ -206,4 +249,7 @@ export default {
   'status.completed': 'Completed',
   'status.failed': 'Failed',
   'status.pending': 'Processing',
+
+  // Disclaimer
+  'disclaimer.text': 'Naragate is an information and analysis tool, not an investment recommendation. Nothing on this site constitutes financial advice. Always conduct your own research before making investment decisions.',
 } as Record<string, string>;

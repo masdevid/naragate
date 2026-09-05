@@ -54,12 +54,7 @@ async def run_skeptic(
             on_token=on_token,
         )
 
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            lines = cleaned.split("\n")
-            cleaned = "\n".join(lines[1:-1])
-
-        result = json.loads(cleaned)
+        result = llm_client.extract_json(raw) or {}
     except Exception:
         result = {
             "counter_arguments": [],

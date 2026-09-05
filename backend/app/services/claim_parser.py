@@ -1,4 +1,3 @@
-import json
 import re
 from typing import Optional
 
@@ -49,13 +48,8 @@ Return ONLY valid JSON, no other text."""
 
 
 def parse_llm_response(raw: str) -> dict:
-    try:
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            lines = cleaned.split("\n")
-            cleaned = "\n".join(lines[1:-1])
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
+    data = llm_client.extract_json(raw)
+    if data is None:
         return {
             "ticker": "UNKNOWN",
             "category": "valuation",
@@ -63,6 +57,7 @@ def parse_llm_response(raw: str) -> dict:
             "direction": "neutral",
             "confidence": 0.1,
         }
+    return data
 
 
 def _parse_magnitude(value) -> Optional[float]:

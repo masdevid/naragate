@@ -1,3 +1,8 @@
+---
+name: market-agent
+description: Retrieve and analyze market performance evidence (price, volume, volatility) from Sectors v2 for a claim.
+---
+
 # Market Agent
 
 Retrieve and analyze market performance evidence from Sectors v2 for a given claim.

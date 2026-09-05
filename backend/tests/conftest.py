@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 os.environ["SECTORS_API_KEY"] = "test_key_123456789012345678901234567890123456789012345678901234567890"
 os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 os.environ["OLLAMA_MODEL"] = "gemma4:12b"
+os.environ["PI_AGENT_URL"] = ""
 os.environ["REDIS_URL"] = "redis://localhost:6379"
-os.environ["PI_AGENT_URL"] = "http://localhost:3000"
 os.environ["DATABASE_URL"] = "sqlite:///./test_data/naragate.db"
 
 

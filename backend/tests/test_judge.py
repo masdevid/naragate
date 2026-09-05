@@ -38,7 +38,7 @@ class TestEvidenceJudge:
         assessment = judge.assess(claim, evidence)
 
         assert assessment.claim_ticker == "BBCA"
-        assert assessment.evidence_confidence == 0.5
+        assert assessment.evidence_confidence == round(1 / 3, 2)
         assert "valuation_gap" in assessment.applicable_dimensions
 
     def test_assesses_without_evidence(self, judge, claim):
@@ -68,7 +68,7 @@ class TestEvidenceJudge:
 
         assessment = judge.assess(claim, evidence, skeptic)
 
-        assert assessment.evidence_confidence == 0.4  # 0.5 * 0.8
+        assert assessment.evidence_confidence == round(1 / 3 * 0.8, 2)  # 0.33 * 0.8
 
     def test_detects_contradiction(self, judge):
         claim = Claim(

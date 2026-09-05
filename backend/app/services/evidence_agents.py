@@ -7,6 +7,8 @@ from app.config.settings import settings
 from app.models.schemas import (
     Claim, ValuationEvidence, FundamentalEvidence, MarketEvidence
 )
+from app.services.news_agent import news_agent
+from app.services.corporate_actions_agent import corporate_actions_agent
 
 
 class ValuationAgent:
@@ -226,9 +228,23 @@ async def get_evidence_for_claim(claim: Claim) -> dict:
         "market": MarketAgent(),
     }
 
+    evidence = {}
+
     agent = agents.get(claim.category.value)
     if agent:
-        evidence = await agent.analyze(claim)
-        return {claim.category.value: evidence}
+        result = await agent.analyze(claim)
+        evidence[claim.category.value] = result
 
-    return {}
+    try:
+        news = await news_agent.analyze(claim)
+        evidence["news"] = news
+    except Exception:
+        pass
+
+    try:
+        corp = await corporate_actions_agent.analyze(claim)
+        evidence["corporate_actions"] = corp
+    except Exception:
+        pass
+
+    return evidence

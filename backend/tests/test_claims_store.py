@@ -167,3 +167,52 @@ class TestClaimsStore:
         
         claims = await store.list_claims(limit=2)
         assert len(claims) == 2
+
+    @pytest.mark.asyncio
+    async def test_claims_summary_aggregates_completed(self, store, mock_redis):
+        import json
+
+        async def mock_scan_iter(pattern, count=100):
+            for key in ["claim:1", "claim:2", "claim:3"]:
+                yield key
+
+        mock_redis.scan_iter = mock_scan_iter
+
+        states = {
+            "claim:1": {
+                "claim_id": "1",
+                "created_at": "2024-01-01",
+                "status": ClaimStatus.COMPLETED.value,
+                "narrative": "BBCA mahal",
+                "claim": {"ticker": "BBCA"},
+                "score": {"reality_gap_score": 45.0, "verdict": "mixed"},
+            },
+            "claim:2": {
+                "claim_id": "2",
+                "created_at": "2024-01-02",
+                "status": ClaimStatus.COMPLETED.value,
+                "narrative": "BBCA murah",
+                "claim": {"ticker": "BBCA"},
+                "score": {"reality_gap_score": 75.0, "verdict": "supported"},
+            },
+            "claim:3": {
+                "claim_id": "3",
+                "created_at": "2024-01-03",
+                "status": ClaimStatus.FAILED.value,
+                "narrative": "TLKM gagal",
+                "claim": {"ticker": "TLKM"},
+            },
+        }
+
+        async def mock_hget(key, field):
+            return json.dumps(states.get(key))
+
+        mock_redis.hget = mock_hget
+
+        summary = await store.claims_summary()
+        assert summary["total_analyses"] == 2
+        assert summary["average_score"] == 60.0
+        assert summary["verdict_distribution"] == {"mixed": 1, "supported": 1}
+        assert len(summary["by_ticker"]["BBCA"]) == 2
+        assert summary["by_ticker"]["BBCA"][0]["score"] == 45.0
+        assert summary["by_ticker"]["BBCA"][1]["score"] == 75.0

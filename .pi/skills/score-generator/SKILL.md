@@ -1,3 +1,8 @@
+---
+name: score-generator
+description: Compute the Reality Gap score (0-100) and verdict from the Evidence Judge assessment.
+---
+
 # Reality Gap Score Generator
 
 Compute the Reality Gap score (0-100) and verdict from the Evidence Judge assessment.

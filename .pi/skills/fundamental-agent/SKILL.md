@@ -1,3 +1,8 @@
+---
+name: fundamental-agent
+description: Retrieve and analyze fundamental financial evidence (revenue, earnings, margins) from Sectors v2 for a claim.
+---
+
 # Fundamental Agent
 
 Retrieve and analyze fundamental financial evidence from Sectors v2 for a given claim.

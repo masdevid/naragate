@@ -1,8 +1,26 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from app.models.schemas import ClaimCreate, Claim, ClaimStatus, ClaimBulkDelete
 from app.services.claims_store import claims_store
+from app.services.chat import answer_followup
 
 router = APIRouter()
+
+
+class FollowUpInput(BaseModel):
+    question: str
+
+
+@router.post("/{claim_id}/chat", response_model=dict)
+async def chat_followup(claim_id: str, payload: FollowUpInput):
+    state = await claims_store.get_claim(claim_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    if state.get("status") != ClaimStatus.COMPLETED.value:
+        raise HTTPException(status_code=409, detail="Analysis not complete")
+    if not payload.question.strip():
+        raise HTTPException(status_code=422, detail="Question cannot be empty")
+    return await answer_followup(state, payload.question)
 
 
 @router.post("/", response_model=dict)
@@ -20,6 +38,11 @@ async def list_claims(limit: int = 20):
 async def delete_claims(payload: ClaimBulkDelete):
     deleted = await claims_store.delete_claims(payload.claim_ids)
     return {"deleted": deleted}
+
+
+@router.get("/summary", response_model=dict)
+async def claims_summary():
+    return await claims_store.claims_summary()
 
 
 @router.get("/{claim_id}")

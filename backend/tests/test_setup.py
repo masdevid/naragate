@@ -134,6 +134,73 @@ class TestSetupGuard:
         assert "sectors_api_key" in data["detail"]["missing"]
         assert "llm_model" in data["detail"]["missing"]
 
+    @pytest.mark.asyncio
+    async def test_evaluate_bulk_returns_409_when_setup_incomplete(self):
+        with patch("app.api.v1.endpoints.stream.missing_setup_items",
+                   return_value=["sectors_api_key"]):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/stream/evaluate-bulk",
+                    json={"narratives": ["BBCA mahal", "TLKM murah"]},
+                )
+
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "setup_incomplete"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_bulk_returns_422_when_no_narratives(self):
+        with patch("app.api.v1.endpoints.stream.missing_setup_items", return_value=[]):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/stream/evaluate-bulk",
+                    json={"narratives": ["   ", ""]},
+                )
+
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_evaluate_bulk_streams_progress_events(self):
+        from app.services.pipeline import PipelineEvent
+
+        async def fake_run_pipeline(narrative):
+            yield PipelineEvent(
+                event_type="pipeline_started",
+                claim_id="c-1",
+                data={"narrative": narrative},
+                timestamp="2024-01-01T00:00:00",
+            )
+            yield PipelineEvent(
+                event_type="pipeline_complete",
+                claim_id="c-1",
+                data={"verdict": "mixed", "score": 55.0},
+                timestamp="2024-01-01T00:00:01",
+            )
+
+        with patch("app.api.v1.endpoints.stream.missing_setup_items", return_value=[]), \
+             patch("app.api.v1.endpoints.stream.run_pipeline", side_effect=fake_run_pipeline):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                async with client.stream(
+                    "POST",
+                    "/api/v1/stream/evaluate-bulk",
+                    json={"narratives": ["BBCA mahal", "TLKM murah"]},
+                ) as response:
+                    assert response.status_code == 200
+                    body = await response.aread()
+
+        text = body.decode()
+        assert "bulk_started" in text
+        assert '"total": 2' in text
+        assert "bulk_item_started" in text
+        assert "pipeline_started" in text
+        assert "pipeline_complete" in text
+        assert "bulk_item_completed" in text
+        assert '"status": "completed"' in text
+        assert "bulk_complete" in text
+        assert '"processed": 2' in text
+
 
 class TestValidateSectorsEndpoint:
     @pytest.mark.asyncio

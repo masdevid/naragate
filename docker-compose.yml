@@ -8,8 +8,8 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-}
       - REDIS_URL=redis://redis:6379
-      - PI_AGENT_URL=http://pi-agent:3000
       - DATABASE_URL=sqlite:///./data/naragate.db
+      - PI_AGENT_URL=http://pi-agent:3000
     depends_on:
       - redis
       - pi-agent
@@ -29,9 +29,14 @@ services:
 
   pi-agent:
     build: ./pi-agent
+    ports:
+      - "3000:3000"
     environment:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+      - PI_PROVIDER=ollama
+      - PI_API_KEY=ollama
+      - PI_SKILLS_DIR=/app/.pi/skills
     volumes:
       - ./.pi:/app/.pi
     extra_hosts:

@@ -85,6 +85,26 @@ class MarketEvidence(BaseModel):
     evidence_freshness: str
     cache_hit: bool
 
+class NewsEvidence(BaseModel):
+    claim_ticker: str
+    category: str
+    headlines: list[dict]
+    corroboration: str
+    summary: str
+    summary_en: Optional[str] = None
+    evidence_freshness: str
+    cache_hit: bool
+
+class CorporateActionEvidence(BaseModel):
+    claim_ticker: str
+    category: str
+    actions: list[dict]
+    relevant_events: list[str]
+    summary: str
+    summary_en: Optional[str] = None
+    evidence_freshness: str
+    cache_hit: bool
+
 class SkepticOutput(BaseModel):
     claim_ticker: str
     counter_arguments: list[dict]

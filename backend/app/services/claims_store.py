@@ -108,6 +108,58 @@ class ClaimsStore:
         claims.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return claims
 
+    async def list_all_claims(self) -> list[dict]:
+        await self.connect()
+        assert self.redis is not None
+        claims = []
+        async for key in self.redis.scan_iter("claim:*", count=200):
+            raw = await self.redis.hget(key, "state")
+            if raw:
+                claims.append(json.loads(raw))
+        return claims
+
+    async def claims_summary(self) -> dict:
+        """Aggregate completed claims into a trend summary.
+
+        Returns per-ticker score history, verdict distribution, and overall
+        stats so the dashboard can render a history & trend view.
+        """
+        claims = await self.list_all_claims()
+        completed = [
+            c for c in claims
+            if c.get("status") == ClaimStatus.COMPLETED.value and c.get("score")
+        ]
+
+        verdict_counts = {}
+        by_ticker: dict[str, list[dict]] = {}
+        total_score = 0.0
+
+        for c in completed:
+            score = c.get("score") or {}
+            ticker = (c.get("claim") or {}).get("ticker", "UNKNOWN")
+            verdict = score.get("verdict", "unknown")
+            verdict_counts[verdict] = verdict_counts.get(verdict, 0) + 1
+            total_score += score.get("reality_gap_score", 0.0)
+
+            by_ticker.setdefault(ticker, []).append({
+                "claim_id": c.get("claim_id"),
+                "created_at": c.get("created_at"),
+                "score": score.get("reality_gap_score", 0.0),
+                "verdict": verdict,
+                "narrative": c.get("narrative", ""),
+            })
+
+        for ticker in by_ticker:
+            by_ticker[ticker].sort(key=lambda x: x.get("created_at", ""))
+
+        count = len(completed)
+        return {
+            "total_analyses": count,
+            "average_score": round(total_score / count, 1) if count else 0.0,
+            "verdict_distribution": verdict_counts,
+            "by_ticker": by_ticker,
+        }
+
     async def find_active_by_narrative(self, narrative: str, limit: int = 50) -> Optional[dict]:
         await self.connect()
         assert self.redis is not None

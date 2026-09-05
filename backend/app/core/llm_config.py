@@ -34,6 +34,18 @@ def llm_endpoint() -> str:
     return _normalize_endpoint(endpoint)
 
 
+def llm_harness_url() -> str:
+    """Base URL for LLM calls.
+
+    When PI_AGENT_URL is configured, LLM calls are routed through the Pi Agent
+    harness gateway (which runs each agent via the Pi CLI with its skill file).
+    Otherwise they go straight to the Ollama-compatible endpoint.
+    """
+    if settings.PI_AGENT_URL:
+        return _normalize_endpoint(settings.PI_AGENT_URL)
+    return llm_endpoint()
+
+
 def llm_api_key() -> str:
     runtime = _load_runtime()
     return runtime.get("llm_api_key") or ""

@@ -13,6 +13,8 @@ class EvidenceJudge:
         valuation = evidence.get("valuation")
         fundamental = evidence.get("fundamental")
         market = evidence.get("market")
+        news = evidence.get("news")
+        corporate_actions = evidence.get("corporate_actions")
 
         if valuation:
             evidence_summary["valuation"] = valuation.model_dump(mode="json") if hasattr(valuation, "model_dump") else valuation
@@ -20,6 +22,10 @@ class EvidenceJudge:
             evidence_summary["fundamental"] = fundamental.model_dump(mode="json") if hasattr(fundamental, "model_dump") else fundamental
         if market:
             evidence_summary["market"] = market.model_dump(mode="json") if hasattr(market, "model_dump") else market
+        if news:
+            evidence_summary["news"] = news.model_dump(mode="json") if hasattr(news, "model_dump") else news
+        if corporate_actions:
+            evidence_summary["corporate_actions"] = corporate_actions.model_dump(mode="json") if hasattr(corporate_actions, "model_dump") else corporate_actions
 
         if valuation and fundamental:
             v_metrics = valuation.metrics if hasattr(valuation, "metrics") else {}
@@ -28,6 +34,23 @@ class EvidenceJudge:
             earnings_trend = (fundamental.trend if hasattr(fundamental, "trend") else {}).get("earnings_trend")
             if pe and pe > 30 and earnings_trend == "improving":
                 contradictions.append("High PE but improving earnings suggests growth premium, not overvaluation")
+
+        if news:
+            corroboration = news.corroboration if hasattr(news, "corroboration") else "neutral"
+            if corroboration == "contradicts":
+                contradictions.append("Recent news contradicts the claim's direction")
+            elif corroboration == "supports":
+                contradictions.append("Recent news supports the claim's direction")
+
+        if corporate_actions:
+            relevant = corporate_actions.relevant_events if hasattr(corporate_actions, "relevant_events") else []
+            if relevant and market:
+                perf_1d = (market.performance if hasattr(market, "performance") else {}).get("1d", {})
+                change = perf_1d.get("price_change_pct", 0)
+                if abs(change or 0) > 2:
+                    contradictions.append(
+                        f"Price movement may be explained by corporate actions ({', '.join(relevant[:3])})"
+                    )
 
         applicable_dimensions = []
         cat = claim.category.value
@@ -40,8 +63,8 @@ class EvidenceJudge:
         elif cat == "peer_comparison":
             applicable_dimensions = ["peer_relative_gap", "evidence_confidence", "valuation_gap"]
 
-        evidence_count = sum(1 for v in [valuation, fundamental, market] if v is not None)
-        confidence = min(1.0, evidence_count / 2.0)
+        evidence_count = sum(1 for v in [valuation, fundamental, market, news, corporate_actions] if v is not None)
+        confidence = min(1.0, evidence_count / 3.0)
         if skeptic and skeptic.skepticism_score > 70:
             confidence *= 0.8
 

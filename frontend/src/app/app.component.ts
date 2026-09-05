@@ -28,6 +28,9 @@ import { TPipe } from './pipes/t.pipe';
       </div>
     </nav>
     <router-outlet></router-outlet>
+    <footer class="disclaimer">
+      <p class="disclaimer__text">{{ 'disclaimer.text' | t }}</p>
+    </footer>
   `,
   styles: [`
     .nav {
@@ -87,6 +90,19 @@ import { TPipe } from './pipes/t.pipe';
     .nav__lang-btn--active {
       border-color: var(--color-accent);
       color: var(--color-accent);
+    }
+    .disclaimer {
+      padding: var(--space-lg);
+      border-top: 1px solid var(--color-rule);
+      max-width: 52rem;
+      margin: 0 auto;
+    }
+    .disclaimer__text {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-dim);
+      line-height: 1.5;
+      letter-spacing: 0.02em;
     }
   `],
 })

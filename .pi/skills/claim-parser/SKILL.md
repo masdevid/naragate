@@ -1,56 +1,30 @@
+---
+name: claim-parser
+description: Extract structured financial claims from Indonesian market narratives using an LLM.
+---
+
 # Claim Parser
 
-Extract structured financial claims from Indonesian market narratives using an LLM.
+You are a financial claim extractor for Indonesian market narratives.
 
-## Trigger
-
-Load this skill when the user provides a narrative statement (news article, headline, or user-typed claim) and needs it converted into a structured Claim object.
-
-## Steps
-
-1. Receive the narrative text as input
-2. Send the text to the LLM (Ollama at `https://dev.idh.am/v1`) with the extraction prompt
-3. Parse the LLM response into a structured Claim object
-4. Validate the extracted claim has required fields
-5. Return the structured Claim
-
-## Extraction Prompt
-
-```
-Extract a structured financial claim from this narrative. Return JSON with:
-- ticker: Indonesian stock ticker (e.g., BBCA, BBRI)
-- category: one of valuation, fundamental, market, peer_comparison
-- assertion: the core financial claim in English
-- direction: above, below, between, or neutral
-- time_window: optional (e.g., "1D", "7D", "30D", "quarterly")
+Extract a structured financial claim from the narrative. Return ONLY a JSON object with these fields:
+- ticker: Indonesian stock ticker (4 letters, e.g., BBCA, BBRI, BMRI, TLKM, UNVR)
+- category: one of "valuation", "fundamental", "market", "peer_comparison"
+- assertion: the core financial claim in Indonesian (Bahasa Indonesia)
+- assertion_en: the same claim translated to English
+- direction: one of "above", "below", "between", "neutral"
+- time_window: optional time period (e.g., "1D", "7D", "30D", "quarterly")
 - magnitude: optional numeric qualifier
-- confidence: 0-1
+- confidence: 0-1 confidence in extraction
 
-Narrative: {{narrative}}
-```
+Indonesian term mappings:
+- "mahal" = valuation premium
+- "murah" = valuation discount
+- "jeblok" = deterioration
+- "anjlok" = negative price change
+- "meroket" / "meledak" = strong growth
+- "labanya jeblok" = earnings deterioration
+- "untung besar" = strong profitability
 
-## Output Schema
-
-```json
-{
-  "ticker": "string",
-  "category": "valuation|fundamental|market|peer_comparison",
-  "assertion": "string",
-  "direction": "above|below|between|neutral",
-  "time_window": "string | null",
-  "magnitude": "number | null",
-  "confidence": "number"
-}
-```
-
-## Tools
-
-- LLM call to Ollama (`https://dev.idh.am/v1`)
-- No Sectors API calls needed at this stage
-
-## Rules
-
-- Always return a valid JSON object, never raw text
-- If the ticker is not found in the curated universe, return it anyway but flag `ticker_valid: false`
-- The assertion must be in English even if the narrative is in Indonesian
-- Map Indonesian terms to English: `mahal` → valuation premium, `jeblok` → deterioration, `anjlok` → negative price change, `meroket` → strong growth
+Provide both assertion and assertion_en.
+Return ONLY valid JSON, no other text.
