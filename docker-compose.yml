@@ -23,7 +23,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "${FRONTEND_PORT:-4273}:4273"
+      - "${FRONTEND_PORT:-4274}:4273"
     depends_on:
       - backend
 
@@ -32,8 +32,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-https://dev.idh.am/v1}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b}
       - PI_PROVIDER=ollama
       - PI_API_KEY=ollama
       - PI_SKILLS_DIR=/app/.pi/skills

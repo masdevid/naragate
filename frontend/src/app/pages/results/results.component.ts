@@ -43,10 +43,11 @@ import { TPipe } from '../../pipes/t.pipe';
               <p class="results__status-text">{{ claimData().error || 'results.failed_message' | t }}</p>
               <button (click)="retry()" class="results__status-btn">{{ 'results.retry' | t }}</button>
             </div>
-          } @else if (claimData().status === 'pending') {
+          } @else if (claimData().status !== 'completed') {
             <div class="results__status">
               <p class="results__status-title">{{ 'results.pending_title' | t }}</p>
               <p class="results__status-text">{{ 'results.pending_message' | t }}</p>
+              <button (click)="retry()" class="results__status-btn">{{ 'results.retry' | t }}</button>
             </div>
           }
 
@@ -256,11 +257,11 @@ export class ResultsComponent implements OnInit {
     return this.i18n.language() === 'en' && claim.assertion_en ? claim.assertion_en : claim.assertion;
   }
 
-  explanation() {
+  explanation = () => {
     const score = this.claimData()?.score;
     if (!score) return '';
     return this.i18n.language() === 'en' && score.explanation_en ? score.explanation_en : score.explanation;
-  }
+  };
 
   scoreValue = () => this.claimData()?.score?.reality_gap_score ?? 0;
   verdictValue = () => this.claimData()?.score?.verdict ?? '';

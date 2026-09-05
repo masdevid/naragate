@@ -69,7 +69,7 @@ for i in $(seq 1 60); do
   fi
 done
 
-FRONTEND_PORT="${FRONTEND_PORT:-4273}"
+FRONTEND_PORT="${FRONTEND_PORT:-4274}"
 echo -e "${GREEN}Naragate is running!${NC}"
 echo "  Web app:  http://localhost:${FRONTEND_PORT}"
 echo "  API docs: http://localhost:${BACKEND_PORT}/docs"

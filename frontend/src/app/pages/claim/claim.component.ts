@@ -63,6 +63,7 @@ import { TPipe } from '../../pipes/t.pipe';
               <button (click)="goSetup()" class="claim__setup-btn">{{ 'claim.go_setup' | t }}</button>
             } @else {
               <p>{{ error() }}</p>
+              <button (click)="retry()" class="claim__setup-btn">{{ 'claim.retry' | t }}</button>
             }
           </div>
         }
@@ -289,4 +290,17 @@ export class ClaimComponent implements OnInit, OnDestroy {
 
   goBack() { this.router.navigate(['/dashboard']); }
   goSetup() { this.router.navigate(['/setup']); }
+
+  retry() {
+    this.error.set('');
+    this.errorCode.set('');
+    this.terminalEvent = false;
+    this.currentEvent.set(null);
+    this.thinking.set(null);
+    this.thinkingMap.clear();
+    this.completedSteps.set([]);
+    this.currentStep.set('claim_parsing');
+    this.usage.set(null);
+    this.startPipeline();
+  }
 }

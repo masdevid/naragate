@@ -167,3 +167,12 @@ class TestClaimsStore:
         assert deleted == 2
         assert await store.get_claim(ids[0]) is None
         assert await store.get_claim(ids[2]) is not None
+
+    @pytest.mark.asyncio
+    async def test_delete_all_claims(self, store):
+        ids = [await store.create_claim(f"narrative {i}") for i in range(3)]
+        deleted = await store.delete_all_claims()
+        assert deleted == 3
+        for claim_id in ids:
+            assert await store.get_claim(claim_id) is None
+        assert await store.delete_all_claims() == 0

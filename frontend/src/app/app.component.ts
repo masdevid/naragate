@@ -15,6 +15,7 @@ import { TPipe } from './pipes/t.pipe';
       <div class="nav__links">
         <a routerLink="/dashboard" routerLinkActive="nav__link--active"
           [routerLinkActiveOptions]="{ exact: true }" class="nav__link">{{ 'nav.dashboard' | t }}</a>
+        <a routerLink="/history" routerLinkActive="nav__link--active" class="nav__link">{{ 'nav.history' | t }}</a>
         <a routerLink="/settings" routerLinkActive="nav__link--active" class="nav__link">{{ 'nav.settings' | t }}</a>
         <a routerLink="/usage" routerLinkActive="nav__link--active" class="nav__link">{{ 'nav.usage' | t }}</a>
         <div class="nav__lang">

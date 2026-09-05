@@ -1,14 +1,10 @@
 import { Component, OnInit, inject, signal, effect } from '@angular/core';
-import { Router } from '@angular/router';
-import { NarrativeService } from '../../services/narrative.service';
+import { Router, RouterLink } from '@angular/router';
 import { SettingsService, RuntimeSettings } from '../../services/settings.service';
 import { I18nService } from '../../services/i18n.service';
-import { ConfirmModalComponent } from '../../components/confirm-modal/confirm-modal.component';
 import { DashboardWarningsComponent } from '../../components/dashboard-warnings/dashboard-warnings.component';
 import { DashboardHeroComponent } from '../../components/dashboard-hero/dashboard-hero.component';
 import { DashboardInputComponent } from '../../components/dashboard-input/dashboard-input.component';
-import { DashboardRecentComponent } from '../../components/dashboard-recent/dashboard-recent.component';
-import { DashboardTrendComponent } from '../../components/dashboard-trend/dashboard-trend.component';
 import { DashboardBulkComponent } from '../../components/dashboard-bulk/dashboard-bulk.component';
 import { TPipe } from '../../pipes/t.pipe';
 
@@ -16,12 +12,10 @@ import { TPipe } from '../../pipes/t.pipe';
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    ConfirmModalComponent,
+    RouterLink,
     DashboardWarningsComponent,
     DashboardHeroComponent,
     DashboardInputComponent,
-    DashboardRecentComponent,
-    DashboardTrendComponent,
     DashboardBulkComponent,
     TPipe,
   ],
@@ -41,45 +35,32 @@ import { TPipe } from '../../pipes/t.pipe';
       [analyzing]="analyzing()"
       (analyze)="startAnalysis($event)"/>
 
-    <app-dashboard-bulk (complete)="refreshLists()"/>
+    <app-dashboard-bulk (complete)="onBulkComplete()"/>
 
-    <app-dashboard-recent
-      [claims]="recentClaims"
-      [selectedIds]="selectedIds"
-      (viewClaim)="viewClaim($event)"
-      (confirmDelete)="confirmDelete($event)"
-      (confirmBulkDelete)="confirmBulkDelete()"
-      (selectedChange)="selectedIds.set($event)"/>
-
-    <app-dashboard-trend [summary]="trendSummary"/>
+    <a routerLink="/history" class="dashboard__history">{{ 'dashboard.view_history' | t }}</a>
 
     <!-- Footer -->
     <footer class="footer">
       <p class="footer__text">{{ 'dashboard.footer' | t }}</p>
     </footer>
-
-    <!-- Confirm modals -->
-    @if (pendingDelete) {
-      <app-confirm-modal
-        [title]="'dashboard.confirm_delete_title' | t"
-        [message]="'dashboard.confirm_delete_message' | t"
-        [confirmLabel]="'dashboard.delete' | t"
-        [cancelLabel]="'dashboard.cancel' | t"
-        (confirmed)="onDeleteConfirmed()"
-        (cancelled)="onDeleteCancelled()"/>
-    }
-    @if (bulkDelete) {
-      <app-confirm-modal
-        [title]="'dashboard.confirm_bulk_title' | t: { count: selectedIds().length }"
-        [message]="'dashboard.confirm_bulk_message' | t"
-        [confirmLabel]="'dashboard.delete' | t"
-        [cancelLabel]="'dashboard.cancel' | t"
-        (confirmed)="onDeleteConfirmed()"
-        (cancelled)="onDeleteCancelled()"/>
-    }
   `,
   styles: [`
     :host { display: block; }
+    .dashboard__history {
+      display: block;
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: var(--space-lg);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      border-top: 1px solid var(--color-rule);
+    }
+    .dashboard__history:hover { text-decoration: underline; }
     .footer {
       padding: var(--space-2xl) var(--space-lg);
       border-top: 1px solid var(--color-rule);
@@ -98,19 +79,13 @@ import { TPipe } from '../../pipes/t.pipe';
   `],
 })
 export class DashboardComponent implements OnInit {
-  recentClaims = signal<any[]>([]);
-  trendSummary = signal<any>(null);
   setupComplete = signal(true);
   llmConfigured = signal(true);
   sectorsConfigured = signal(true);
   headlineParts = signal<string[]>([]);
-  selectedIds = signal<string[]>([]);
   analyzing = signal(false);
-  pendingDelete: any = null;
-  bulkDelete = false;
 
   private router = inject(Router);
-  private narrativeService = inject(NarrativeService);
   private settingsService = inject(SettingsService);
   private i18n = inject(I18nService);
 
@@ -123,7 +98,6 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit() {
     this.updateHeadline();
-    this.refreshLists();
 
     this.settingsService.getSettings().subscribe({
       next: (settings: RuntimeSettings) => {
@@ -149,44 +123,8 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  viewClaim(claimId: string) {
-    this.router.navigate(['/results', claimId]);
-  }
-
-  confirmDelete(claim: any) {
-    this.pendingDelete = claim;
-  }
-
-  confirmBulkDelete() {
-    this.bulkDelete = true;
-  }
-
-  onDeleteConfirmed() {
-    if (this.pendingDelete) {
-      const id = this.pendingDelete.claim_id;
-      this.narrativeService.deleteClaim(id).subscribe({
-        next: () => {
-          this.recentClaims.update(cs => cs.filter(c => c.claim_id !== id));
-          this.pendingDelete = null;
-        },
-        error: () => { this.pendingDelete = null; },
-      });
-    } else if (this.bulkDelete) {
-      const ids = this.selectedIds();
-      this.narrativeService.deleteClaims(ids).subscribe({
-        next: () => {
-          this.recentClaims.update(cs => cs.filter(c => !ids.includes(c.claim_id)));
-          this.selectedIds.set([]);
-          this.bulkDelete = false;
-        },
-        error: () => { this.bulkDelete = false; },
-      });
-    }
-  }
-
-  onDeleteCancelled() {
-    this.pendingDelete = null;
-    this.bulkDelete = false;
+  onBulkComplete() {
+    this.router.navigate(['/history']);
   }
 
   goSettings() {
@@ -195,18 +133,6 @@ export class DashboardComponent implements OnInit {
 
   goSetup() {
     this.router.navigate(['/setup']);
-  }
-
-  refreshLists() {
-    this.narrativeService.getClaims().subscribe({
-      next: (claims) => this.recentClaims.set(claims),
-      error: () => {},
-    });
-
-    this.narrativeService.getClaimsSummary().subscribe({
-      next: (summary) => this.trendSummary.set(summary),
-      error: () => {},
-    });
   }
 
   private updateHeadline() {

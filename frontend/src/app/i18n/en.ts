@@ -1,6 +1,7 @@
 export default {
   // Nav
   'nav.dashboard': 'Dashboard',
+  'nav.history': 'History',
   'nav.settings': 'Settings',
   'nav.usage': 'Usage',
 
@@ -13,6 +14,9 @@ export default {
   'dashboard.analyze_btn': 'Analyze This Narrative',
   'dashboard.analyzing': 'Analyzing...',
   'dashboard.recent_title': 'Previous Analyses',
+  'dashboard.view_history': 'View History & Trends',
+  'dashboard.select_all': 'Select all',
+  'dashboard.delete_all': 'Delete all',
   'dashboard.selected': '{{count}} selected',
   'dashboard.delete_selected': 'Delete Selected',
   'dashboard.delete_claim': 'Delete',
@@ -21,9 +25,16 @@ export default {
   'dashboard.confirm_delete_message': 'This analysis will be permanently removed. This action cannot be undone.',
   'dashboard.confirm_bulk_title': 'Delete {{count}} Analyses?',
   'dashboard.confirm_bulk_message': 'These analyses will be permanently removed. This action cannot be undone.',
+  'dashboard.confirm_delete_all_title': 'Delete All Analyses?',
+  'dashboard.confirm_delete_all_message': 'All analyses will be permanently removed. This action cannot be undone.',
   'dashboard.delete': 'Delete',
   'dashboard.cancel': 'Cancel',
   'dashboard.footer': 'Naragate \u2014 AI evidence engine for Indonesian market narratives',
+
+  // History
+  'history.title': 'History & Trends',
+  'history.back': 'Back to Dashboard',
+  'history.empty': 'No analyses yet. Run an analysis to see history and trends.',
 
   // Dashboard warnings
   'dashboard.warn_sectors': 'Sectors API key not set. Analysis will not work without this key.',
@@ -128,6 +139,7 @@ export default {
   'claim.usage': 'Live Usage',
   'claim.setup_incomplete': 'Setup is not complete. Finish setup to start analyzing.',
   'claim.go_setup': 'Go to Setup',
+  'claim.retry': 'Try Again',
 
   // Setup wizard
   'setup.welcome_title': 'Welcome',
@@ -202,6 +214,7 @@ export default {
   'trend.title': 'History & Trend',
   'trend.total': '{{count}} analyses',
   'trend.avg_score': 'Avg Reality Gap Score',
+  'trend.empty': 'No analyses yet',
 
   // Bulk scanner
   'bulk.title': 'Bulk Scanner',

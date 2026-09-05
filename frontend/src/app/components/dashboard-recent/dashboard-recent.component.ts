@@ -13,12 +13,22 @@ import { TPipe } from '../../pipes/t.pipe';
         <div class="recent__inner">
           <div class="recent__header">
             <h2 class="recent__title">{{ 'dashboard.recent_title' | t }}</h2>
-            @if (selectedIds().length) {
-              <div class="recent__bulk">
+            <div class="recent__bulk">
+              <label class="recent__select-all">
+                <input
+                  type="checkbox"
+                  class="recent__check"
+                  [checked]="allSelected()"
+                  (change)="toggleSelectAll()"
+                  [attr.aria-label]="'dashboard.select_all' | t">
+                <span>{{ 'dashboard.select_all' | t }}</span>
+              </label>
+              <button class="recent__bulk-delete" (click)="confirmDeleteAll.emit()">{{ 'dashboard.delete_all' | t }}</button>
+              @if (selectedIds().length) {
                 <span class="recent__bulk-count">{{ 'dashboard.selected' | t: { count: selectedIds().length } }}</span>
                 <button class="recent__bulk-delete" (click)="confirmBulkDelete.emit()">{{ 'dashboard.delete_selected' | t }}</button>
-              </div>
-            }
+              }
+            </div>
           </div>
           <div class="recent__list">
             @for (claim of claims(); track claim.claim_id) {
@@ -75,6 +85,18 @@ import { TPipe } from '../../pipes/t.pipe';
       display: flex;
       align-items: center;
       gap: var(--space-md);
+    }
+    .recent__select-all {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2xs);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      white-space: nowrap;
     }
     .recent__bulk-count {
       font-family: var(--font-mono);
@@ -170,6 +192,7 @@ export class DashboardRecentComponent {
   @Output() viewClaim = new EventEmitter<string>();
   @Output() confirmDelete = new EventEmitter<any>();
   @Output() confirmBulkDelete = new EventEmitter<void>();
+  @Output() confirmDeleteAll = new EventEmitter<void>();
 
   private i18n = inject(I18nService);
 
@@ -180,6 +203,17 @@ export class DashboardRecentComponent {
       case 'pending': return this.i18n.t('status.pending');
       default: return status;
     }
+  }
+
+  allSelected(): boolean {
+    const claims = this.claims();
+    return claims.length > 0 && this.selectedIds().length === claims.length;
+  }
+
+  toggleSelectAll() {
+    const claims = this.claims();
+    const next = this.allSelected() ? [] : claims.map(c => c.claim_id);
+    this.selectedChange.emit(next);
   }
 
   toggleSelect(claimId: string, event: Event) {

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { ClaimComponent } from './pages/claim/claim.component';
 import { ResultsComponent } from './pages/results/results.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { HistoryComponent } from './pages/history/history.component';
 import { SettingsComponent } from './pages/settings/settings.component';
 import { SetupComponent } from './pages/setup/setup.component';
 import { UsageComponent } from './pages/usage/usage.component';
@@ -13,5 +14,6 @@ export const routes: Routes = [
   { path: 'settings', component: SettingsComponent },
   { path: 'setup', component: SetupComponent },
   { path: 'usage', component: UsageComponent },
+  { path: 'history', component: HistoryComponent },
   { path: 'dashboard', component: DashboardComponent },
 ];

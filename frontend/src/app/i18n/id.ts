@@ -1,6 +1,7 @@
 export default {
   // Nav
   'nav.dashboard': 'Dasbor',
+  'nav.history': 'Riwayat',
   'nav.settings': 'Pengaturan',
   'nav.usage': 'Pemakaian',
 
@@ -13,6 +14,9 @@ export default {
   'dashboard.analyze_btn': 'Analisis Narasi Ini',
   'dashboard.analyzing': 'Menganalisis...',
   'dashboard.recent_title': 'Analisis Sebelumnya',
+  'dashboard.view_history': 'Lihat Riwayat & Tren',
+  'dashboard.select_all': 'Pilih semua',
+  'dashboard.delete_all': 'Hapus semua',
   'dashboard.selected': '{{count}} dipilih',
   'dashboard.delete_selected': 'Hapus yang Dipilih',
   'dashboard.delete_claim': 'Hapus',
@@ -21,9 +25,16 @@ export default {
   'dashboard.confirm_delete_message': 'Analisis ini akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
   'dashboard.confirm_bulk_title': 'Hapus {{count}} Analisis?',
   'dashboard.confirm_bulk_message': 'Analisis ini akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
+  'dashboard.confirm_delete_all_title': 'Hapus Semua Analisis?',
+  'dashboard.confirm_delete_all_message': 'Semua analisis akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
   'dashboard.delete': 'Hapus',
   'dashboard.cancel': 'Batal',
   'dashboard.footer': 'Naragate \u2014 mesin bukti AI untuk narasi pasar Indonesia',
+
+  // History
+  'history.title': 'Riwayat & Tren',
+  'history.back': 'Kembali ke Dasbor',
+  'history.empty': 'Belum ada analisis. Jalankan analisis untuk melihat riwayat dan tren.',
 
   // Dashboard warnings
   'dashboard.warn_sectors': 'Kunci API Sectors belum diatur. Analisis tidak akan berfungsi tanpa kunci ini.',
@@ -128,6 +139,7 @@ export default {
   'claim.usage': 'Pemakaian Live',
   'claim.setup_incomplete': 'Pengaturan awal belum selesai. Selesaikan pengaturan untuk mulai menganalisis.',
   'claim.go_setup': 'Buka Pengaturan Awal',
+  'claim.retry': 'Coba Lagi',
 
   // Setup wizard
   'setup.welcome_title': 'Selamat Datang',
@@ -202,6 +214,7 @@ export default {
   'trend.title': 'Riwayat & Tren',
   'trend.total': '{{count}} analisis',
   'trend.avg_score': 'Rata-rata Skor Reality Gap',
+  'trend.empty': 'Belum ada analisis',
 
   // Bulk scanner
   'bulk.title': 'Pemindai Massal',

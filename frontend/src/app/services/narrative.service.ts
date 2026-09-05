@@ -48,6 +48,31 @@ export class NarrativeService {
 
         const processStream = async () => {
           try {
+            let eventType = '';
+            let eventData = '';
+
+            const emitEvent = () => {
+              if (!eventType || !eventData) return;
+              try {
+                const parsed = JSON.parse(eventData);
+                observer.next({
+                  event_type: eventType,
+                  claim_id: parsed.claim_id || '',
+                  data: parsed.data || parsed,
+                  timestamp: parsed.timestamp || new Date().toISOString(),
+                });
+              } catch (e) {
+                observer.next({
+                  event_type: eventType,
+                  claim_id: '',
+                  data: eventData,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+              eventType = '';
+              eventData = '';
+            };
+
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
@@ -56,36 +81,21 @@ export class NarrativeService {
               const lines = buffer.split('\n');
               buffer = lines.pop() || '';
 
-              let eventType = '';
-              let eventData = '';
-
               for (const line of lines) {
                 if (line.startsWith('event:')) {
                   eventType = line.slice(6).trim();
                 } else if (line.startsWith('data:')) {
                   eventData = line.slice(5).trim();
-                } else if (line === '' && eventType && eventData) {
-                  try {
-                    const parsed = JSON.parse(eventData);
-                    observer.next({
-                      event_type: eventType,
-                      claim_id: parsed.claim_id || '',
-                      data: parsed.data || parsed,
-                      timestamp: parsed.timestamp || new Date().toISOString(),
-                    });
-                  } catch (e) {
-                    observer.next({
-                      event_type: eventType,
-                      claim_id: '',
-                      data: eventData,
-                      timestamp: new Date().toISOString(),
-                    });
-                  }
-                  eventType = '';
-                  eventData = '';
+                } else if (line === '') {
+                  emitEvent();
                 }
               }
             }
+
+            // Flush a pending event whose blank-line terminator was consumed
+            // by the buffer split (e.g. final event ending in a single \n).
+            if (eventType && eventData) emitEvent();
+
             observer.complete();
           } catch (error) {
             observer.error(error);
@@ -144,6 +154,15 @@ export class NarrativeService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ claim_ids: claimIds }),
       })
+        .then(r => r.json())
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  deleteAllClaims(): Observable<any> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/api/v1/claims/all`, { method: 'DELETE' })
         .then(r => r.json())
         .then(data => { observer.next(data); observer.complete(); })
         .catch(err => observer.error(err));

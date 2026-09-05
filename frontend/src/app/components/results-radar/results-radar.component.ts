@@ -131,9 +131,9 @@ export class ResultsRadarComponent {
 
   private i18n = inject(I18nService);
 
-  readonly size = 220;
-  readonly center = { x: 110, y: 110 };
-  readonly radius = 80;
+  readonly size = 260;
+  readonly center = { x: 130, y: 130 };
+  readonly radius = 90;
   readonly rings = [25, 50, 75, 100];
 
   get viewBox(): string {

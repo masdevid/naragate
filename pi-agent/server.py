@@ -61,6 +61,7 @@ def ensure_pi_config() -> None:
                 "name": "Ollama (dev.idh.am)",
                 "api": "openai-completions",
                 "baseUrl": OLLAMA_BASE_URL,
+                "apiKey": PI_API_KEY,
                 "models": models,
             }
         }

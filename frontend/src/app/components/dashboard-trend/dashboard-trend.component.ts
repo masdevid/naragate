@@ -8,7 +8,7 @@ import { TPipe } from '../../pipes/t.pipe';
   standalone: true,
   imports: [VerdictBadgeComponent, TPipe],
   template: `
-    @if (summary() && summary().total_analyses > 0) {
+    @if (summary()) {
       <section class="trend reveal" style="--i: 6">
         <div class="trend__inner">
           <div class="trend__header">
@@ -22,16 +22,20 @@ import { TPipe } from '../../pipes/t.pipe';
               <span class="trend__stat-label">{{ 'trend.avg_score' | t }}</span>
             </div>
             <div class="trend__distribution">
-              @for (band of verdictBands; track band) {
-                @if (summary().verdict_distribution[band]) {
-                  <div class="trend__dist-row">
-                    <app-verdict-badge [verdict]="band"/>
-                    <div class="trend__dist-bar">
-                      <div class="trend__dist-fill" [style.width.%]="distPct(band)"></div>
+              @if (summary().total_analyses > 0) {
+                @for (band of verdictBands; track band) {
+                  @if (summary().verdict_distribution[band]) {
+                    <div class="trend__dist-row">
+                      <app-verdict-badge [verdict]="band"/>
+                      <div class="trend__dist-bar">
+                        <div class="trend__dist-fill" [style.width.%]="distPct(band)"></div>
+                      </div>
+                      <span class="trend__dist-count">{{ summary().verdict_distribution[band] }}</span>
                     </div>
-                    <span class="trend__dist-count">{{ summary().verdict_distribution[band] }}</span>
-                  </div>
+                  }
                 }
+              } @else {
+                <p class="trend__empty">{{ 'trend.empty' | t }}</p>
               }
             </div>
           </div>
@@ -148,6 +152,13 @@ import { TPipe } from '../../pipes/t.pipe';
       color: var(--color-muted);
       width: 1.5rem;
       text-align: right;
+    }
+    .trend__empty {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
     .trend__tickers {
       display: grid;

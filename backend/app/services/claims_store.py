@@ -142,6 +142,13 @@ class ClaimsStore:
         await self._db.commit()
         return cur.rowcount
 
+    async def delete_all_claims(self) -> int:
+        await self.connect()
+        assert self._db is not None
+        cur = await self._db.execute("DELETE FROM claims")
+        await self._db.commit()
+        return cur.rowcount
+
     async def list_claims(self, limit: int = 20) -> list[dict]:
         await self.connect()
         assert self._db is not None

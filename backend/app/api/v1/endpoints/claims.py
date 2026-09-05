@@ -45,6 +45,12 @@ async def claims_summary():
     return await claims_store.claims_summary()
 
 
+@router.delete("/all", response_model=dict)
+async def delete_all_claims():
+    deleted = await claims_store.delete_all_claims()
+    return {"deleted": deleted}
+
+
 @router.get("/{claim_id}")
 async def get_claim(claim_id: str):
     state = await claims_store.get_claim(claim_id)
