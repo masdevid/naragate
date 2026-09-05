@@ -41,7 +41,7 @@ class SectorsClient:
         return await self._get(f"/v2/daily/{ticker}/")
 
     async def get_news(self, ticker: str, limit: int = 20) -> dict:
-        return await self._get(f"/v2/news/", params={"ticker": ticker, "limit": limit})
+        return await self._get(f"/v2/news/", params={"symbols": ticker, "limit": limit})
 
     async def get_corporate_actions(self, ticker: str) -> dict:
         return await self._get(f"/v2/company/corporate-actions/{ticker}/")

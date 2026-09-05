@@ -9,6 +9,7 @@ os.environ["OLLAMA_MODEL"] = "gemma4:12b"
 os.environ["PI_AGENT_URL"] = ""
 os.environ["REDIS_URL"] = "redis://localhost:6379"
 os.environ["DATABASE_URL"] = "sqlite:///./test_data/naragate.db"
+os.environ["NARAGATE_USAGE_FILE"] = "/tmp/naragate_test_usage.json"
 
 
 @pytest.fixture

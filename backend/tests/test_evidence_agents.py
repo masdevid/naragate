@@ -4,6 +4,15 @@ from app.services.evidence_agents import ValuationAgent, FundamentalAgent, Marke
 from app.models.schemas import Claim, ClaimCategory, ClaimDirection
 
 
+@pytest.fixture(autouse=True)
+def _noop_cache_hit_counter():
+    """Prevent cache-hit accounting from writing to the real usage.json during tests."""
+    with patch("app.services.evidence_agents.record_sectors_cache_hit"), \
+         patch("app.services.news_agent.record_sectors_cache_hit"), \
+         patch("app.services.corporate_actions_agent.record_sectors_cache_hit"):
+        yield
+
+
 class TestValuationAgent:
     """Tests for valuation evidence retrieval."""
 
@@ -38,6 +47,7 @@ class TestValuationAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_company_report = AsyncMock(return_value=company_data)
             mock_sectors.get_subsector_report = AsyncMock(return_value=subsector_data)
 
@@ -69,6 +79,7 @@ class TestValuationAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_company_report = AsyncMock(return_value=company_data)
             mock_sectors.get_subsector_report = AsyncMock(return_value=subsector_data)
 
@@ -107,6 +118,7 @@ class TestValuationAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_company_report = AsyncMock(
                 return_value={"overview": {"sub_sector": "Banks"}, "valuation": {}}
             )
@@ -158,6 +170,7 @@ class TestFundamentalAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_company_report = AsyncMock(return_value=company_data)
             mock_sectors.get_quarterly_financials = AsyncMock(return_value=quarterly_data)
 
@@ -181,6 +194,7 @@ class TestFundamentalAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_company_report = AsyncMock(return_value={"financials": {}})
             mock_sectors.get_quarterly_financials = AsyncMock(return_value=quarterly_data)
 
@@ -201,6 +215,7 @@ class TestFundamentalAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_company_report = AsyncMock(return_value={"financials": {}})
             mock_sectors.get_quarterly_financials = AsyncMock(return_value=quarterly_data)
 
@@ -234,6 +249,7 @@ class TestMarketAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_daily_transaction = AsyncMock(return_value=tx_data)
 
             agent = MarketAgent()
@@ -256,6 +272,7 @@ class TestMarketAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_daily_transaction = AsyncMock(return_value=tx_data)
 
             agent = MarketAgent()
@@ -269,6 +286,7 @@ class TestMarketAgent:
              patch("app.services.evidence_agents.sectors_client") as mock_sectors:
             mock_cache.get = AsyncMock(return_value=None)
             mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
             mock_sectors.get_daily_transaction = AsyncMock(return_value=[])
 
             agent = MarketAgent()
@@ -318,3 +336,142 @@ class TestGetEvidenceForClaim:
 
             result = await get_evidence_for_claim(claim)
             assert "market" in result
+
+
+class TestCacheStrategy:
+    """Regression: repeated BBCA runs must serve from cache, not re-fetch Sectors."""
+
+    @pytest.mark.asyncio
+    async def test_second_fundamental_run_makes_zero_new_sectors_calls(self):
+        company_data = {
+            "overview": {"sub_sector": "Banks"},
+            "valuation": {"historical_valuation": [{"year": 2025, "pe": 25.0}]},
+            "financials": {
+                "eps": 375,
+                "historical_financials": [
+                    {"year": 2025, "revenue": 120_000_000_000, "earnings": 45_000_000_000}
+                ],
+                "historical_financial_ratio": [
+                    {"year": 2025, "profitability": {"roe": 0.25}, "leverage": {}}
+                ],
+            },
+        }
+        quarterly_data = [{"revenue": 30_000_000_000, "earnings": 11_000_000_000}]
+        news_data = {"data": [{"title": "BBCA profit rises", "date": "2025-01-01", "source": "Kontan"}]}
+        corp_data = {"data": [{"type": "dividend", "date": "2025-01-01", "description": "Interim"}]}
+
+        store: dict = {}
+
+        async def fake_get(ticker):
+            return store.get(ticker)
+
+        async def fake_merge(ticker, key, value, ttl=None):
+            entry = store.get(ticker) or {}
+            entry[key] = value
+            store[ticker] = entry
+
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.FUNDAMENTAL,
+            assertion="profits declined",
+            direction=ClaimDirection.BELOW,
+            confidence=0.9,
+        )
+
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors, \
+             patch("app.services.news_agent.cache") as mock_news_cache, \
+             patch("app.services.news_agent.sectors_client") as mock_news_sectors, \
+             patch("app.services.news_agent.llm_client.stream_chat", AsyncMock(return_value='{"corroboration": "supports"}')), \
+             patch("app.services.corporate_actions_agent.cache") as mock_corp_cache, \
+             patch("app.services.corporate_actions_agent.sectors_client") as mock_corp_sectors:
+            for mc in (mock_cache, mock_news_cache, mock_corp_cache):
+                mc.get = fake_get
+                mc.merge = fake_merge
+            mock_sectors.get_company_report = AsyncMock(return_value=company_data)
+            mock_sectors.get_quarterly_financials = AsyncMock(return_value=quarterly_data)
+            mock_news_sectors.get_news = AsyncMock(return_value=news_data)
+            mock_corp_sectors.get_corporate_actions = AsyncMock(return_value=corp_data)
+
+            await get_evidence_for_claim(claim)
+            first_run_calls = (
+                mock_sectors.get_company_report.call_count
+                + mock_sectors.get_quarterly_financials.call_count
+                + mock_news_sectors.get_news.call_count
+                + mock_corp_sectors.get_corporate_actions.call_count
+            )
+            assert first_run_calls == 4
+
+            await get_evidence_for_claim(claim)
+            second_run_calls = (
+                mock_sectors.get_company_report.call_count
+                + mock_sectors.get_quarterly_financials.call_count
+                + mock_news_sectors.get_news.call_count
+                + mock_corp_sectors.get_corporate_actions.call_count
+            )
+            assert second_run_calls == first_run_calls
+
+    @pytest.mark.asyncio
+    async def test_valuation_then_fundamental_share_company_report(self):
+        company_data = {
+            "overview": {"sub_sector": "Banks"},
+            "valuation": {"historical_valuation": [{"year": 2025, "pe": 25.0}]},
+            "financials": {
+                "eps": 375,
+                "historical_financials": [
+                    {"year": 2025, "revenue": 120_000_000_000, "earnings": 45_000_000_000}
+                ],
+                "historical_financial_ratio": [
+                    {"year": 2025, "profitability": {"roe": 0.25}, "leverage": {}}
+                ],
+            },
+        }
+        subsector_data = {"statistics": {"filtered_median_pe": 20.0}}
+        quarterly_data = [{"revenue": 30_000_000_000, "earnings": 11_000_000_000}]
+
+        store: dict = {}
+
+        async def fake_get(ticker):
+            return store.get(ticker)
+
+        async def fake_merge(ticker, key, value, ttl=None):
+            entry = store.get(ticker) or {}
+            entry[key] = value
+            store[ticker] = entry
+
+        valuation_claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.VALUATION,
+            assertion="PE is expensive",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.8,
+        )
+        fundamental_claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.FUNDAMENTAL,
+            assertion="profits declined",
+            direction=ClaimDirection.BELOW,
+            confidence=0.9,
+        )
+
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors, \
+             patch("app.services.news_agent.cache") as mock_news_cache, \
+             patch("app.services.news_agent.sectors_client") as mock_news_sectors, \
+             patch("app.services.news_agent.llm_client.stream_chat", AsyncMock(return_value='{"corroboration": "neutral"}')), \
+             patch("app.services.corporate_actions_agent.cache") as mock_corp_cache, \
+             patch("app.services.corporate_actions_agent.sectors_client") as mock_corp_sectors:
+            for mc in (mock_cache, mock_news_cache, mock_corp_cache):
+                mc.get = fake_get
+                mc.merge = fake_merge
+            mock_sectors.get_company_report = AsyncMock(return_value=company_data)
+            mock_sectors.get_subsector_report = AsyncMock(return_value=subsector_data)
+            mock_sectors.get_quarterly_financials = AsyncMock(return_value=quarterly_data)
+            mock_news_sectors.get_news = AsyncMock(return_value={})
+            mock_corp_sectors.get_corporate_actions = AsyncMock(return_value={})
+
+            await get_evidence_for_claim(valuation_claim)
+            await get_evidence_for_claim(fundamental_claim)
+
+            # company_report fetched exactly once across both agents
+            assert mock_sectors.get_company_report.call_count == 1

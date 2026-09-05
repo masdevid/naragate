@@ -1,10 +1,11 @@
 import json
+import os
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
 
-USAGE_FILE = Path(__file__).parent.parent / "data" / "usage.json"
+USAGE_FILE = Path(os.environ.get("NARAGATE_USAGE_FILE", str(Path(__file__).parent.parent / "data" / "usage.json")))
 
 # LLM pricing per 1M tokens (USD) — approximate for common providers
 LLM_PRICING = {
@@ -20,11 +21,12 @@ LLM_PRICING = {
 DEFAULT_LLM_PRICING = {"input": 0.0, "output": 0.0}
 
 # In-memory counters for the currently running pipeline (reset per run)
-_session = {"sectors": 0, "llm": 0, "llm_input_tokens": 0, "llm_output_tokens": 0}
+_session = {"sectors": 0, "sectors_cached": 0, "llm": 0, "llm_input_tokens": 0, "llm_output_tokens": 0}
 
 
 def reset_session_usage():
     _session["sectors"] = 0
+    _session["sectors_cached"] = 0
     _session["llm"] = 0
     _session["llm_input_tokens"] = 0
     _session["llm_output_tokens"] = 0
@@ -49,7 +51,7 @@ def _save(data: dict):
 
 
 def _ensure_structure(data: dict) -> dict:
-    data.setdefault("sectors", {"calls": 0, "daily": {}})
+    data.setdefault("sectors", {"calls": 0, "cached_calls": 0, "daily": {}})
     data.setdefault("llm", {"calls": 0, "input_tokens": 0, "output_tokens": 0, "daily": {}})
     data.setdefault("pipelines", {"total": 0, "completed": 0, "failed": 0})
     return data
@@ -57,6 +59,10 @@ def _ensure_structure(data: dict) -> dict:
 
 def record_sectors_call(endpoint: str = "", cached: bool = False):
     if cached:
+        _session["sectors_cached"] += 1
+        data = _ensure_structure(_load())
+        data["sectors"]["cached_calls"] = data["sectors"].get("cached_calls", 0) + 1
+        _save(data)
         return
     _session["sectors"] += 1
     data = _ensure_structure(_load())
@@ -65,6 +71,11 @@ def record_sectors_call(endpoint: str = "", cached: bool = False):
     data["sectors"]["daily"].setdefault(today, 0)
     data["sectors"]["daily"][today] += 1
     _save(data)
+
+
+def record_sectors_cache_hit():
+    """Count one Sectors API call avoided by serving evidence from cache."""
+    record_sectors_call(cached=True)
 
 
 def record_llm_call(model: str, input_tokens: int, output_tokens: int):
@@ -130,6 +141,7 @@ def get_usage_summary(budget: int = 1600) -> dict:
     return {
         "sectors": {
             "total_calls": sectors_used,
+            "cached_calls": sectors.get("cached_calls", 0),
             "budget": budget,
             "budget_pct": sectors_pct,
             "remaining": max(budget - sectors_used, 0),

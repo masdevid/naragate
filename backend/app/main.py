@@ -10,6 +10,7 @@ from pathlib import Path
 
 from app.config.settings import settings
 from app.core.sectors_client import sectors_client
+from app.core.evidence_cache import cache as evidence_cache
 from app.core.llm_config import llm_endpoint
 from app.core.sectors_config import sectors_api_key
 from app.api.v1.endpoints import claims, evidence, stream
@@ -102,8 +103,12 @@ async def check_sectors() -> dict:
         result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": "No API key configured"}
     else:
         try:
-            await sectors_client.get_daily_transaction("BBCA")
-            result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(key)}
+            cached = await evidence_cache.get("BBCA")
+            if cached and "daily_transaction" in cached:
+                result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(key), "cached": True}
+            else:
+                await sectors_client.get_daily_transaction("BBCA")
+                result = {"status": "ok", "endpoint": "https://api.sectors.app/v2", "key_length": len(key)}
         except Exception as e:
             result = {"status": "error", "endpoint": "https://api.sectors.app/v2", "error": str(e)}
 

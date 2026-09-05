@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.core.sectors_client import sectors_client, to_slug
 from app.core.evidence_cache import cache
+from app.core.usage_tracker import record_sectors_cache_hit
 from app.config.settings import settings
 from app.models.schemas import (
     Claim, ValuationEvidence, FundamentalEvidence, MarketEvidence
@@ -19,11 +20,12 @@ class ValuationAgent:
         company_data = (cached or {}).get("company_report")
         if company_data and "overview" in company_data and "valuation" in company_data:
             cache_hit = True
+            record_sectors_cache_hit()
         else:
-            company_data = await sectors_client.get_company_report(ticker, ["valuation", "overview"])
-            existing = cached or {}
-            existing["company_report"] = company_data
-            await cache.set(ticker, existing)
+            company_data = await sectors_client.get_company_report(
+                ticker, ["valuation", "overview", "financials"]
+            )
+            await cache.merge(ticker, "company_report", company_data)
             cache_hit = False
 
         sub_sector_name = ((company_data or {}).get("overview") or {}).get("sub_sector")
@@ -33,13 +35,12 @@ class ValuationAgent:
         if sub_sector_slug:
             if cached and "subsector_report" in cached:
                 subsector_data = cached["subsector_report"]
+                record_sectors_cache_hit()
             else:
                 subsector_data = await sectors_client.get_subsector_report(
                     sub_sector_slug, ["statistics", "valuation"]
                 )
-                existing = cached or {}
-                existing["subsector_report"] = subsector_data
-                await cache.set(ticker, existing)
+                await cache.merge(ticker, "subsector_report", subsector_data)
 
         valuation = {}
         if company_data and "valuation" in company_data:
@@ -95,22 +96,24 @@ class FundamentalAgent:
         ticker = claim.ticker
 
         cached = await cache.get(ticker)
-        if cached and "company_report" in cached:
-            company_data = cached["company_report"]
+        company_data = (cached or {}).get("company_report")
+        if company_data and "financials" in company_data:
             cache_hit = True
+            record_sectors_cache_hit()
         else:
-            company_data = await sectors_client.get_company_report(ticker, ["financials"])
-            await cache.set(ticker, {"company_report": company_data})
+            company_data = await sectors_client.get_company_report(
+                ticker, ["valuation", "overview", "financials"]
+            )
+            await cache.merge(ticker, "company_report", company_data)
             cache_hit = False
 
         quarterly_data = None
         if cached and "quarterly_financials" in cached:
             quarterly_data = cached["quarterly_financials"]
+            record_sectors_cache_hit()
         else:
             quarterly_data = await sectors_client.get_quarterly_financials(ticker)
-            existing = cached or {}
-            existing["quarterly_financials"] = quarterly_data
-            await cache.set(ticker, existing)
+            await cache.merge(ticker, "quarterly_financials", quarterly_data)
 
         metrics = {}
         if company_data and "financials" in company_data:
@@ -171,11 +174,10 @@ class MarketAgent:
         if cached and "daily_transaction" in cached:
             tx_data = cached["daily_transaction"]
             cache_hit = True
+            record_sectors_cache_hit()
         else:
             tx_data = await sectors_client.get_daily_transaction(ticker)
-            existing = cached or {}
-            existing["daily_transaction"] = tx_data
-            await cache.set(ticker, existing, ttl=settings.EVIDENCE_CACHE_TTL_DAILY)
+            await cache.merge(ticker, "daily_transaction", tx_data, ttl=settings.EVIDENCE_CACHE_TTL_DAILY)
             cache_hit = False
 
         performance = {}

@@ -95,6 +95,7 @@ export default {
   'usage.calls': 'Calls',
   'usage.budget': 'Budget',
   'usage.used': 'Used',
+  'usage.cached': 'From cache',
   'usage.remaining': 'Remaining',
   'usage.model': 'Model',
   'usage.input_tokens': 'Input Tokens',

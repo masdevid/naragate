@@ -24,6 +24,19 @@ class EvidenceGraphCache:
         ttl = ttl or settings.EVIDENCE_CACHE_TTL_COMPANY
         await self._redis.setex(f"evidence:{ticker}", ttl, json.dumps(data))
 
+    async def merge(self, ticker: str, key: str, value, ttl: int = None):
+        """Atomically merge one key into the cached entry for a ticker.
+
+        Reads the freshest cached value, sets only `key`, and writes back —
+        so a partial update can never wipe out sections cached by other agents.
+        """
+        if not self._redis:
+            await self.connect()
+        ttl = ttl or settings.EVIDENCE_CACHE_TTL_COMPANY
+        current = await self.get(ticker) or {}
+        current[key] = value
+        await self._redis.setex(f"evidence:{ticker}", ttl, json.dumps(current))
+
     async def invalidate(self, ticker: str):
         if not self._redis:
             await self.connect()

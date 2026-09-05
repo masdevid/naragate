@@ -3,6 +3,7 @@ import json
 from app.models.schemas import Claim, NewsEvidence
 from app.core.sectors_client import sectors_client
 from app.core.evidence_cache import cache
+from app.core.usage_tracker import record_sectors_cache_hit
 from app.core import llm_client
 
 NEWS_PROMPT = """You are a news corroboration analyst. Given a financial claim and recent news headlines
@@ -29,22 +30,21 @@ class NewsAgent:
         if cached and "news_corpus" in cached:
             news_data = cached["news_corpus"]
             cache_hit = True
+            record_sectors_cache_hit()
         else:
             news_data = await sectors_client.get_news(ticker, limit=10)
-            existing = cached or {}
-            existing["news_corpus"] = news_data
-            await cache.set(ticker, existing)
+            await cache.merge(ticker, "news_corpus", news_data)
             cache_hit = False
 
         headlines = []
         if isinstance(news_data, dict):
-            items = news_data.get("data") or news_data.get("news") or news_data.get("items") or []
+            items = news_data.get("results") or news_data.get("data") or news_data.get("news") or news_data.get("items") or []
             if isinstance(items, list):
                 for item in items[:10]:
                     if isinstance(item, dict):
                         headlines.append({
                             "title": item.get("title") or item.get("headline") or "",
-                            "date": item.get("date") or item.get("published_at") or "",
+                            "date": item.get("date") or item.get("published_at") or item.get("timestamp") or "",
                             "source": item.get("source") or item.get("publisher") or "",
                         })
         elif isinstance(news_data, list):
@@ -52,7 +52,7 @@ class NewsAgent:
                 if isinstance(item, dict):
                     headlines.append({
                         "title": item.get("title") or item.get("headline") or "",
-                        "date": item.get("date") or item.get("published_at") or "",
+                        "date": item.get("date") or item.get("published_at") or item.get("timestamp") or "",
                         "source": item.get("source") or item.get("publisher") or "",
                     })
 

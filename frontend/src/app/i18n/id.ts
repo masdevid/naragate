@@ -95,6 +95,7 @@ export default {
   'usage.calls': 'Panggilan',
   'usage.budget': 'Anggaran',
   'usage.used': 'Terpakai',
+  'usage.cached': 'Dari cache',
   'usage.remaining': 'Sisa',
   'usage.model': 'Model',
   'usage.input_tokens': 'Token Input',

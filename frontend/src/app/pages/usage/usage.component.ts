@@ -36,6 +36,10 @@ import { TPipe } from '../../pipes/t.pipe';
                 <span class="usage__stat-val">{{ fmt(usage()!.sectors.total_calls) }}</span>
               </div>
               <div class="usage__stat">
+                <span class="usage__stat-key">{{ 'usage.cached' | t }}</span>
+                <span class="usage__stat-val">{{ fmt(usage()!.sectors.cached_calls) }}</span>
+              </div>
+              <div class="usage__stat">
                 <span class="usage__stat-key">{{ 'usage.budget' | t }}</span>
                 <span class="usage__stat-val">{{ fmt(usage()!.sectors.budget) }}</span>
               </div>

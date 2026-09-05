@@ -84,6 +84,7 @@ def _usage_event(claim_id: str) -> PipelineEvent:
     usage = get_session_usage()
     return make_event("usage_update", claim_id, {
         "sectors_calls": usage["sectors"],
+        "sectors_cached": usage["sectors_cached"],
         "llm_calls": usage["llm"],
         "llm_input_tokens": usage["llm_input_tokens"],
         "llm_output_tokens": usage["llm_output_tokens"],

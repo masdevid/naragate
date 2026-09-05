@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 export interface UsageSummary {
   sectors: {
     total_calls: number;
+    cached_calls: number;
     budget: number;
     budget_pct: number;
     remaining: number;

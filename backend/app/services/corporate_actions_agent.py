@@ -3,6 +3,7 @@ from datetime import datetime
 from app.models.schemas import Claim, CorporateActionEvidence
 from app.core.sectors_client import sectors_client
 from app.core.evidence_cache import cache
+from app.core.usage_tracker import record_sectors_cache_hit
 
 EVENT_TYPE_LABELS = {
     "dividend": "dividend",
@@ -23,14 +24,13 @@ class CorporateActionsAgent:
         if cached and "corporate_actions" in cached:
             actions_data = cached["corporate_actions"]
             cache_hit = True
+            record_sectors_cache_hit()
         else:
             try:
                 actions_data = await sectors_client.get_corporate_actions(ticker)
             except Exception:
                 actions_data = {}
-            existing = cached or {}
-            existing["corporate_actions"] = actions_data
-            await cache.set(ticker, existing)
+            await cache.merge(ticker, "corporate_actions", actions_data)
             cache_hit = False
 
         actions = []
