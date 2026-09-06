@@ -3,14 +3,13 @@
 **AI evidence engine that detects financial claims in Indonesian market narratives and verifies them against real financial data.**
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-[![Built for Ilkomers Track 1](assets/ilkomers-track1-badge.svg)](https://naragate.ilkomers.com/)
-[![Built for Sectors Hackathon 2026](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
+[![Built for Sectors Hackathon 2026 Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
 
 ---
 
 ## Live Demo
 
-Built for the **Ilkomers** hackathon — [Track 1](https://naragate.ilkomers.com/). Try the web UI: **[https://naragate.ilkomers.com/](https://naragate.ilkomers.com/)**
+Built for the **Sectors Hackathon 2026** — [Track 1 · AI Agents & Assistants](https://hackathon.sectors.app/tracks/ai-agents-assistants). Try the web UI: **[https://naragate.ilkomers.com/](https://naragate.ilkomers.com/)**
 
 ---
 
