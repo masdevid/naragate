@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="233" height="20" role="img" aria-label="built for: Sectors Hackathon 2026">
+  <title>built for: Sectors Hackathon 2026</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <linearGradient id="sg-mid" gradientUnits="userSpaceOnUse" x1="213.6" y1="394.9" x2="867.3" y2="394.9">
+    <stop offset="0" stop-color="#E11D48"></stop>
+    <stop offset="0.2463" stop-color="#E62D3E"></stop>
+    <stop offset="0.7285" stop-color="#F25826"></stop>
+    <stop offset="1" stop-color="#F97316"></stop>
+  </linearGradient>
+  <linearGradient id="sg-top" gradientUnits="userSpaceOnUse" x1="213.8" y1="158.4" x2="867.3" y2="158.4">
+    <stop offset="0" stop-color="#E11D48" stop-opacity="0.7"></stop>
+    <stop offset="1" stop-color="#E11D48"></stop>
+  </linearGradient>
+  <linearGradient id="sg-bot" gradientUnits="userSpaceOnUse" x1="213.7" y1="635" x2="867.2" y2="635">
+    <stop offset="0" stop-color="#F97316"></stop>
+    <stop offset="1" stop-color="#F97316" stop-opacity="0.7"></stop>
+  </linearGradient>
+  <clipPath id="r">
+    <rect width="233" height="20" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#r)">
+    <rect width="81" height="20" fill="#E11D48"/>
+    <rect x="81" width="152" height="20" fill="#F97316"/>
+    <rect width="233" height="20" fill="url(#s)"/>
+  </g>
+  <g transform="translate(5,3) scale(0.01802) translate(-213.6,-13.6)">
+    <rect x="213.6" y="299.6" width="653.7" height="190.7" opacity="0.75" fill="url(#sg-mid)"></rect>
+    <polygon points="867.3,204.3 213.8,303.1 213.8,112.5 867.3,13.6" fill="url(#sg-top)"></polygon>
+    <polygon points="867.2,680.9 213.7,779.8 213.7,589.1 867.2,490.3" fill="url(#sg-bot)"></polygon>
+    <path d="M231.8,517.5h-9.1c-5,0-9.1-4.1-9.1-9.1V90.8c0-5,4.1-9.1,9.1-9.1h9.1c5,0,9.1,4.1,9.1,9.1v417.6 C240.9,513.4,236.8,517.5,231.8,517.5z" fill="#E0003B"></path>
+    <path d="M858.2,708.1h-9.1c-5,0-9.1-4.1-9.1-9.1V281.4c0-5,4.1-9.1,9.1-9.1h9.1c5,0,9.1,4.1,9.1,9.1v417.6 C867.3,704.1,863.2,708.1,858.2,708.1z" fill="#F76400"></path>
+    <path d="M231.8,789.8h-9.1c-5,0-9.1-4.1-9.1-9.1V581c0-5,4.1-9.1,9.1-9.1h9.1c5,0,9.1,4.1,9.1,9.1v199.7 C240.9,785.8,236.8,789.8,231.8,789.8z" fill="#F76400"></path>
+    <path d="M858.2,217.9h-9.1c-5,0-9.1-4.1-9.1-9.1V9.1c0-5,4.1-9.1,9.1-9.1h9.1c5,0,9.1,4.1,9.1,9.1v199.7 C867.3,213.8,863.2,217.9,858.2,217.9z" fill="#E0003B"></path>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+    <text aria-hidden="true" x="483" y="150" fill="#010101" fill-opacity=".3" textLength="550" lengthAdjust="spacingAndGlyphs">built for</text>
+    <text x="483" y="140" textLength="550" lengthAdjust="spacingAndGlyphs">built for</text>
+    <text aria-hidden="true" x="1570" y="150" fill="#010101" fill-opacity=".3" textLength="1360" lengthAdjust="spacingAndGlyphs">Sectors Hackathon 2026</text>
+    <text x="1570" y="140" textLength="1360" lengthAdjust="spacingAndGlyphs">Sectors Hackathon 2026</text>
+  </g>
+</svg>

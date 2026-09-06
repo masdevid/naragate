@@ -4,6 +4,7 @@
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 [![Built for Ilkomers Track 1](assets/ilkomers-track1-badge.svg)](https://naragate.ilkomers.com/)
+[![Built for Sectors Hackathon 2026](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
 
 ---
 
