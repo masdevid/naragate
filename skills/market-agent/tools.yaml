@@ -1,0 +1,20 @@
+tools:
+  - name: sectors_daily_transaction
+    description: Fetch daily transaction data from Sectors v2 API (price, volume, close)
+    parameters:
+      ticker: string
+    returns: DailyTransaction[]
+
+  - name: evidence_cache_get
+    description: Read the full Evidence Graph for a ticker from the cache
+    parameters:
+      ticker: string
+    returns: EvidenceGraph | null
+
+  - name: evidence_cache_merge
+    description: Atomically merge one section into the cached Evidence Graph for a ticker
+    parameters:
+      ticker: string
+      key: string
+      value: object
+    returns: void

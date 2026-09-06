@@ -57,4 +57,4 @@ Load this skill after the Evidence Judge has produced its unified assessment.
 - Only compute dimensions relevant to the claim category
 - The score is NOT a buy/sell recommendation — it measures narrative-reality alignment
 - The explanation must be human-readable and cite specific evidence
-- Respect the 1,600-credit budget — no API calls at this stage
+- Respect the harness-injected credit budget — no API calls at this stage

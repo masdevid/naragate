@@ -59,4 +59,4 @@ Load this skill when a claim has been classified as `valuation` category and nee
 - Always check cache first before making Sectors API calls
 - Use only the exact sections needed (valuation, subsector) — never fetch broad payloads
 - Calculate premium as `(stock_metric - subsector_median) / subsector_median * 100`
-- Respect the 1,600-credit budget — cache misses cost credits
+- Respect the harness-injected credit budget — cache misses cost credits

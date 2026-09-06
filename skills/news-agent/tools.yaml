@@ -1,0 +1,28 @@
+tools:
+  - name: sectors_news
+    description: Fetch recent news headlines for a ticker from Sectors v2 API
+    parameters:
+      ticker: string
+      limit: number
+    returns: NewsCorpus
+
+  - name: evidence_cache_get
+    description: Read the full Evidence Graph for a ticker from the cache
+    parameters:
+      ticker: string
+    returns: EvidenceGraph | null
+
+  - name: evidence_cache_merge
+    description: Atomically merge one section into the cached Evidence Graph for a ticker
+    parameters:
+      ticker: string
+      key: string
+      value: object
+    returns: void
+
+  - name: llm_complete
+    description: Run the LLM to analyze news headlines and determine corroboration (supports/contradicts/neutral)
+    parameters:
+      prompt: string
+      response_format: string
+    returns: NewsCorroboration

@@ -53,6 +53,9 @@ backend/test_data/
 AGENTS.md
 docs/
 
+# Pi CLI harness (local-only config; skills live in skills/)
+.pi/
+
 # Compiled frontend
 frontend/dist/
 frontend/.angular/

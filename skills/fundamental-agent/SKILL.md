@@ -55,5 +55,5 @@ Load this skill when a claim has been classified as `fundamental` category and n
 
 - Always check cache first before making Sectors API calls
 - Use quarterly financials for temporal reasoning — distinguish "profit fell" from "profit has fallen continuously"
-- Respect the 1,600-credit budget
+- Respect the harness-injected credit budget
 - Cache misses cost credits

@@ -1,0 +1,28 @@
+tools:
+  - name: sectors_company_report
+    description: Fetch company report from Sectors v2 API (valuation, overview, financials sections)
+    parameters:
+      ticker: string
+      sections: string[]
+    returns: CompanyReport
+
+  - name: sectors_subsector_report
+    description: Fetch subsector report from Sectors v2 API (statistics, valuation sections)
+    parameters:
+      sub_sector: string
+      sections: string[]
+    returns: SubsectorReport
+
+  - name: evidence_cache_get
+    description: Read the full Evidence Graph for a ticker from the cache
+    parameters:
+      ticker: string
+    returns: EvidenceGraph | null
+
+  - name: evidence_cache_merge
+    description: Atomically merge one section into the cached Evidence Graph for a ticker
+    parameters:
+      ticker: string
+      key: string
+      value: object
+    returns: void

@@ -46,5 +46,5 @@ Load this skill when a claim has been classified as `market` category and needs 
 
 - Always check cache first before making Sectors API calls
 - Map Indonesian terms: `anjlok`/`jeblok` → negative price change, `meroket`/`meledak` → strong positive change
-- Respect the 1,600-credit budget
+- Respect the harness-injected credit budget
 - Daily transaction data TTL: 1 hour
