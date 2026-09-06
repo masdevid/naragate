@@ -75,18 +75,26 @@ flowchart LR
 
 The LLM-driven agents (Claim Parser, Skeptic, News, Chat) run through the **Pi Coding Agent** harness (`pi-agent` service). Each agent's `skills/*` definition is loaded into the Pi CLI as its system prompt, and results stream back to the backend as OpenAI-compatible SSE. The deterministic data agents (Valuation, Fundamental, Market, Judge, Score) run in the backend in Python. When `PI_AGENT_URL` is unset (local dev, tests), the backend calls the LLM endpoint directly.
 
-## Packages
+## Installation (Skills & Agents)
 
-Naragate ships two installable packages alongside the app:
+Naragate ships two installable packages alongside the app: **skills** (`skills/`) and an **agents template** (`agents/`). Install the skills first, then generate the agents for your harness.
 
-- **Skills** (`skills/`) — 11 agent skills (claim-parser, valuation, fundamental, market, news, skeptic, evidence-judge, score-generator, chat, renderer, pipeline-orchestrator). Installable into any of 70+ agent harnesses:
-  ```bash
-  npx skills add masdevid/naragate
-  ```
-- **Agents template** (`agents/`) — a multi-agent topology that wires the skills into the Reality Gap pipeline. Generates harness-native agent files (Claude Code, OpenCode, Codex, Pi, Deep Agents):
-  ```bash
-  python agents/install.py --all
-  ```
+### 1. Install skills
+
+```bash
+npx skills add masdevid/naragate                          # all 11 skills
+npx skills add masdevid/naragate --skill claim-parser     # a single skill
+```
+
+### 2. Install agents
+
+```bash
+python agents/install.py --list                           # supported harnesses
+python agents/install.py --harness opencode               # one harness
+python agents/install.py --all                            # every harness
+```
+
+Supported harnesses: **Claude Code, OpenCode, Codex, Pi, Deep Agents**. Each agent loads its skill at runtime — the agent files never duplicate skill content.
 
 ## Quick Start (no coding required)
 
