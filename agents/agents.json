@@ -1,0 +1,26 @@
+{
+  "name": "naragate",
+  "version": "0.1.0",
+  "description": "Multi-agent template for the Naragate Reality Gap evidence engine. Complements the naragate skills package.",
+  "skills_package": "masdevid/naragate",
+  "pipeline": [
+    { "stage": "parse", "agents": ["claim-parser"] },
+    { "stage": "evidence", "agents": ["valuation-agent", "fundamental-agent", "market-agent", "news-agent"] },
+    { "stage": "skeptic", "agents": ["skeptic-agent"] },
+    { "stage": "judge", "agents": ["evidence-judge"] },
+    { "stage": "score", "agents": ["score-generator"] }
+  ],
+  "support": ["chat", "pipeline-orchestrator"],
+  "agent_files": [
+    "claim-parser.md",
+    "valuation-agent.md",
+    "fundamental-agent.md",
+    "market-agent.md",
+    "news-agent.md",
+    "skeptic-agent.md",
+    "evidence-judge.md",
+    "score-generator.md",
+    "chat.md",
+    "pipeline-orchestrator.md"
+  ]
+}
