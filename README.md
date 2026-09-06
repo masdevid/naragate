@@ -3,7 +3,7 @@
 **AI evidence engine that detects financial claims in Indonesian market narratives and verifies them against real financial data.**
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-[![Built for Sectors Hackathon 2026 Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
+[![Sectors Hackathon 2026 | Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
 
 ---
 

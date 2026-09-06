@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="289" height="20" role="img" aria-label="Built for Sectors Hackathon 2026 Track 1">
-  <title>Built for Sectors Hackathon 2026 Track 1</title>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="224" height="20" role="img" aria-label="Sectors Hackathon 2026 | Track 1">
+  <title>Sectors Hackathon 2026 | Track 1</title>
   <linearGradient id="s" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
@@ -19,12 +19,12 @@
     <stop offset="1" stop-color="#F97316" stop-opacity="0.7"></stop>
   </linearGradient>
   <clipPath id="r">
-    <rect width="289" height="20" rx="3"/>
+    <rect width="224" height="20" rx="3"/>
   </clipPath>
   <g clip-path="url(#r)">
-    <rect width="81" height="20" fill="#fcf3e4"/>
-    <rect x="81" width="208" height="20" fill="#F97316"/>
-    <rect width="289" height="20" fill="url(#s)"/>
+    <rect width="22" height="20" fill="#fcf3e4"/>
+    <rect x="22" width="202" height="20" fill="#F97316"/>
+    <rect width="224" height="20" fill="url(#s)"/>
   </g>
   <g transform="translate(5,3) scale(0.01802) translate(-213.6,-13.6)">
     <rect x="213.6" y="299.6" width="653.7" height="190.7" opacity="0.75" fill="url(#sg-mid)"></rect>
@@ -35,20 +35,12 @@
     <path d="M231.8,789.8h-9.1c-5,0-9.1-4.1-9.1-9.1V581c0-5,4.1-9.1,9.1-9.1h9.1c5,0,9.1,4.1,9.1,9.1v199.7 C240.9,785.8,236.8,789.8,231.8,789.8z" fill="#F76400"></path>
     <path d="M858.2,217.9h-9.1c-5,0-9.1-4.1-9.1-9.1V9.1c0-5,4.1-9.1,9.1-9.1h9.1c5,0,9.1,4.1,9.1,9.1v199.7 C867.3,213.8,863.2,217.9,858.2,217.9z" fill="#E0003B"></path>
   </g>
-  <g fill="#1f2937" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+  <g fill="#000" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
     <g transform="scale(.1)">
       <g aria-hidden="true" fill="#010101">
-        <text x="483" y="150" fill-opacity=".3" textLength="550">Built for</text>
+        <text x="1230" y="150" fill-opacity=".3" textLength="1860">Sectors Hackathon 2026 | Track 1</text>
       </g>
-      <text x="483" y="140" textLength="550">Built for</text>
-    </g>
-  </g>
-  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
-    <g transform="scale(.1)">
-      <g aria-hidden="true" fill="#010101">
-        <text x="1850" y="150" fill-opacity=".3" textLength="1920">Sectors Hackathon 2026 Track 1</text>
-      </g>
-      <text x="1850" y="140" textLength="1920">Sectors Hackathon 2026 Track 1</text>
+      <text x="1230" y="140" textLength="1860">Sectors Hackathon 2026 | Track 1</text>
     </g>
   </g>
 </svg>
