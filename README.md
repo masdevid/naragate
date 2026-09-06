@@ -2,6 +2,8 @@
 
 **AI evidence engine that detects financial claims in Indonesian market narratives and verifies them against real financial data.**
 
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+
 ---
 
 ## Problem
@@ -64,16 +66,27 @@ flowchart LR
 ### Multi-Agent Pipeline
 
 1. **Claim Parser** — Extracts structured claims from Indonesian text
-2. **Valuation Agent** — Retrieves PE, PB, PS, PCF metrics
-3. **Fundamental Agent** — Retrieves revenue, earnings, margins
-4. **Market Agent** — Retrieves price, volume, volatility data
-5. **Skeletal Agent** — Challenges claims with negation bias
-6. **Evidence Judge** — Aggregates evidence from all agents
-7. **Score Generator** — Computes Reality Gap Score (0–100)
+2. **Evidence Agents** — Valuation (PE, PB, PS, PCF), Fundamental (revenue, earnings, margins), Market (price, volume, volatility), News (corroboration)
+3. **Skeptic Agent** — Challenges claims with negation bias
+4. **Evidence Judge** — Aggregates evidence from all agents
+5. **Score Generator** — Computes Reality Gap Score (0–100)
 
 ### Pi Coding Agent Harness
 
-The LLM-driven agents (Claim Parser, Skeptic, News, Chat) run through the **Pi Coding Agent** harness (`pi-agent` service). Each agent's `.pi/skills/*` definition is loaded into the Pi CLI as its system prompt, and results stream back to the backend as OpenAI-compatible SSE. The deterministic data agents (Valuation, Fundamental, Market, Judge, Score) run in the backend in Python. When `PI_AGENT_URL` is unset (local dev, tests), the backend calls the LLM endpoint directly.
+The LLM-driven agents (Claim Parser, Skeptic, News, Chat) run through the **Pi Coding Agent** harness (`pi-agent` service). Each agent's `skills/*` definition is loaded into the Pi CLI as its system prompt, and results stream back to the backend as OpenAI-compatible SSE. The deterministic data agents (Valuation, Fundamental, Market, Judge, Score) run in the backend in Python. When `PI_AGENT_URL` is unset (local dev, tests), the backend calls the LLM endpoint directly.
+
+## Packages
+
+Naragate ships two installable packages alongside the app:
+
+- **Skills** (`skills/`) — 11 agent skills (claim-parser, valuation, fundamental, market, news, skeptic, evidence-judge, score-generator, chat, renderer, pipeline-orchestrator). Installable into any of 70+ agent harnesses:
+  ```bash
+  npx skills add masdevid/naragate
+  ```
+- **Agents template** (`agents/`) — a multi-agent topology that wires the skills into the Reality Gap pipeline. Generates harness-native agent files (Claude Code, OpenCode, Codex, Pi, Deep Agents):
+  ```bash
+  python agents/install.py --all
+  ```
 
 ## Quick Start (no coding required)
 
@@ -164,7 +177,7 @@ Untuk menghentikan: jalankan `stop.sh` atau `stop.bat`.
 |-------|------------|
 | Frontend | Angular 22, Tailwind CSS |
 | Backend | FastAPI, Python 3.12 |
-| Orchestration | Multi-agent pipeline (7 agents) via Pi Coding Agent harness |
+| Orchestration | Multi-agent pipeline (5 stages) via Pi Coding Agent harness |
 | Persistence | SQLite (claims), Redis (cache) |
 | LLM | Any OpenAI-compatible provider |
 | Data | Sectors v2 API |
