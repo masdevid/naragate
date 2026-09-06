@@ -6,6 +6,12 @@
 
 ---
 
+## Live Demo
+
+Try the web UI: **[https://naragate.ilkomers.com/](https://naragate.ilkomers.com/)**
+
+---
+
 ## Problem
 
 Indonesian retail investors consume market narratives daily — from WhatsApp groups, social media, YouTube videos, and news headlines. Claims like *"BBCA labanya jeblok"* (BBCA's profits collapsed), *"PE-nya masih murah"* (its price-to-earnings ratio is still cheap), or *"TLKM bakal meroket"* (TLKM will skyrocket) can spread faster than a reader can verify them.
