@@ -63,7 +63,7 @@ import { TPipe } from '../../pipes/t.pipe';
               <div class="results__meta">
                 <span class="results__meta-item">
                   <span class="results__meta-key">{{ 'results.ticker' | t }}</span>
-                  <span class="results__meta-value">{{ claimData().claim.ticker }}</span>
+                  <a class="results__meta-value" [href]="sectorsUrl(claimData().claim.ticker)" target="_blank" rel="noopener">{{ claimData().claim.ticker }}</a>
                 </span>
                 <span class="results__meta-item">
                   <span class="results__meta-key">{{ 'results.category' | t }}</span>
@@ -203,6 +203,12 @@ import { TPipe } from '../../pipes/t.pipe';
       font-size: var(--text-sm);
       color: var(--color-ink);
       text-transform: uppercase;
+      text-decoration: none;
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .results__meta-value:hover {
+      color: var(--color-accent);
+      text-decoration: underline;
     }
     .results__direction-icon { margin-right: var(--space-2xs); color: var(--color-accent); }
     @media (max-width: 640px) {
@@ -243,6 +249,10 @@ export class ResultsComponent implements OnInit {
   }
 
   goBack() { this.router.navigate(['/dashboard']); }
+
+  sectorsUrl(ticker: string): string {
+    return `https://sectors.app/idx/${ticker.toLowerCase()}`;
+  }
 
   retry() {
     const narrative = this.claimData()?.narrative;

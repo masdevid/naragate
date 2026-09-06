@@ -45,7 +45,7 @@ import { TPipe } from '../../pipes/t.pipe';
               @for (ticker of tickers(); track ticker) {
                 <div class="trend__ticker">
                   <div class="trend__ticker-head">
-                    <span class="trend__ticker-name">{{ ticker }}</span>
+                    <a class="trend__ticker-name" [href]="sectorsUrl(ticker)" target="_blank" rel="noopener">{{ ticker }}</a>
                     <span class="trend__ticker-latest">{{ latestScore(ticker) }}</span>
                   </div>
                   <svg class="trend__spark" [attr.viewBox]="sparkViewBox" preserveAspectRatio="none">
@@ -185,6 +185,12 @@ import { TPipe } from '../../pipes/t.pipe';
       font-size: var(--text-sm);
       color: var(--color-ink);
       font-weight: 600;
+      text-decoration: none;
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .trend__ticker-name:hover {
+      color: var(--color-accent);
+      text-decoration: underline;
     }
     .trend__ticker-latest {
       font-family: var(--font-mono);
@@ -227,6 +233,10 @@ export class DashboardTrendComponent {
     const s = this.summary();
     if (!s || !s.by_ticker) return [];
     return Object.keys(s.by_ticker).sort();
+  }
+
+  sectorsUrl(ticker: string): string {
+    return `https://sectors.app/idx/${ticker.toLowerCase()}`;
   }
 
   distPct(band: string): number {
