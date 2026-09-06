@@ -2,7 +2,10 @@ services:
   backend:
     build: ./backend
     ports:
-      - "${BACKEND_PORT:-5678}:5678"
+      # Bind to loopback only — the app is served publicly via Caddy
+      # (naragate.ilkomers.com -> localhost:4273 -> backend). Exposing this
+      # on 0.0.0.0 would let the public IP reach the backend directly.
+      - "127.0.0.1:${BACKEND_PORT:-5678}:5678"
     environment:
       - SECTORS_API_KEY=${SECTORS_API_KEY}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -23,14 +26,14 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "${FRONTEND_PORT:-4274}:4273"
+      - "127.0.0.1:${FRONTEND_PORT:-4274}:4273"
     depends_on:
       - backend
 
   pi-agent:
     build: ./pi-agent
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-https://dev.idh.am/v1}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b}
