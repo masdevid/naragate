@@ -1,0 +1,86 @@
+name: Deploy
+
+# Auto-deploy to the production machine's self-hosted runner whenever a
+# GitHub Release is published. Also allows manual re-deploys and deploy on
+# push to master (useful for quickly shipping a hotfix without a release).
+
+# The deploy operates on the existing live directory /home/ubuntu/naragate
+# (owned by the unit user "ubuntu"), which persists the untracked .env with
+# real secrets/endpoints and the running docker-compose deployment. We pull
+# latest code there rather than doing a fresh checkout, so .env, the backend
+# data volume, and the running containers are all preserved across releases.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "pi-agent/**"
+      - "docker-compose.yml"
+      - "skills/**"
+
+jobs:
+  deploy:
+    # Runs natively on the production host (github-runner user "ubuntu"),
+    # which has docker, the repo checkout at /home/ubuntu/naragate, and the
+    # untracked .env with real secrets & endpoints.
+    runs-on: [self-hosted, linux, x64]
+
+    steps:
+      - name: Verify live directory and .env exist
+        run: |
+          test -d /home/ubuntu/naragate || { echo "missing /home/ubuntu/naragate"; exit 1; }
+          test -f /home/ubuntu/naragate/docker-compose.yml && echo "docker-compose.yml present"
+          test -f /home/ubuntu/naragate/.env && echo ".env present (untracked — never created/overwritten)"
+          echo "  user: $(whoami)"
+          echo "  dir:  /home/ubuntu/naragate"
+
+      - name: Checkout latest code into live directory
+        run: |
+          cd /home/ubuntu/naragate
+          git fetch origin
+          git checkout master
+          git reset --hard origin/master
+          echo "Deploying: $(git rev-parse --short HEAD) $(git log -1 --pretty=%s)"
+
+      - name: Show the release tag being deployed
+        if: github.event_name == 'release'
+        run: |
+          echo "Release: ${{ github.event.release.tag_name }}"
+          echo "Name:    ${{ github.event.release.name }}"
+
+      - name: Validate compose configuration
+        run: |
+          cd /home/ubuntu/naragate
+          docker compose config --quiet && echo "compose config valid"
+
+      - name: Build and deploy
+        run: |
+          cd /home/ubuntu/naragate
+          docker compose up -d --build
+
+      - name: Wait for backend health
+        run: |
+          BACKEND_PORT="$(grep -E '^BACKEND_PORT=' /home/ubuntu/naragate/.env 2>/dev/null | cut -d= -f2 || true)"
+          BACKEND_PORT="${BACKEND_PORT:-5678}"
+          for i in $(seq 1 60); do
+            if curl -sf -m 2 "http://localhost:${BACKEND_PORT}/health" >/dev/null 2>&1; then
+              echo "Backend healthy on port ${BACKEND_PORT}"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not become healthy in time"
+          exit 1
+
+      - name: Show running services
+        run: |
+          cd /home/ubuntu/naragate
+          echo "--- git ---"
+          git log -1 --oneline
+          echo "--- services ---"
+          docker compose ps
