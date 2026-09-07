@@ -183,6 +183,8 @@ import { TPipe } from '../../pipes/t.pipe';
     .recent__delete:hover { color: var(--color-danger); }
     @media (max-width: 640px) {
       .recent { padding-left: var(--space-md); padding-right: var(--space-md); }
+      .recent__header { flex-wrap: wrap; }
+      .recent__bulk { flex-wrap: wrap; gap: var(--space-sm); }
     }
   `],
 })

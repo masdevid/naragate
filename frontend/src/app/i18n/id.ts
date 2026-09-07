@@ -4,6 +4,8 @@ export default {
   'nav.history': 'Riwayat',
   'nav.settings': 'Pengaturan',
   'nav.usage': 'Pemakaian',
+  'nav.menu': 'Buka menu',
+  'nav.close': 'Tutup menu',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -180,6 +182,7 @@ export default {
   'results.market_title': 'Bukti Pasar',
   'results.news_title': 'Korelasi Berita',
   'results.corp_actions_title': 'Aksi Korporasi',
+  'results.filings_title': 'Transaksi Insider',
 
   // Radar chart
   'radar.title': 'Dimensi Bukti',
@@ -194,6 +197,14 @@ export default {
   'news.corroboration.contradicts': 'Berita Bertentangan',
   'news.corroboration.neutral': 'Berita Netral',
   'news.corroboration.no_news': 'Tidak Ada Berita Terbaru',
+
+  // Insider filings
+  'filings.recent_title': 'Transaksi Terbaru',
+  'filings.bias.net_buying': 'Net Beli',
+  'filings.bias.net_selling': 'Net Jual',
+  'filings.bias.balanced': 'Seimbang',
+  'filings.type.buy': 'Beli',
+  'filings.type.sell': 'Jual',
 
   // Follow-up chat
   'chat.title': 'Tanya Lanjutan',

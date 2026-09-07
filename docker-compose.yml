@@ -42,6 +42,7 @@ services:
       - PI_SKILLS_DIR=/app/.pi/skills
     volumes:
       - ./.pi:/app/.pi
+      - ./skills:/app/skills
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

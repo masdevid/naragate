@@ -7,6 +7,7 @@ import { SkepticPanelComponent } from '../../components/skeptic-panel/skeptic-pa
 import { ResultsVerdictComponent } from '../../components/results-verdict/results-verdict.component';
 import { ResultsEvidenceComponent } from '../../components/results-evidence/results-evidence.component';
 import { ResultsNewsComponent } from '../../components/results-news/results-news.component';
+import { ResultsFilingsComponent } from '../../components/results-filings/results-filings.component';
 import { ResultsChatComponent } from '../../components/results-chat/results-chat.component';
 import { ResultsRadarComponent } from '../../components/results-radar/results-radar.component';
 import { TPipe } from '../../pipes/t.pipe';
@@ -19,6 +20,7 @@ import { TPipe } from '../../pipes/t.pipe';
     ResultsVerdictComponent,
     ResultsEvidenceComponent,
     ResultsNewsComponent,
+    ResultsFilingsComponent,
     ResultsChatComponent,
     ResultsRadarComponent,
     TPipe,
@@ -96,6 +98,8 @@ import { TPipe } from '../../pipes/t.pipe';
             <app-results-news
               [news]="news"
               [corpActions]="corpActions"/>
+            <app-results-filings
+              [filings]="filings"/>
           }
 
           @if (claimData().skeptic) {
@@ -281,6 +285,7 @@ export class ResultsComponent implements OnInit {
   market = () => this.claimData()?.evidence?.market ?? null;
   news = () => this.claimData()?.evidence?.news ?? null;
   corpActions = () => this.claimData()?.evidence?.corporate_actions ?? null;
+  filings = () => this.claimData()?.evidence?.filings ?? null;
 
   directionIcon(direction: string): string {
     return this.format.directionIcon(direction);

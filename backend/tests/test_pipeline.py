@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, patch
 from app.services.pipeline import run_pipeline, make_event, _active_narratives
 from app.models.schemas import (
     Claim, ClaimCategory, ClaimDirection, ClaimStatus,
-    PipelineEvent, ValuationEvidence, FundamentalEvidence, SkepticOutput, RealityGapScore, VerdictBand
+    PipelineEvent, ValuationEvidence, FundamentalEvidence, SkepticOutput, RealityGapScore, VerdictBand,
+    FilingsEvidence
 )
 
 
@@ -300,3 +301,63 @@ class TestRunPipeline:
                 pass
 
             assert "BBCA labanya jeblok" not in _active_narratives
+
+    @pytest.mark.asyncio
+    async def test_pipeline_streams_filings_evidence_for_insider_trading(self):
+        _active_narratives.clear()
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.INSIDER_TRADING,
+            assertion="insiders are selling",
+            direction=ClaimDirection.BELOW,
+            confidence=0.8,
+            claim_id="test-claim-id",
+        )
+        filings_evidence = FilingsEvidence(
+            claim_ticker="BBCA",
+            category="insider_trading",
+            filings=[
+                {"date": "2025-08-15", "insider_name": "Budi", "insider_title": "Direktur", "transaction_type": "sell", "shares": 50000, "price": 9500, "total_value": 475_000_000}
+            ],
+            summary="Terdapat 1 transaksi insider: 0 pembelian, 1 penjualan. Pola: net_selling.",
+            recent_bias="net_selling",
+            evidence_freshness="2024-01-01",
+            cache_hit=False,
+        )
+        skeptic = SkepticOutput(
+            claim_ticker="BBCA",
+            counter_arguments=[],
+            ambiguity_points=[],
+            missing_evidence=[],
+            skepticism_score=50.0,
+        )
+
+        with patch("app.services.pipeline.claims_store") as mock_store, \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract, \
+             patch("app.services.pipeline.get_evidence_for_claim", new_callable=AsyncMock) as mock_evidence_fn, \
+             patch("app.services.pipeline.run_skeptic", new_callable=AsyncMock) as mock_skeptic_fn:
+            mock_store.create_claim = AsyncMock(return_value="test-claim-id")
+            mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+            mock_extract.return_value = claim
+            mock_evidence_fn.return_value = {"insider_trading": filings_evidence, "filings": filings_evidence}
+            mock_skeptic_fn.return_value = skeptic
+
+            events = []
+            async for event in run_pipeline("BBCA insiders are dumping shares"):
+                events.append(event)
+
+            event_types = [e.event_type for e in events]
+            assert "pipeline_complete" in event_types
+
+            evidence_ready = next(e for e in events if e.event_type == "evidence_ready")
+            assert "filings" in evidence_ready.data
+            assert evidence_ready.data["filings"]["recent_bias"] == "net_selling"
+            assert "insider_trading" in evidence_ready.data
+
+            # Claim store must persist filings evidence
+            evidence_update = next(
+                c for c in mock_store.update_claim.call_args_list
+                if c.args[1].get("evidence") is not None
+            )
+            assert "filings" in evidence_update.args[1]["evidence"]

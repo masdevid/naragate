@@ -26,7 +26,7 @@ EXTRACTION_PROMPT = """You are a financial claim extractor for Indonesian market
 
 Extract a structured financial claim from the narrative. Return ONLY a JSON object with these fields:
 - ticker: Indonesian stock ticker (4 letters, e.g., BBCA, BBRI, BMRI, TLKM, UNVR)
-- category: one of "valuation", "fundamental", "market", "peer_comparison"
+- category: one of "valuation", "fundamental", "market", "peer_comparison", "insider_trading"
 - assertion: the core financial claim in Indonesian (Bahasa Indonesia)
 - assertion_en: the same claim translated to English
 - direction: one of "above", "below", "between", "neutral"
@@ -42,6 +42,17 @@ Indonesian term mappings:
 - "meroket" / "meledak" = strong growth
 - "labanya jeblok" = earnings deterioration
 - "untung besar" = strong profitability
+- "insider jual saham" = insider selling
+- "direktur beli" = director buying
+- "komisaris menjual" = commissioner selling
+- "pejabat memborong saham" = official accumulating shares
+
+Category guidance:
+- "valuation" = claims about PE, PB, PS, premium/discount vs peers
+- "fundamental" = claims about revenue, earnings, margins, growth
+- "market" = claims about price movement, volume, momentum
+- "peer_comparison" = claims comparing two stocks
+- "insider_trading" = claims about insider buying/selling, director transactions, commissioner activity
 
 Provide both assertion and assertion_en.
 Return ONLY valid JSON, no other text."""

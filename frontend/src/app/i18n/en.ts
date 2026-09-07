@@ -4,6 +4,8 @@ export default {
   'nav.history': 'History',
   'nav.settings': 'Settings',
   'nav.usage': 'Usage',
+  'nav.menu': 'Open menu',
+  'nav.close': 'Close menu',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -180,6 +182,7 @@ export default {
   'results.market_title': 'Market Evidence',
   'results.news_title': 'News Corroboration',
   'results.corp_actions_title': 'Corporate Actions',
+  'results.filings_title': 'Insider Filings',
 
   // Radar chart
   'radar.title': 'Evidence Dimensions',
@@ -194,6 +197,14 @@ export default {
   'news.corroboration.contradicts': 'News Contradicts Claim',
   'news.corroboration.neutral': 'News Neutral',
   'news.corroboration.no_news': 'No Recent News',
+
+  // Insider filings
+  'filings.recent_title': 'Recent Transactions',
+  'filings.bias.net_buying': 'Net Buying',
+  'filings.bias.net_selling': 'Net Selling',
+  'filings.bias.balanced': 'Balanced',
+  'filings.type.buy': 'Buy',
+  'filings.type.sell': 'Sell',
 
   // Follow-up chat
   'chat.title': 'Ask a Follow-Up',

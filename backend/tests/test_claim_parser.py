@@ -163,3 +163,30 @@ class TestExtractClaim:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("BBCA naik")
             assert claim.confidence == 0.5  # Fallback default
+
+    @pytest.mark.asyncio
+    async def test_classifies_insider_trading_en(self):
+        llm_response = '{"ticker": "BBCA", "category": "insider_trading", "assertion": "insiders are dumping shares", "assertion_en": "insiders are dumping shares", "direction": "below", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("BBCA insiders are dumping shares")
+            assert claim.category == ClaimCategory.INSIDER_TRADING
+            assert claim.ticker == "BBCA"
+            assert claim.ticker_valid is True
+
+    @pytest.mark.asyncio
+    async def test_classifies_insider_trading_id(self):
+        llm_response = '{"ticker": "BMRI", "category": "insider_trading", "assertion": "direktur baru beli saham", "assertion_en": "director just bought shares", "direction": "above", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("Direktur BMRI baru beli 50rb lembar")
+            assert claim.category == ClaimCategory.INSIDER_TRADING
+            assert claim.ticker == "BMRI"
+
+    @pytest.mark.asyncio
+    async def test_insider_trading_regression_other_categories(self):
+        llm_response = '{"ticker": "BBCA", "category": "valuation", "assertion": "PE mahal", "assertion_en": "PE is expensive", "direction": "above", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("PE BBCA mahal")
+            assert claim.category == ClaimCategory.VALUATION

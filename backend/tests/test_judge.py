@@ -2,7 +2,8 @@ import pytest
 from app.services.judge import EvidenceJudge, ScoreGenerator
 from app.models.schemas import (
     Claim, ClaimCategory, ClaimDirection, EvidenceAssessment, RealityGapScore,
-    ValuationEvidence, FundamentalEvidence, MarketEvidence, SkepticOutput, VerdictBand
+    ValuationEvidence, FundamentalEvidence, MarketEvidence, SkepticOutput, VerdictBand,
+    FilingsEvidence
 )
 
 
@@ -101,6 +102,79 @@ class TestEvidenceJudge:
 
         assert len(assessment.contradictions) > 0
         assert "growth premium" in assessment.contradictions[0].lower()
+
+    def test_detects_insider_net_selling_contradiction(self, judge):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.INSIDER_TRADING,
+            assertion="insiders are selling",
+            direction=ClaimDirection.BELOW,
+            confidence=0.8,
+        )
+        filings = FilingsEvidence(
+            claim_ticker="BBCA",
+            category="insider_trading",
+            filings=[],
+            summary="test",
+            recent_bias="net_selling",
+            evidence_freshness="2024-01-01",
+            cache_hit=False,
+        )
+        evidence = {"filings": filings}
+
+        assessment = judge.assess(claim, evidence)
+
+        assert len(assessment.contradictions) > 0
+        assert "net selling" in assessment.contradictions[0].lower()
+        assert "insider_bias_gap" in assessment.applicable_dimensions
+
+    def test_detects_insider_net_buying_contradiction(self, judge):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.INSIDER_TRADING,
+            assertion="insiders are selling",
+            direction=ClaimDirection.BELOW,
+            confidence=0.8,
+        )
+        filings = FilingsEvidence(
+            claim_ticker="BBCA",
+            category="insider_trading",
+            filings=[],
+            summary="test",
+            recent_bias="net_buying",
+            evidence_freshness="2024-01-01",
+            cache_hit=False,
+        )
+        evidence = {"filings": filings}
+
+        assessment = judge.assess(claim, evidence)
+
+        assert len(assessment.contradictions) > 0
+        assert "net buying" in assessment.contradictions[0].lower()
+
+    def test_insider_filings_included_in_evidence_summary(self, judge):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.INSIDER_TRADING,
+            assertion="insiders are selling",
+            direction=ClaimDirection.BELOW,
+            confidence=0.8,
+        )
+        filings = FilingsEvidence(
+            claim_ticker="BBCA",
+            category="insider_trading",
+            filings=[{"date": "2025-08-15", "insider_name": "Budi", "transaction_type": "sell"}],
+            summary="test",
+            recent_bias="net_selling",
+            evidence_freshness="2024-01-01",
+            cache_hit=False,
+        )
+        evidence = {"filings": filings}
+
+        assessment = judge.assess(claim, evidence)
+
+        assert "filings" in assessment.evidence_summary
+        assert assessment.evidence_summary["filings"]["recent_bias"] == "net_selling"
 
 
 class TestScoreGenerator:
@@ -231,3 +305,70 @@ class TestScoreGenerator:
 
         assert "market_momentum_gap" in result.dimensions
         assert result.dimensions["market_momentum_gap"] == 75.0  # 50 + 5*5
+
+    def test_insider_trading_uses_insider_bias_gap(self, generator):
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="insider_trading",
+            evidence_summary={
+                "filings": {"recent_bias": "net_buying"}
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["insider_bias_gap", "evidence_confidence", "market_momentum_gap"],
+        )
+
+        result = generator.compute(assessment)
+
+        assert "insider_bias_gap" in result.dimensions
+        assert result.dimensions["insider_bias_gap"] == 75.0
+
+    def test_insider_trading_net_selling_scores_low(self, generator):
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="insider_trading",
+            evidence_summary={
+                "filings": {"recent_bias": "net_selling"}
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["insider_bias_gap", "evidence_confidence", "market_momentum_gap"],
+        )
+
+        result = generator.compute(assessment)
+
+        assert result.dimensions["insider_bias_gap"] == 25.0
+
+    def test_insider_trading_balanced_scores_mid(self, generator):
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="insider_trading",
+            evidence_summary={
+                "filings": {"recent_bias": "balanced"}
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["insider_bias_gap", "evidence_confidence", "market_momentum_gap"],
+        )
+
+        result = generator.compute(assessment)
+
+        assert result.dimensions["insider_bias_gap"] == 50.0
+
+    def test_insider_trading_without_filings_scores_mid(self, generator):
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="insider_trading",
+            evidence_summary={},
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["insider_bias_gap", "evidence_confidence", "market_momentum_gap"],
+        )
+
+        result = generator.compute(assessment)
+
+        assert result.dimensions["insider_bias_gap"] == 50.0

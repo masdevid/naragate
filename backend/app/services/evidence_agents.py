@@ -10,6 +10,7 @@ from app.models.schemas import (
 )
 from app.services.news_agent import news_agent
 from app.services.corporate_actions_agent import corporate_actions_agent
+from app.services.filings_agent import filings_agent, FilingsAgent
 
 
 class ValuationAgent:
@@ -228,6 +229,7 @@ async def get_evidence_for_claim(claim: Claim) -> dict:
         "valuation": ValuationAgent(),
         "fundamental": FundamentalAgent(),
         "market": MarketAgent(),
+        "insider_trading": FilingsAgent(),
     }
 
     evidence = {}
@@ -246,6 +248,12 @@ async def get_evidence_for_claim(claim: Claim) -> dict:
     try:
         corp = await corporate_actions_agent.analyze(claim)
         evidence["corporate_actions"] = corp
+    except Exception:
+        pass
+
+    try:
+        filings = await filings_agent.analyze(claim)
+        evidence["filings"] = filings
     except Exception:
         pass
 

@@ -1,7 +1,7 @@
 export interface Claim {
   claim_id?: string;
   ticker: string;
-  category: 'valuation' | 'fundamental' | 'market' | 'peer_comparison';
+  category: 'valuation' | 'fundamental' | 'market' | 'peer_comparison' | 'insider_trading';
   assertion: string;
   assertion_en?: string;
   direction: 'above' | 'below' | 'between' | 'neutral';
@@ -43,6 +43,26 @@ export interface MarketEvidence {
     '30d'?: { price_change_pct: number; volume: number };
   };
   volatility: number;
+  evidence_freshness: string;
+  cache_hit: boolean;
+}
+
+export interface InsiderFiling {
+  date: string;
+  insider_name: string;
+  insider_title: string;
+  transaction_type: 'buy' | 'sell';
+  shares: number;
+  price: number;
+  total_value: number;
+}
+
+export interface FilingsEvidence {
+  claim_ticker: string;
+  category: 'insider_trading';
+  filings: InsiderFiling[];
+  summary: string;
+  recent_bias: 'net_buying' | 'net_selling' | 'balanced';
   evidence_freshness: string;
   cache_hit: boolean;
 }

@@ -9,7 +9,8 @@ def _noop_cache_hit_counter():
     """Prevent cache-hit accounting from writing to the real usage.json during tests."""
     with patch("app.services.evidence_agents.record_sectors_cache_hit"), \
          patch("app.services.news_agent.record_sectors_cache_hit"), \
-         patch("app.services.corporate_actions_agent.record_sectors_cache_hit"):
+         patch("app.services.corporate_actions_agent.record_sectors_cache_hit"), \
+         patch("app.services.filings_agent.record_sectors_cache_hit"):
         yield
 
 
@@ -336,6 +337,76 @@ class TestGetEvidenceForClaim:
 
             result = await get_evidence_for_claim(claim)
             assert "market" in result
+
+    @pytest.mark.asyncio
+    async def test_routes_insider_trading_to_filings_agent(self):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.INSIDER_TRADING,
+            assertion="insiders are selling",
+            direction=ClaimDirection.BELOW,
+            confidence=0.8,
+        )
+
+        with patch("app.services.evidence_agents.FilingsAgent") as MockAgent, \
+             patch("app.services.evidence_agents.filings_agent") as mock_filings_singleton:
+            mock_instance = AsyncMock()
+            mock_instance.analyze = AsyncMock(return_value="filings_evidence")
+            MockAgent.return_value = mock_instance
+            mock_filings_singleton.analyze = AsyncMock(return_value="filings_enrichment")
+
+            result = await get_evidence_for_claim(claim)
+
+            assert "insider_trading" in result
+            assert result["insider_trading"] == "filings_evidence"
+            mock_instance.analyze.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_filings_enrichment_runs_for_valuation(self):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.VALUATION,
+            assertion="PE is expensive",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.8,
+        )
+
+        with patch("app.services.evidence_agents.ValuationAgent") as MockAgent, \
+             patch("app.services.evidence_agents.filings_agent") as mock_filings:
+            mock_instance = AsyncMock()
+            mock_instance.analyze = AsyncMock(return_value="valuation_evidence")
+            MockAgent.return_value = mock_instance
+            mock_filings.analyze = AsyncMock(return_value="filings_evidence")
+
+            result = await get_evidence_for_claim(claim)
+
+            assert "valuation" in result
+            assert "filings" in result
+            assert result["filings"] == "filings_evidence"
+            mock_filings.analyze.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_filings_enrichment_runs_for_fundamental(self):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.FUNDAMENTAL,
+            assertion="profits declined",
+            direction=ClaimDirection.BELOW,
+            confidence=0.9,
+        )
+
+        with patch("app.services.evidence_agents.FundamentalAgent") as MockAgent, \
+             patch("app.services.evidence_agents.filings_agent") as mock_filings:
+            mock_instance = AsyncMock()
+            mock_instance.analyze = AsyncMock(return_value="fundamental_evidence")
+            MockAgent.return_value = mock_instance
+            mock_filings.analyze = AsyncMock(return_value="filings_evidence")
+
+            result = await get_evidence_for_claim(claim)
+
+            assert "fundamental" in result
+            assert "filings" in result
+            mock_filings.analyze.assert_called_once()
 
 
 class TestCacheStrategy:

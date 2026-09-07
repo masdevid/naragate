@@ -15,6 +15,7 @@ class EvidenceJudge:
         market = evidence.get("market")
         news = evidence.get("news")
         corporate_actions = evidence.get("corporate_actions")
+        filings = evidence.get("filings")
 
         if valuation:
             evidence_summary["valuation"] = valuation.model_dump(mode="json") if hasattr(valuation, "model_dump") else valuation
@@ -26,6 +27,8 @@ class EvidenceJudge:
             evidence_summary["news"] = news.model_dump(mode="json") if hasattr(news, "model_dump") else news
         if corporate_actions:
             evidence_summary["corporate_actions"] = corporate_actions.model_dump(mode="json") if hasattr(corporate_actions, "model_dump") else corporate_actions
+        if filings:
+            evidence_summary["filings"] = filings.model_dump(mode="json") if hasattr(filings, "model_dump") else filings
 
         if valuation and fundamental:
             v_metrics = valuation.metrics if hasattr(valuation, "metrics") else {}
@@ -52,6 +55,13 @@ class EvidenceJudge:
                         f"Price movement may be explained by corporate actions ({', '.join(relevant[:3])})"
                     )
 
+        if filings:
+            recent_bias = filings.recent_bias if hasattr(filings, "recent_bias") else "balanced"
+            if recent_bias == "net_selling":
+                contradictions.append("Insiders are net selling — bearish signal that may contradict bullish narratives")
+            elif recent_bias == "net_buying":
+                contradictions.append("Insiders are net buying — bullish signal that may contradict bearish narratives")
+
         applicable_dimensions = []
         cat = claim.category.value
         if cat == "valuation":
@@ -62,8 +72,10 @@ class EvidenceJudge:
             applicable_dimensions = ["market_momentum_gap", "evidence_confidence", "valuation_gap"]
         elif cat == "peer_comparison":
             applicable_dimensions = ["peer_relative_gap", "evidence_confidence", "valuation_gap"]
+        elif cat == "insider_trading":
+            applicable_dimensions = ["insider_bias_gap", "evidence_confidence", "market_momentum_gap"]
 
-        evidence_count = sum(1 for v in [valuation, fundamental, market, news, corporate_actions] if v is not None)
+        evidence_count = sum(1 for v in [valuation, fundamental, market, news, corporate_actions, filings] if v is not None)
         confidence = min(1.0, evidence_count / 3.0)
         if skeptic and skeptic.skepticism_score > 70:
             confidence *= 0.8
@@ -85,6 +97,7 @@ class ScoreGenerator:
         "fundamental": {"earnings_gap": 0.4, "evidence_confidence": 0.3, "market_momentum_gap": 0.3},
         "market": {"market_momentum_gap": 0.5, "evidence_confidence": 0.3, "valuation_gap": 0.2},
         "peer_comparison": {"peer_relative_gap": 0.5, "evidence_confidence": 0.3, "valuation_gap": 0.2},
+        "insider_trading": {"insider_bias_gap": 0.5, "evidence_confidence": 0.3, "market_momentum_gap": 0.2},
     }
 
     VERDICT_BANDS = [
@@ -142,6 +155,18 @@ class ScoreGenerator:
                     pb_premium = (valuation.get("premium_pct", {}) or {}).get("pb")
                     if pb_premium is not None:
                         dim_score = max(0, min(100, 50 - pb_premium / 2))
+                    else:
+                        dim_score = 50.0
+                else:
+                    dim_score = 50.0
+            elif dim == "insider_bias_gap":
+                filings = evidence_summary.get("filings")
+                if filings:
+                    recent_bias = filings.get("recent_bias", "balanced")
+                    if recent_bias == "net_buying":
+                        dim_score = 75.0
+                    elif recent_bias == "net_selling":
+                        dim_score = 25.0
                     else:
                         dim_score = 50.0
                 else:

@@ -7,6 +7,7 @@ class ClaimCategory(str, Enum):
     FUNDAMENTAL = "fundamental"
     MARKET = "market"
     PEER_COMPARISON = "peer_comparison"
+    INSIDER_TRADING = "insider_trading"
 
 class ClaimDirection(str, Enum):
     ABOVE = "above"
@@ -57,6 +58,7 @@ class EvidenceGraph(BaseModel):
     subsector_report: Optional[dict] = None
     daily_transaction: Optional[dict] = None
     news_corpus: Optional[dict] = None
+    filings: Optional[dict] = None
     fetched_at: Optional[str] = None
     cache_hit: bool = False
 
@@ -102,6 +104,15 @@ class CorporateActionEvidence(BaseModel):
     relevant_events: list[str]
     summary: str
     summary_en: Optional[str] = None
+    evidence_freshness: str
+    cache_hit: bool
+
+class FilingsEvidence(BaseModel):
+    claim_ticker: str
+    category: str
+    filings: list[dict]
+    summary: str
+    recent_bias: str
     evidence_freshness: str
     cache_hit: bool
 
