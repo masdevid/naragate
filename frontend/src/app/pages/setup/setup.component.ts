@@ -5,13 +5,14 @@ import { Subscription, Subject, debounceTime, switchMap, tap } from 'rxjs';
 import { SettingsService, RuntimeSettings, ValidateResult, SectorsValidateResult, SetupStatus } from '../../services/settings.service';
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
+import { MaskedKeyInputComponent } from '../../components/masked-key-input/masked-key-input.component';
 
 const DISMISS_KEY = 'naragate_setup_dismissed';
 
 @Component({
   selector: 'app-setup',
   standalone: true,
-  imports: [FormsModule, TPipe],
+  imports: [FormsModule, TPipe, MaskedKeyInputComponent],
   template: `
     <div class="setup">
       <div class="setup__inner">
@@ -108,9 +109,10 @@ const DISMISS_KEY = 'naragate_setup_dismissed';
             <div class="setup__field">
               <label class="setup__label">{{ 'settings.field_sectors_key' | t }}</label>
               <div class="setup__input-row">
-                <input [ngModel]="form().sectors_api_key" (ngModelChange)="onFieldChange('sectors_api_key', $event)"
-                  class="setup__input setup__input--flex" type="password"
-                  [placeholder]="'settings.sectors_key_placeholder' | t">
+                <app-masked-key-input [value]="form().sectors_api_key"
+                  (valueChange)="onFieldChange('sectors_api_key', $event)"
+                  inputClass="setup__input setup__input--flex"
+                  [placeholder]="'settings.sectors_key_placeholder' | t"/>
                 <button (click)="validateSectorsKey()" [disabled]="!form().sectors_api_key || sectorsValidating()"
                   class="setup__validate-btn">
                   {{ 'settings.sectors_validate' | t }}

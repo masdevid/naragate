@@ -5,11 +5,12 @@ import { Subscription, Subject, debounceTime, switchMap, tap } from 'rxjs';
 import { SettingsService, RuntimeSettings, ValidateResult, SectorsValidateResult } from '../../services/settings.service';
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
+import { MaskedKeyInputComponent } from '../../components/masked-key-input/masked-key-input.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, TPipe],
+  imports: [FormsModule, TPipe, MaskedKeyInputComponent],
   template: `
     <div class="settings">
       <div class="settings__inner">
@@ -159,9 +160,10 @@ import { TPipe } from '../../pipes/t.pipe';
           <div class="settings__field">
             <label class="settings__label">{{ 'settings.field_sectors_key' | t }}</label>
             <div class="settings__input-row">
-              <input [ngModel]="form().sectors_api_key" (ngModelChange)="onFieldChange('sectors_api_key', $event)"
-                class="settings__input settings__input--flex" type="password"
-                [placeholder]="'settings.sectors_key_placeholder' | t">
+              <app-masked-key-input [value]="form().sectors_api_key"
+                (valueChange)="onFieldChange('sectors_api_key', $event)"
+                inputClass="settings__input settings__input--flex"
+                [placeholder]="'settings.sectors_key_placeholder' | t"/>
               <button (click)="validateSectorsKey()" [disabled]="!form().sectors_api_key || sectorsValidating()"
                 class="settings__validate-btn">
                 {{ 'settings.sectors_validate' | t }}
