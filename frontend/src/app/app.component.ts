@@ -65,6 +65,7 @@ interface NavItem {
     <router-outlet></router-outlet>
     <footer class="disclaimer">
       <p class="disclaimer__text">{{ 'disclaimer.text' | t }}</p>
+      <p class="disclaimer__copy">&copy; 2026 {{ 'footer.copyright' | t }}</p>
     </footer>
   `,
   styles: [`
@@ -163,6 +164,14 @@ interface NavItem {
       color: var(--color-dim);
       line-height: 1.5;
       letter-spacing: 0.02em;
+    }
+    .disclaimer__copy {
+      margin-top: var(--space-xs);
+      font-family: var(--font-mono);
+      font-size: var(--text-2xs);
+      color: var(--color-dim);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
     @media (max-width: 768px) {
       .nav { padding: var(--space-sm) var(--space-md); }

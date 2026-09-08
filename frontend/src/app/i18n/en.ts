@@ -305,4 +305,7 @@ export default {
 
   // Disclaimer
   'disclaimer.text': 'Naragate is an information and analysis tool, not an investment recommendation. Nothing on this site constitutes financial advice. Always conduct your own research before making investment decisions.',
+
+  // Footer
+  'footer.copyright': 'masdevid (DepodTech)',
 } as Record<string, string>;

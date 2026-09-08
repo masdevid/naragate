@@ -5,6 +5,8 @@
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 [![Sectors Hackathon 2026 | Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
 
+*Initial project created: September 4, 2026.*
+
 ---
 
 ## Live Demo
@@ -176,16 +178,6 @@ Keys and models set in the web UI take precedence over `.env`. You can leave `.e
 | "No API key configured" in Settings | Paste your Sectors key in the setup wizard or Settings page and click **Validate**. |
 | Model list is empty | Make sure Ollama is running and you have pulled a model (`ollama pull gemma3:12b`). |
 
-## Quick Start (Bahasa Indonesia)
-
-1. **Pasang Docker Desktop** dari https://www.docker.com/products/docker-desktop/ dan buka aplikasinya.
-2. **Pasang Ollama** dari https://ollama.com, lalu jalankan `ollama pull gemma3:12b`.
-3. **Jalankan Naragate**: klik dua kali `start.sh` (macOS/Linux) atau `start.bat` (Windows).
-4. **Selesaikan wizard pengaturan**: pilih model LLM, lalu masukkan kunci API Sectors dari https://sectors.app.
-5. Tempel narasi pasar, klik **Analisis Narasi Ini**, dan lihat skor Reality Gap beserta bukti keuangannya.
-
-Untuk menghentikan: jalankan `stop.sh` atau `stop.bat`.
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -205,16 +197,6 @@ Naragate routes Sectors API requests through Redis caching to reduce repeated ca
 ## Disclaimer
 
 Naragate is an information and analysis tool, not an investment recommendation. Nothing in this application constitutes financial advice. Always conduct your own research before making investment decisions. Naragate does not place, execute, or automate buy or sell orders on any account.
-
-## Development
-
-```bash
-# Backend only
-cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
-
-# Frontend only
-cd frontend && npm install && ng serve
-```
 
 ## License
 
