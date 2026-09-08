@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription, Subject, debounceTime, switchMap, tap } from 'rxjs';
@@ -39,21 +39,33 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
               </button>
             </div>
             @if (clientIp()) {
-              <p class="settings__hint" style="margin-top: var(--space-sm)">
-                @if (isOwner()) {
-                  {{ 'settings.sectors_owner_info' | t:{ip: clientIp()!} }}
-                } @else {
-                  {{ 'settings.sectors_non_owner_info' | t:{owner: ownerIp() || '—', ips: authorizedIps().join(', ')} }}
+              <div class="settings__hint-row">
+                <p class="settings__hint settings__hint--inline">
+                  @if (isOwner()) {
+                    {{ 'settings.sectors_owner_info' | t:{ip: showIps() ? clientIp()! : maskedClientIp()} }}
+                  } @else {
+                    {{ 'settings.sectors_non_owner_info' | t:{owner: showIps() ? (ownerIp() || '—') : maskedOwnerIp() || '—', ips: showIps() ? authorizedIps().join(', ') : maskedAuthorizedIps().join(', ')} }}
+                  }
+                </p>
+                @if (!isOwner()) {
+                  <button type="button" class="settings__reveal-btn" (click)="showIps.set(!showIps())">
+                    {{ (showIps() ? 'settings.key_hide' : 'settings.key_show') | t }}
+                  </button>
                 }
-              </p>
+              </div>
             }
             @if (isOwner()) {
               <div class="settings__ips">
-                <p class="settings__label settings__ips-title">{{ 'settings.sectors_ips_title' | t }}</p>
+                <div class="settings__ips-header">
+                  <p class="settings__label settings__ips-title">{{ 'settings.sectors_ips_title' | t }}</p>
+                  <button type="button" class="settings__reveal-btn" (click)="showIps.set(!showIps())">
+                    {{ (showIps() ? 'settings.key_hide' : 'settings.key_show') | t }}
+                  </button>
+                </div>
                 <ul class="settings__ips-list">
                   @for (aip of authorizedIps(); track aip) {
                     <li class="settings__ip">
-                      <span>{{ aip }}</span>
+                      <span>{{ showIps() ? aip : maskIp(aip) }}</span>
                       @if (aip !== clientIp()) {
                         <button type="button" class="settings__ip-remove" (click)="removeSectorsIp(aip)">
                           {{ 'settings.sectors_remove_ip' | t }}
@@ -100,9 +112,20 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
           <div class="settings__field">
             <label class="settings__label">{{ 'settings.field_endpoint' | t }}</label>
             <div class="settings__input-row">
-              <input [ngModel]="form().llm_endpoint" (ngModelChange)="onEndpointChange($event)"
-                class="settings__input settings__input--flex"
-                [placeholder]="'settings.endpoint_placeholder' | t">
+              @if (showEndpoint()) {
+                <input [ngModel]="form().llm_endpoint" (ngModelChange)="onEndpointChange($event)"
+                  class="settings__input settings__input--flex"
+                  [placeholder]="'settings.endpoint_placeholder' | t">
+              } @else {
+                <div class="settings__masked-display"
+                  [class.settings__masked-display--empty]="!maskedEndpoint()">
+                  {{ maskedEndpoint() || ('settings.endpoint_placeholder' | t) }}
+                </div>
+              }
+              <button type="button" class="settings__reveal-btn"
+                (click)="showEndpoint.set(!showEndpoint())">
+                {{ (showEndpoint() ? 'settings.key_hide' : 'settings.key_show') | t }}
+              </button>
               <span class="settings__status" [class.settings__status--ok]="validation()?.ok === true"
                 [class.settings__status--err]="validation()?.ok === false"
                 [class.settings__status--loading]="validating()">
@@ -119,9 +142,23 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
 
           <div class="settings__field">
             <label class="settings__label">{{ 'settings.field_api_key' | t }}</label>
-            <input [ngModel]="form().llm_api_key" (ngModelChange)="onFieldChange('llm_api_key', $event)"
-              class="settings__input" type="password"
-              [placeholder]="'settings.api_key_placeholder' | t">
+            <div class="settings__masked-row">
+              @if (showLlmKey()) {
+                <input [ngModel]="form().llm_api_key" (ngModelChange)="onFieldChange('llm_api_key', $event)"
+                  class="settings__input"
+                  placeholder="••••••••••••••••••••••••"
+                  autocomplete="new-password">
+              } @else {
+                <div class="settings__masked-display"
+                  [class.settings__masked-display--empty]="!maskedLlmKey()">
+                  {{ maskedLlmKey() || ('settings.api_key_placeholder' | t) }}
+                </div>
+              }
+              <button type="button" class="settings__reveal-btn"
+                (click)="showLlmKey.set(!showLlmKey())">
+                {{ (showLlmKey() ? 'settings.key_hide' : 'settings.key_show') | t }}
+              </button>
+            </div>
           </div>
 
           <div class="settings__field">
@@ -269,6 +306,30 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
                 [placeholder]="'settings.model_placeholder' | t">
             }
           </div>
+
+          <div class="settings__field">
+            <label class="settings__label">{{ 'settings.field_follow_up' | t }}</label>
+            @if (availableModels().length) {
+              <div class="settings__models">
+                <button class="settings__model-btn settings__model-btn--sm"
+                  [class.settings__model-btn--active]="!form().follow_up_model"
+                  (click)="onFieldChange('follow_up_model', '')">
+                  {{ 'settings.model_placeholder' | t }}
+                </button>
+                @for (model of availableModels(); track model) {
+                  <button class="settings__model-btn settings__model-btn--sm"
+                    [class.settings__model-btn--active]="form().follow_up_model === model"
+                    (click)="onFieldChange('follow_up_model', model)">
+                    {{ model }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <input [ngModel]="form().follow_up_model" (ngModelChange)="onFieldChange('follow_up_model', $event)"
+                class="settings__input"
+                [placeholder]="'settings.model_placeholder' | t">
+            }
+          </div>
         </section>
       </div>
     </div>
@@ -368,6 +429,60 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
     }
     .settings__input--flex {
       flex: 1;
+    }
+    .settings__masked-display {
+      flex: 1;
+      min-width: 0;
+      background: var(--color-paper-2);
+      border: 1px solid var(--color-paper-3);
+      color: var(--color-ink);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      padding: var(--space-sm) var(--space-md);
+      letter-spacing: 0.12em;
+      display: flex;
+      align-items: center;
+      min-height: 2.6rem;
+    }
+    .settings__masked-display--empty {
+      color: var(--color-dim);
+      letter-spacing: 0.02em;
+    }
+    .settings__hint-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      margin-top: var(--space-sm);
+    }
+    .settings__hint--inline {
+      margin-bottom: 0;
+    }
+    .settings__ips-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+    .settings__ips-header .settings__ips-title { margin-top: 0; }
+    .settings__reveal-btn {
+      background: none;
+      border: none;
+      color: var(--color-dim);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      padding: var(--space-2xs) var(--space-sm);
+    }
+    .settings__reveal-btn:hover { color: var(--color-ink); }
+    .settings__masked-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
     }
     .settings__status {
       font-family: var(--font-mono);
@@ -517,6 +632,37 @@ export class SettingsComponent implements OnInit, OnDestroy {
   isOwner = signal(false);
   ipsMessage = signal('');
   ipsError = signal(false);
+  showEndpoint = signal(false);
+  showLlmKey = signal(false);
+  showIps = signal(false);
+
+  maskedEndpoint = computed(() => {
+    const v = this.form().llm_endpoint || '';
+    if (!v || v.length <= 8) return v;
+    try {
+      const url = new URL(v);
+      const host = url.hostname;
+      const maskedHost = host.length > 4 ? host.slice(0, 2) + '*'.repeat(host.length - 4) + host.slice(-2) : '****';
+      return url.protocol + '//' + maskedHost + (url.port ? ':' + url.port : '') + url.pathname;
+    } catch {
+      return v.slice(0, 2) + '*'.repeat(v.length - 4) + v.slice(-2);
+    }
+  });
+
+  maskedLlmKey = computed(() => {
+    const v = this.form().llm_api_key || '';
+    if (!v) return '';
+    return '•'.repeat(Math.min(v.length, 20));
+  });
+
+  maskIp = (ip: string): string => {
+    if (!ip) return '';
+    return ip.split('.').length === 4 ? '***.***.***.***' : '***';
+  };
+
+  maskedClientIp = computed(() => this.maskIp(this.clientIp() || ''));
+  maskedOwnerIp = computed(() => this.maskIp(this.ownerIp() || ''));
+  maskedAuthorizedIps = computed(() => this.authorizedIps().map(ip => this.maskIp(ip)));
 
   private endpoint$ = new Subject<string>();
   private pendingSave: RuntimeSettings | null = null;
