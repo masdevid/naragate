@@ -1,8 +1,9 @@
 import json
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from app.core.client_ip import resolve_client_ip, set_client_ip
 from app.core.setup import missing_setup_items
 from app.services.pipeline import run_pipeline
 
@@ -17,8 +18,13 @@ class BulkNarrativeInput(BaseModel):
     narratives: list[str]
 
 
+def _guard(request: Request):
+    set_client_ip(resolve_client_ip(request))
+
+
 @router.post("/evaluate")
-async def evaluate_narrative(input_data: NarrativeInput):
+async def evaluate_narrative(request: Request, input_data: NarrativeInput):
+    _guard(request)
     missing = missing_setup_items()
     if missing:
         raise HTTPException(
@@ -27,6 +33,7 @@ async def evaluate_narrative(input_data: NarrativeInput):
         )
 
     async def event_generator():
+        set_client_ip(resolve_client_ip(request))
         async for event in run_pipeline(input_data.narrative):
             yield {
                 "event": event.event_type,
@@ -37,7 +44,8 @@ async def evaluate_narrative(input_data: NarrativeInput):
 
 
 @router.post("/evaluate-bulk")
-async def evaluate_bulk(input_data: BulkNarrativeInput):
+async def evaluate_bulk(request: Request, input_data: BulkNarrativeInput):
+    _guard(request)
     missing = missing_setup_items()
     if missing:
         raise HTTPException(
@@ -50,6 +58,7 @@ async def evaluate_bulk(input_data: BulkNarrativeInput):
         raise HTTPException(status_code=422, detail="No narratives provided")
 
     async def event_generator():
+        set_client_ip(resolve_client_ip(request))
         yield {
             "event": "bulk_started",
             "data": json.dumps({"total": len(narratives)}),

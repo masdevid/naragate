@@ -6,10 +6,13 @@ export interface RuntimeSettings {
   llm_api_key?: string;
   llm_model?: string;
   sectors_api_key?: string;
+  sectors_key_bound_to?: string | null;
+  sectors_enforce_per_ip?: boolean;
+  client_ip?: string;
   claim_parser_model?: string;
   skeptic_model?: string;
   scorer_model?: string;
-  [key: string]: string | undefined;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface ValidateResult {

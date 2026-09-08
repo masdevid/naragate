@@ -39,7 +39,7 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b}
       - PI_PROVIDER=ollama
       - PI_API_KEY=ollama
-      - PI_SKILLS_DIR=/app/.pi/skills
+      - PI_SKILLS_DIR=/app/skills
     volumes:
       - ./.pi:/app/.pi
       - ./skills:/app/skills

@@ -40,6 +40,13 @@ _KNOWN_MODELS = [
 ]
 
 
+def _normalize_endpoint(endpoint: str) -> str:
+    endpoint = endpoint.rstrip("/")
+    if not endpoint.endswith("/v1"):
+        endpoint += "/v1"
+    return endpoint
+
+
 def ensure_pi_config() -> None:
     """Write the Pi CLI provider config so it can reach the Ollama endpoint.
 
@@ -60,7 +67,7 @@ def ensure_pi_config() -> None:
             PI_PROVIDER: {
                 "name": "Ollama (dev.idh.am)",
                 "api": "openai-completions",
-                "baseUrl": OLLAMA_BASE_URL,
+                "baseUrl": _normalize_endpoint(OLLAMA_BASE_URL),
                 "apiKey": PI_API_KEY,
                 "models": models,
             }

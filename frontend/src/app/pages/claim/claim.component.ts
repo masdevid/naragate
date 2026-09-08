@@ -243,8 +243,13 @@ export class ClaimComponent implements OnInit, OnDestroy {
         if (event.event_type === 'pipeline_complete') {
           this.terminalEvent = true;
         }
+        if (event.event_type === 'pipeline_duplicate') {
+          this.terminalEvent = true;
+          this.claimId.set(event.data?.claim_id || event.claim_id);
+          setTimeout(() => this.router.navigate(['/results', this.claimId()]), 1000);
+        }
         this.currentEvent.set(event);
-        this.claimId.set(event.claim_id);
+        this.claimId.set(event.data?.claim_id || event.claim_id);
         if (!this.completedSteps().includes(event.event_type) && event.event_type !== 'pipeline_started') {
           this.completedSteps.update(steps => [...steps, event.event_type]);
         }

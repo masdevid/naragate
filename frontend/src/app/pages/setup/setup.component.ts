@@ -5,14 +5,14 @@ import { Subscription, Subject, debounceTime, switchMap, tap } from 'rxjs';
 import { SettingsService, RuntimeSettings, ValidateResult, SectorsValidateResult, SetupStatus } from '../../services/settings.service';
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
-import { MaskedKeyInputComponent } from '../../components/masked-key-input/masked-key-input.component';
+import { SecretKeyInputComponent } from '../../components/masked-key-input/secret-key-input.component';
 
 const DISMISS_KEY = 'naragate_setup_dismissed';
 
 @Component({
   selector: 'app-setup',
   standalone: true,
-  imports: [FormsModule, TPipe, MaskedKeyInputComponent],
+  imports: [FormsModule, TPipe, SecretKeyInputComponent],
   template: `
     <div class="setup">
       <div class="setup__inner">
@@ -109,15 +109,20 @@ const DISMISS_KEY = 'naragate_setup_dismissed';
             <div class="setup__field">
               <label class="setup__label">{{ 'settings.field_sectors_key' | t }}</label>
               <div class="setup__input-row">
-                <app-masked-key-input [value]="form().sectors_api_key"
+                <app-secret-key-input [value]="form().sectors_api_key"
                   (valueChange)="onFieldChange('sectors_api_key', $event)"
                   inputClass="setup__input setup__input--flex"
                   [placeholder]="'settings.sectors_key_placeholder' | t"/>
-                <button (click)="validateSectorsKey()" [disabled]="!form().sectors_api_key || sectorsValidating()"
+                <button (click)="validateSectorsKey()" [disabled]="!sectorsKeyPresent() || sectorsValidating()"
                   class="setup__validate-btn">
                   {{ 'settings.sectors_validate' | t }}
                 </button>
               </div>
+              @if (form().client_ip) {
+                <p class="setup__hint" style="margin-top: var(--space-sm)">
+                  {{ 'settings.sectors_bound_ip' | t:{ip: form().client_ip!} }}
+                </p>
+              }
               <span class="setup__status" [class.setup__status--ok]="sectorsValidation()?.ok === true"
                 [class.setup__status--err]="sectorsValidation()?.ok === false"
                 [class.setup__status--loading]="sectorsValidating()">
@@ -411,6 +416,11 @@ export class SetupComponent implements OnInit, OnDestroy {
 
   onFieldChange(field: string, value: string) {
     this.form.update(f => ({ ...f, [field]: value || '' }));
+  }
+
+  sectorsKeyPresent(): boolean {
+    const k = this.form().sectors_api_key;
+    return !!(k && k.trim()) || !!this.form().sectors_key_bound_to;
   }
 
   validateSectorsKey() {
