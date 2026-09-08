@@ -6,30 +6,22 @@ This template **complements** the Naragate skills package. Each agent loads its 
 
 ## Topology
 
-```
-narrative (Indonesian text)
-        │
-        ▼
-┌─────────────────────┐
-│  pipeline-orchestrator │  coordinator (primary agent)
-└─────────────────────┘
-        │ 1. parse
-        ▼
-   claim-parser ──────────────► Claim JSON
-        │ 2. evidence (category agent + news)
-        ├── valuation-agent   (category = valuation)
-        ├── fundamental-agent (category = fundamental)
-        ├── market-agent      (category = market)
-        └── news-agent        (always) ──► Evidence JSON
-        │ 3. skeptic
-        ▼
-   skeptic-agent ─────────────► SkepticAnalysis JSON
-        │ 4. judge
-        ▼
-   evidence-judge ────────────► Assessment JSON
-        │ 5. score
-        ▼
-   score-generator ───────────► Reality Gap score + verdict
+```mermaid
+flowchart TD
+    N([narrative — Indonesian text]) --> O[pipeline-orchestrator<br/>coordinator]
+    O -->|1. parse| CP[claim-parser]
+    CP -->|Claim JSON| VA[valuation-agent]
+    CP -->|Claim JSON| FA[fundamental-agent]
+    CP -->|Claim JSON| MA[market-agent]
+    CP -->|Claim JSON, always| NA[news-agent]
+    VA -->|2. evidence| SK[skeptic-agent]
+    FA -->|2. evidence| SK
+    MA -->|2. evidence| SK
+    NA -->|2. evidence| SK
+    SK -->|3. SkepticAnalysis JSON| JJ[evidence-judge]
+    JJ -->|4. Assessment JSON| SG[score-generator]
+    SG -->|5. score| RG([Reality Gap score + verdict])
+    RG -.->|completed analysis| CH[chat<br/>follow-up Q&A]
 ```
 
 Support agents:
