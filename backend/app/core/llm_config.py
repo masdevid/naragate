@@ -9,6 +9,8 @@ _ROLE_MODEL_KEYS = {
     "claim_parser": "claim_parser_model",
     "skeptic": "skeptic_model",
     "scorer": "scorer_model",
+    "news": "news_model",
+    "chat": "chat_model",
 }
 
 
@@ -61,6 +63,10 @@ def llm_model(role: str = "default") -> str:
             model = settings.skeptic_model
         elif role == "scorer":
             model = settings.scorer_model
+        elif role == "news":
+            model = settings.news_model
+        elif role == "chat":
+            model = settings.chat_model
         else:
             model = settings.OLLAMA_MODEL
     return model

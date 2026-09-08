@@ -91,6 +91,73 @@ class TestSettingsResolution:
             assert sectors_api_key() == settings.SECTORS_API_KEY
 
 
+class TestSectorsKeyAllowlist:
+    """Shared key owned by the first binding IP; owner + allowlist may use it."""
+
+    @staticmethod
+    def _runtime(**overrides):
+        data = {
+            "sectors_api_key": "shared_key",
+            "sectors_key_owner_ip": "1.2.3.4",
+            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
+        }
+        data.update(overrides)
+        return data
+
+    def teardown_method(self):
+        from app.core.client_ip import set_client_ip
+        set_client_ip("")
+
+    def test_owner_ip_gets_key(self):
+        from app.core.client_ip import set_client_ip
+        set_client_ip("1.2.3.4")
+        with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
+            assert sectors_api_key() == "shared_key"
+
+    def test_authorized_ip_gets_key(self):
+        from app.core.client_ip import set_client_ip
+        set_client_ip("5.6.7.8")
+        with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
+            assert sectors_api_key() == "shared_key"
+
+    def test_unauthorized_ip_gets_no_key(self):
+        from app.core.client_ip import set_client_ip
+        set_client_ip("9.9.9.9")
+        with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
+            assert sectors_api_key() == ""
+
+    def test_dev_ip_bypasses_allowlist(self):
+        from app.core.client_ip import set_client_ip
+        set_client_ip("127.0.0.1")
+        with patch("app.core.sectors_config._load_runtime", return_value={"sectors_api_key": "k"}):
+            assert sectors_api_key() == "k"
+
+    def test_enforcement_off_shares_legacy_key(self):
+        from app.core.client_ip import set_client_ip
+        set_client_ip("9.9.9.9")
+        with patch("app.core.sectors_config._load_runtime",
+                   return_value={"sectors_api_key": "k", "sectors_enforce_per_ip": False}):
+            assert sectors_api_key() == "k"
+
+
+class TestSectorsKeyMigration:
+    def test_migrates_legacy_registry_to_allowlist(self):
+        from app.core.sectors_config import _migrate_runtime
+        data = _migrate_runtime({
+            "sectors_keys_by_ip": {"203.0.113.10": "k", "110.139.62.115": "k"},
+            "sectors_key_bound_to": "110.139.62.115",
+        })
+        assert data["sectors_key_owner_ip"] == "110.139.62.115"
+        assert set(data["sectors_authorized_ips"]) == {"203.0.113.10", "110.139.62.115"}
+        assert data["sectors_api_key"] == "k"
+        assert "sectors_keys_by_ip" not in data
+
+    def test_migration_owner_kept_in_allowlist(self):
+        from app.core.sectors_config import _migrate_runtime
+        data = _migrate_runtime({"sectors_key_owner_ip": "1.2.3.4", "sectors_api_key": "k"})
+        assert data["sectors_authorized_ips"] == ["1.2.3.4"]
+
+
 class TestSectorsClientKey:
     @pytest.mark.asyncio
     async def test_sends_resolved_key_per_request(self):
@@ -117,6 +184,27 @@ class TestLLMClientAuth:
              patch("app.core.llm_client.llm_api_key", return_value=""):
             await stream_chat("claim_parser", [{"role": "user", "content": "hi"}])
         assert FakeHTTPXClient.captured_headers == {}
+
+
+class TestPerAgentModelResolution:
+    def test_role_override_from_runtime(self):
+        from app.core.llm_config import llm_model
+        runtime = {
+            "llm_model": "global-m",
+            "news_model": "news-m",
+            "chat_model": "chat-m",
+        }
+        with patch("app.core.llm_config._load_runtime", return_value=runtime):
+            assert llm_model("news") == "news-m"
+            assert llm_model("chat") == "chat-m"
+            assert llm_model("claim_parser") == "global-m"
+
+    def test_role_falls_back_to_global(self):
+        from app.core.llm_config import llm_model
+        with patch("app.core.llm_config._load_runtime",
+                   return_value={"llm_model": "global-m"}):
+            assert llm_model("news") == "global-m"
+            assert llm_model("chat") == "global-m"
 
 
 class TestSetupGuard:

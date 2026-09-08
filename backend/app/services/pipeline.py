@@ -1,7 +1,7 @@
 import asyncio
 import time
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import AsyncGenerator, Optional
 
 from app.models.schemas import (
@@ -19,15 +19,16 @@ from app.core.sectors_client import sectors_client
 
 _active_narratives: dict[str, str] = {}
 
-_ORPHAN_THRESHOLD = timedelta(minutes=10)
-
 
 async def _find_inflight_claim(narrative: str) -> Optional[dict]:
     """Return an in-flight claim for the same narrative, or None.
 
-    Checks the in-process registry first, then Redis for non-terminal
-    claims with the same narrative. A stale non-terminal claim (orphaned by
-    a crash or restart) is marked failed so a fresh run can proceed.
+    Only a claim actively running in THIS process is treated as in-flight
+    (guarded by the in-process registry). A non-terminal claim found in
+    storage but absent from the registry was orphaned — a client disconnected
+    mid-stream, a worker restarted, or the run crashed. It is marked failed so
+    a fresh run can proceed instead of bouncing the user back to a claim page
+    that will never finish.
     """
     active_id = _active_narratives.get(narrative)
     if active_id:
@@ -35,18 +36,6 @@ async def _find_inflight_claim(narrative: str) -> Optional[dict]:
 
     existing = await claims_store.find_active_by_narrative(narrative)
     if existing:
-        updated = existing.get("updated_at")
-        updated_dt = datetime.min
-        if isinstance(updated, str):
-            try:
-                updated_dt = datetime.fromisoformat(updated)
-            except ValueError:
-                updated_dt = datetime.min
-        if datetime.now() - updated_dt < _ORPHAN_THRESHOLD:
-            return {
-                "claim_id": existing["claim_id"],
-                "status": existing.get("status", ClaimStatus.PENDING.value),
-            }
         await claims_store.update_claim(existing["claim_id"], {
             "status": ClaimStatus.FAILED.value,
             "error": "Pipeline was interrupted; superseded by a new run.",
@@ -241,5 +230,18 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
         })
         yield make_event("pipeline_error", claim_id, {"error": message})
         record_pipeline(completed=False)
+    except (asyncio.CancelledError, GeneratorExit):
+        # Client disconnected mid-stream (tab closed, SSE dropped) or the task
+        # was cancelled. This bypasses `except Exception`, so without this the
+        # claim would sit at a non-terminal status and look "in progress"
+        # forever. Mark it failed so a retry can run a fresh analysis.
+        try:
+            await claims_store.update_claim(claim_id, {
+                "status": ClaimStatus.FAILED.value,
+                "error": "Analysis was interrupted before completion.",
+            })
+        except BaseException:
+            pass
+        raise
     finally:
         _active_narratives.pop(narrative, None)

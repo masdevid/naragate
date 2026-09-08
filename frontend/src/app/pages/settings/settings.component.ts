@@ -22,6 +22,76 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
           <div class="settings__toast">{{ 'settings.auto_saved' | t }}</div>
         }
 
+        <!-- Sectors API -->
+        <section class="settings__section">
+          <h2 class="settings__heading">{{ 'settings.section_sectors' | t }}</h2>
+
+          <div class="settings__field">
+            <label class="settings__label">{{ 'settings.field_sectors_key' | t }}</label>
+            <div class="settings__input-row">
+              <app-secret-key-input [value]="form().sectors_api_key"
+                (valueChange)="onFieldChange('sectors_api_key', $event)"
+                inputClass="settings__input settings__input--flex"
+                [placeholder]="'settings.sectors_key_placeholder' | t"/>
+              <button (click)="validateSectorsKey()" [disabled]="!sectorsKeyPresent() || sectorsValidating()"
+                class="settings__validate-btn">
+                {{ 'settings.sectors_validate' | t }}
+              </button>
+            </div>
+            @if (clientIp()) {
+              <p class="settings__hint" style="margin-top: var(--space-sm)">
+                @if (isOwner()) {
+                  {{ 'settings.sectors_owner_info' | t:{ip: clientIp()!} }}
+                } @else {
+                  {{ 'settings.sectors_non_owner_info' | t:{owner: ownerIp() || '—', ips: authorizedIps().join(', ')} }}
+                }
+              </p>
+            }
+            @if (isOwner()) {
+              <div class="settings__ips">
+                <p class="settings__label settings__ips-title">{{ 'settings.sectors_ips_title' | t }}</p>
+                <ul class="settings__ips-list">
+                  @for (aip of authorizedIps(); track aip) {
+                    <li class="settings__ip">
+                      <span>{{ aip }}</span>
+                      @if (aip !== clientIp()) {
+                        <button type="button" class="settings__ip-remove" (click)="removeSectorsIp(aip)">
+                          {{ 'settings.sectors_remove_ip' | t }}
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+                <div class="settings__ips-add">
+                  <input #ipInput class="settings__input settings__ips-input"
+                    [placeholder]="'settings.sectors_add_ip_placeholder' | t"
+                    (keydown.enter)="addSectorsIp(ipInput); ipInput.value = ''"/>
+                  <button type="button" class="settings__ip-add-btn"
+                    (click)="addSectorsIp(ipInput); ipInput.value = ''">
+                    {{ 'settings.sectors_add_ip' | t }}
+                  </button>
+                </div>
+                @if (ipsMessage()) {
+                  <span class="settings__status" [class.settings__status--err]="ipsError()">
+                    {{ ipsMessage() }}
+                  </span>
+                }
+              </div>
+            }
+            <span class="settings__status" [class.settings__status--ok]="sectorsValidation()?.ok === true"
+              [class.settings__status--err]="sectorsValidation()?.ok === false"
+              [class.settings__status--loading]="sectorsValidating()">
+              @if (sectorsValidating()) {
+                {{ 'settings.validating' | t }}
+              } @else if (sectorsValidation()?.ok === true) {
+                {{ 'settings.sectors_valid_ok' | t }}
+              } @else if (sectorsValidation()?.ok === false) {
+                {{ 'settings.sectors_valid_error' | t }}
+              }
+            </span>
+          </div>
+        </section>
+
         <!-- LLM Provider -->
         <section class="settings__section">
           <h2 class="settings__heading">{{ 'settings.section_llm' | t }}</h2>
@@ -151,40 +221,53 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
                 [placeholder]="'settings.model_placeholder' | t">
             }
           </div>
-        </section>
-
-        <!-- Sectors API -->
-        <section class="settings__section">
-          <h2 class="settings__heading">{{ 'settings.section_sectors' | t }}</h2>
 
           <div class="settings__field">
-            <label class="settings__label">{{ 'settings.field_sectors_key' | t }}</label>
-            <div class="settings__input-row">
-              <app-secret-key-input [value]="form().sectors_api_key"
-                (valueChange)="onFieldChange('sectors_api_key', $event)"
-                inputClass="settings__input settings__input--flex"
-                [placeholder]="'settings.sectors_key_placeholder' | t"/>
-              <button (click)="validateSectorsKey()" [disabled]="!sectorsKeyPresent() || sectorsValidating()"
-                class="settings__validate-btn">
-                {{ 'settings.sectors_validate' | t }}
-              </button>
-            </div>
-            @if (clientIp()) {
-              <p class="settings__hint" style="margin-top: var(--space-sm)">
-                {{ 'settings.sectors_bound_ip' | t:{ip: clientIp()!} }}
-              </p>
+            <label class="settings__label">{{ 'settings.field_news' | t }}</label>
+            @if (availableModels().length) {
+              <div class="settings__models">
+                <button class="settings__model-btn settings__model-btn--sm"
+                  [class.settings__model-btn--active]="!form().news_model"
+                  (click)="onFieldChange('news_model', '')">
+                  {{ 'settings.model_placeholder' | t }}
+                </button>
+                @for (model of availableModels(); track model) {
+                  <button class="settings__model-btn settings__model-btn--sm"
+                    [class.settings__model-btn--active]="form().news_model === model"
+                    (click)="onFieldChange('news_model', model)">
+                    {{ model }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <input [ngModel]="form().news_model" (ngModelChange)="onFieldChange('news_model', $event)"
+                class="settings__input"
+                [placeholder]="'settings.model_placeholder' | t">
             }
-            <span class="settings__status" [class.settings__status--ok]="sectorsValidation()?.ok === true"
-              [class.settings__status--err]="sectorsValidation()?.ok === false"
-              [class.settings__status--loading]="sectorsValidating()">
-              @if (sectorsValidating()) {
-                {{ 'settings.validating' | t }}
-              } @else if (sectorsValidation()?.ok === true) {
-                {{ 'settings.sectors_valid_ok' | t }}
-              } @else if (sectorsValidation()?.ok === false) {
-                {{ 'settings.sectors_valid_error' | t }}
-              }
-            </span>
+          </div>
+
+          <div class="settings__field">
+            <label class="settings__label">{{ 'settings.field_chat' | t }}</label>
+            @if (availableModels().length) {
+              <div class="settings__models">
+                <button class="settings__model-btn settings__model-btn--sm"
+                  [class.settings__model-btn--active]="!form().chat_model"
+                  (click)="onFieldChange('chat_model', '')">
+                  {{ 'settings.model_placeholder' | t }}
+                </button>
+                @for (model of availableModels(); track model) {
+                  <button class="settings__model-btn settings__model-btn--sm"
+                    [class.settings__model-btn--active]="form().chat_model === model"
+                    (click)="onFieldChange('chat_model', model)">
+                    {{ model }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <input [ngModel]="form().chat_model" (ngModelChange)="onFieldChange('chat_model', $event)"
+                class="settings__input"
+                [placeholder]="'settings.model_placeholder' | t">
+            }
           </div>
         </section>
       </div>
@@ -350,10 +433,69 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
       opacity: 0.3;
       cursor: not-allowed;
     }
+    .settings__ips {
+      margin-top: var(--space-md);
+      padding-left: var(--space-sm);
+      border-left: 1px solid var(--color-rule);
+    }
+    .settings__ips-title {
+      margin-top: 0;
+    }
+    .settings__ips-list {
+      list-style: none;
+      margin: 0 0 var(--space-sm) 0;
+      padding: 0;
+    }
+    .settings__ip {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--color-ink);
+      padding: var(--space-3xs) 0;
+    }
+    .settings__ip-remove {
+      background: none;
+      border: none;
+      color: var(--color-danger);
+      font-family: var(--font-mono);
+      font-size: var(--text-2xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      padding: 0;
+    }
+    .settings__ips-add {
+      display: flex;
+      gap: var(--space-2xs);
+      align-items: center;
+    }
+    .settings__ips-input {
+      flex: 1;
+    }
+    .settings__ip-add-btn {
+      background: none;
+      border: 1px solid var(--color-accent);
+      color: var(--color-accent);
+      font-family: var(--font-mono);
+      font-size: var(--text-2xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: var(--space-3xs) var(--space-xs);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+    }
+    .settings__ip-add-btn:hover {
+      background: var(--color-accent);
+      color: var(--color-paper);
+    }
 
     @media (max-width: 640px) {
       .settings { padding: var(--space-lg) var(--space-md); }
       .settings__input-row { flex-direction: column; align-items: stretch; }
+      .settings__ips-add { flex-direction: column; align-items: stretch; }
     }
   `],
 })
@@ -370,6 +512,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
   sectorsValidating = signal(false);
   sectorsValidation = signal<SectorsValidateResult | null>(null);
   clientIp = signal<string | null>(null);
+  ownerIp = signal<string | null>(null);
+  authorizedIps = signal<string[]>([]);
+  isOwner = signal(false);
+  ipsMessage = signal('');
+  ipsError = signal(false);
 
   private endpoint$ = new Subject<string>();
   private pendingSave: RuntimeSettings | null = null;
@@ -383,6 +530,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
         next: (data) => {
           this.form.set(data);
           this.clientIp.set(data.client_ip || null);
+          this.ownerIp.set(data.sectors_key_owner_ip || null);
+          this.authorizedIps.set(data.sectors_authorized_ips || []);
+          this.isOwner.set(!!data.sectors_key_is_owner);
           if (data.llm_endpoint) {
             this.validateEndpoint(data.llm_endpoint, data.llm_api_key);
           }
@@ -497,6 +647,36 @@ export class SettingsComponent implements OnInit, OnDestroy {
       error: () => {
         this.sectorsValidation.set({ ok: false, error: 'Request failed' });
         this.sectorsValidating.set(false);
+      },
+    });
+  }
+
+  addSectorsIp(input: HTMLInputElement) {
+    const ip = (input.value || '').trim();
+    if (!ip) return;
+    this.settingsService.updateSectorsIp(ip, 'add').subscribe({
+      next: (data) => {
+        this.authorizedIps.set(data.sectors_authorized_ips || []);
+        this.ipsMessage.set(this.i18n.t('settings.sectors_ip_added'));
+        this.ipsError.set(false);
+      },
+      error: () => {
+        this.ipsMessage.set(this.i18n.t('settings.sectors_ip_error'));
+        this.ipsError.set(true);
+      },
+    });
+  }
+
+  removeSectorsIp(ip: string) {
+    this.settingsService.updateSectorsIp(ip, 'remove').subscribe({
+      next: (data) => {
+        this.authorizedIps.set(data.sectors_authorized_ips || []);
+        this.ipsMessage.set(this.i18n.t('settings.sectors_ip_removed'));
+        this.ipsError.set(false);
+      },
+      error: () => {
+        this.ipsMessage.set(this.i18n.t('settings.sectors_ip_error'));
+        this.ipsError.set(true);
       },
     });
   }

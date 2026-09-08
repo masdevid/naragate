@@ -8,6 +8,7 @@ services:
       - "127.0.0.1:${BACKEND_PORT:-5678}:5678"
     environment:
       - SECTORS_API_KEY=${SECTORS_API_KEY}
+      - SECTORS_DEV_IPS=${SECTORS_DEV_IPS:-127.0.0.1,172.21.0.1}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-}
       - REDIS_URL=redis://redis:6379

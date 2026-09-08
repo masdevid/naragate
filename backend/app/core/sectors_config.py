@@ -20,31 +20,93 @@ def _env_key() -> str:
     return settings.SECTORS_API_KEY or ""
 
 
+def dev_ips() -> list[str]:
+    """IPs that are always authorized to use the shared Sectors key.
+
+    Development/test convenience: a known IP (e.g. "127.0.0.1" or the Docker
+    bridge gateway "172.21.0.1" seen when hitting the app locally) bypasses the
+    allowlist so local runs and e2e tests never trip over owner gating.
+    Configure via SECTORS_DEV_IPS (comma-separated).
+    """
+    raw = settings.SECTORS_DEV_IPS
+    return [ip.strip() for ip in raw.split(",") if ip and ip.strip()]
+
+
+def _migrate_runtime(data: dict) -> dict:
+    """Fold the legacy per-IP registry into the shared-key allowlist model.
+
+    Legacy identity:
+        sectors_keys_by_ip: {ip: key, ...}   (each IP bound its own key copy)
+        sectors_key_bound_to: owner ip marker (first ip that bound a key)
+    New identity:
+        sectors_api_key            one shared key (owner's copy wins)
+        sectors_key_owner_ip       the IP that first bound the key
+        sectors_authorized_ips     the IPs allowed to use the shared key
+
+    The first IP to bind acts as the owner; it is the only session that can add
+    further IPs. Migration is idempotent; the legacy registry is retired from
+    the loaded copy on each read (the file is cleaned on the next save).
+    """
+    registry = data.get("sectors_keys_by_ip")
+    if registry:
+        ip_list = list(registry.keys())
+        owner = (
+            data.get("sectors_key_owner_ip")
+            or data.get("sectors_key_bound_to")
+            or (ip_list[0] if ip_list else None)
+        )
+        if owner and owner in registry:
+            data.setdefault("sectors_api_key", registry[owner])
+        elif owner:
+            data.setdefault("sectors_api_key", "")
+        authorized = data.get("sectors_authorized_ips") or []
+        for ip in ip_list:
+            if ip not in authorized:
+                authorized.append(ip)
+        data["sectors_authorized_ips"] = authorized
+        data["sectors_key_owner_ip"] = owner
+        data.pop("sectors_keys_by_ip", None)
+    elif data.get("sectors_key_owner_ip"):
+        owner = data["sectors_key_owner_ip"]
+        authorized = data.get("sectors_authorized_ips") or []
+        if owner not in authorized:
+            authorized.append(owner)
+        data["sectors_authorized_ips"] = authorized
+    return data
+
+
+def sectors_ip_authorized(data: dict, ip: str) -> bool:
+    """Whether an IP may use the shared Sectors key.
+
+    Authorized when: no request context (server-side calls), the IP is a dev IP,
+    per-IP enforcement is OFF, the IP is the owner, or it is on the allowlist
+    that the owner maintains.
+    """
+    if not ip:
+        return True
+    if ip in dev_ips():
+        return True
+    if not data.get("sectors_enforce_per_ip", True):
+        return True
+    if data.get("sectors_key_owner_ip") == ip:
+        return True
+    return ip in (data.get("sectors_authorized_ips") or [])
+
+
+def sectors_key_for_ip(data: dict, ip: str) -> str:
+    """The shared Sectors key for an IP ('' when the IP is not authorized)."""
+    if sectors_ip_authorized(data, ip):
+        return data.get("sectors_api_key") or _env_key()
+    return ""
+
+
 def sectors_api_key() -> str:
     """Resolve the Sectors API key for the current request's client IP.
 
-    Resolution (see CONTEXT.md: Evidence Graph and Credit rules):
-    1. A per-IP registry entry (`sectors_keys_by_ip`) for the current client IP
-       wins — each IP may save its own key via Settings.
-    2. When enforcement is ON (`sectors_enforce_per_ip`, default), an IP with no
-       registry entry gets NO key, so it cannot spend anyone else's credits; it
-       must add its own in Settings. The legacy/env key is NOT shared.
-    3. Fallback to the legacy global key / startup env key only when there is no
-       request context (e.g. health probes) or enforcement is OFF.
+    One shared key owned by the first IP that bound it (see CONTEXT.md: Credit).
+    The owner can authorize more IPs via Settings. Dev IPs bypass the allowlist.
+    A request with no IP context (health probes, server-side calls) falls back to
+    the runtime/startup key.
     """
-    runtime = _load_runtime()
-    ip = get_client_ip()
-    registry = runtime.get("sectors_keys_by_ip") or {}
-    enforce = runtime.get("sectors_enforce_per_ip", True)
-
-    if ip:
-        own = registry.get(ip)
-        if own:
-            return own
-        if enforce:
-            return ""
-        legacy = runtime.get("sectors_api_key")
-        return legacy or _env_key()
-
-    legacy = runtime.get("sectors_api_key")
-    return legacy or _env_key()
+    data = _migrate_runtime(_load_runtime())
+    return sectors_key_for_ip(data, get_client_ip())

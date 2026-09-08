@@ -38,12 +38,10 @@ class EvidenceJudge:
             if pe and pe > 30 and earnings_trend == "improving":
                 contradictions.append("High PE but improving earnings suggests growth premium, not overvaluation")
 
-        if news:
+        if news and claim.category.value != "valuation":
             corroboration = news.corroboration if hasattr(news, "corroboration") else "neutral"
             if corroboration == "contradicts":
                 contradictions.append("Recent news contradicts the claim's direction")
-            elif corroboration == "supports":
-                contradictions.append("Recent news supports the claim's direction")
 
         if corporate_actions:
             relevant = corporate_actions.relevant_events if hasattr(corporate_actions, "relevant_events") else []
@@ -75,14 +73,20 @@ class EvidenceJudge:
         elif cat == "insider_trading":
             applicable_dimensions = ["insider_bias_gap", "evidence_confidence", "market_momentum_gap"]
 
-        evidence_count = sum(1 for v in [valuation, fundamental, market, news, corporate_actions, filings] if v is not None)
-        confidence = min(1.0, evidence_count / 3.0)
+        if cat == "valuation":
+            # Valuation claims are judged strictly on intrinsic/relative ratios.
+            # Market flow and news sentiment must NOT dilute evidence confidence.
+            evidence_count = sum(1 for v in [valuation, fundamental] if v is not None)
+        else:
+            evidence_count = sum(1 for v in [valuation, fundamental, market, news, corporate_actions, filings] if v is not None)
+        confidence = min(1.0, evidence_count / (2.0 if cat == "valuation" else 3.0))
         if skeptic and skeptic.skepticism_score > 70:
             confidence *= 0.8
 
         return EvidenceAssessment(
             claim_ticker=claim.ticker,
             claim_category=cat,
+            direction=claim.direction.value,
             evidence_summary=evidence_summary,
             contradictions=contradictions,
             skeptic_challenges=[c.get("point", "") for c in (skeptic.counter_arguments if skeptic else [])],
@@ -107,9 +111,74 @@ class ScoreGenerator:
         (100, VerdictBand.STRONGLY_SUPPORTED),
     ]
 
+    BAND_RANK = {
+        VerdictBand.CONTRADICTED: 0,
+        VerdictBand.MIXED: 1,
+        VerdictBand.SUPPORTED: 2,
+        VerdictBand.STRONGLY_SUPPORTED: 3,
+    }
+
+    def _band_for_score(self, total_score: float) -> VerdictBand:
+        verdict = VerdictBand.CONTRADICTED
+        for threshold, band in self.VERDICT_BANDS:
+            if total_score <= threshold:
+                verdict = band
+                break
+        return verdict
+
+    @staticmethod
+    def _direction_factor(direction: str) -> float:
+        # "below" claims are the mirror image: a positive metric contradicts them.
+        return -1.0 if direction == "below" else 1.0
+
+    @staticmethod
+    def _premium_support(premium: float, direction: str) -> float:
+        # Alignment between the premium's sign and the claim's direction.
+        if direction == "below":
+            signal = -premium
+        elif direction in ("between", "neutral"):
+            signal = -abs(premium)
+        else:  # above
+            signal = premium
+        return max(0.0, min(100.0, 50.0 + signal / 2.0))
+
+    def _agreement_direction(self, evidence_summary: dict) -> Optional[str]:
+        """If every available valuation ratio (PE, PB, PS, forward PE) agrees
+        strictly on direction, return that direction; otherwise None."""
+        valuation = evidence_summary.get("valuation") or {}
+        premiums = list((valuation.get("premium_pct") or {}).values())
+        metrics = valuation.get("metrics") or {}
+        forward_pe = metrics.get("forward_pe")
+        median_pe = (valuation.get("subsector_median") or {}).get("pe")
+        if forward_pe and median_pe:
+            premiums.append((forward_pe - median_pe) / median_pe * 100.0)
+        ratios = [p for p in premiums if isinstance(p, (int, float))]
+        if len(ratios) < 2:
+            return None
+        signs = {">" if r > 0 else "<" if r < 0 else "=" for r in ratios}
+        if len(signs) != 1 or "=" in signs:
+            return None
+        return "above" if ">" in signs else "below"
+
+    def _quality_premium_note(self, evidence_summary: dict, direction: str) -> str:
+        """Contextualize a rich valuation with banking health — never a score penalty."""
+        valuation = evidence_summary.get("valuation") or {}
+        health = valuation.get("health") or {}
+        roe = health.get("roe")
+        premium_pct = valuation.get("premium_pct") or {}
+        rich = (premium_pct.get("pe") or 0) > 0 or (premium_pct.get("pb") or 0) > 0
+        if direction == "above" and rich and isinstance(roe, (int, float)) and roe >= 15:
+            return (
+                f"Premium sebagian merefleksikan kualitas emiten (ROE {roe:.1f}%), "
+                "bukan murni overvaluasi. / Part of the premium reflects a quality premium "
+                f"(ROE {roe:.1f}%), not pure overvaluation."
+            )
+        return ""
+
     def compute(self, assessment: EvidenceAssessment, skeptic_score: float = 50.0) -> RealityGapScore:
         cat = assessment.claim_category
         weights = self.DIMENSION_WEIGHTS.get(cat, self.DIMENSION_WEIGHTS["valuation"])
+        direction = getattr(assessment, "direction", "neutral") or "neutral"
 
         dimensions = {}
         total_score = 0.0
@@ -123,20 +192,17 @@ class ScoreGenerator:
                 valuation = evidence_summary.get("valuation")
                 if valuation:
                     pe_premium = (valuation.get("premium_pct", {}) or {}).get("pe")
-                    if pe_premium is not None:
-                        dim_score = max(0, min(100, 50 - pe_premium / 2))
-                    else:
-                        dim_score = 50.0
+                    dim_score = self._premium_support(pe_premium, direction) if pe_premium is not None else 50.0
                 else:
                     dim_score = 50.0
             elif dim == "earnings_gap":
                 fundamental = evidence_summary.get("fundamental")
                 if fundamental:
-                    trend = fundamental.get("trend", {})
-                    if trend.get("earnings_trend") == "improving":
-                        dim_score = 75.0
-                    elif trend.get("earnings_trend") == "declining":
-                        dim_score = 25.0
+                    trend = fundamental.get("trend", {}).get("earnings_trend")
+                    if trend == "improving":
+                        dim_score = 75.0 if direction in ("above", "neutral", "between") else 25.0
+                    elif trend == "declining":
+                        dim_score = 75.0 if direction == "below" else 25.0
                     else:
                         dim_score = 50.0
                 else:
@@ -144,19 +210,15 @@ class ScoreGenerator:
             elif dim == "market_momentum_gap":
                 market = evidence_summary.get("market")
                 if market:
-                    perf_1d = (market.get("performance", {}) or {}).get("1d", {})
-                    change = perf_1d.get("price_change_pct", 0)
-                    dim_score = max(0, min(100, 50 + change * 5))
+                    change = (market.get("performance", {}) or {}).get("1d", {}).get("price_change_pct", 0)
+                    dim_score = max(0, min(100, 50 + self._direction_factor(direction) * change * 5))
                 else:
                     dim_score = 50.0
             elif dim == "peer_relative_gap":
                 valuation = evidence_summary.get("valuation")
                 if valuation:
                     pb_premium = (valuation.get("premium_pct", {}) or {}).get("pb")
-                    if pb_premium is not None:
-                        dim_score = max(0, min(100, 50 - pb_premium / 2))
-                    else:
-                        dim_score = 50.0
+                    dim_score = self._premium_support(pb_premium, direction) if pb_premium is not None else 50.0
                 else:
                     dim_score = 50.0
             elif dim == "insider_bias_gap":
@@ -164,9 +226,9 @@ class ScoreGenerator:
                 if filings:
                     recent_bias = filings.get("recent_bias", "balanced")
                     if recent_bias == "net_buying":
-                        dim_score = 75.0
+                        dim_score = 75.0 if direction in ("above", "neutral", "between") else 25.0
                     elif recent_bias == "net_selling":
-                        dim_score = 25.0
+                        dim_score = 75.0 if direction == "below" else 25.0
                     else:
                         dim_score = 50.0
                 else:
@@ -181,14 +243,26 @@ class ScoreGenerator:
         total_score = total_score * (0.9 + skeptic_adjustment)
         total_score = max(0, min(100, total_score))
 
-        verdict = VerdictBand.CONTRADICTED
-        for threshold, band in self.VERDICT_BANDS:
-            if total_score <= threshold:
-                verdict = band
-                break
+        verdict = self._band_for_score(total_score)
 
-        explanation = self._build_explanation(assessment, dimensions, verdict, "id")
-        explanation_en = self._build_explanation(assessment, dimensions, verdict, "en")
+        # GUARDRAIL: if 100% of the valuation ratios agree with (or against) the
+        # claim's direction, the verdict cannot sit in the ambiguous MIXED band.
+        if cat == "valuation" and direction in ("above", "below"):
+            agreement = self._agreement_direction(evidence_summary)
+            if agreement is not None:
+                if agreement == direction and self.BAND_RANK[verdict] < self.BAND_RANK[VerdictBand.SUPPORTED]:
+                    verdict = VerdictBand.SUPPORTED
+                    total_score = max(total_score, 61.0)
+                elif agreement != direction and self.BAND_RANK[verdict] > self.BAND_RANK[VerdictBand.CONTRADICTED]:
+                    verdict = VerdictBand.CONTRADICTED
+                    total_score = min(total_score, 30.0)
+
+        explanation = self._build_explanation(
+            assessment, dimensions, verdict, "id", quality_note=self._quality_premium_note(evidence_summary, direction)
+        )
+        explanation_en = self._build_explanation(
+            assessment, dimensions, verdict, "en", quality_note=self._quality_premium_note(evidence_summary, direction)
+        )
 
         return RealityGapScore(
             claim_ticker=assessment.claim_ticker,
@@ -199,9 +273,10 @@ class ScoreGenerator:
             explanation=explanation,
             explanation_en=explanation_en,
             confidence=assessment.evidence_confidence,
+            direction=direction,
         )
 
-    def _build_explanation(self, assessment: EvidenceAssessment, dimensions: dict, verdict: VerdictBand, language: str = "id") -> str:
+    def _build_explanation(self, assessment: EvidenceAssessment, dimensions: dict, verdict: VerdictBand, language: str = "id", quality_note: str = "") -> str:
         if language == "en":
             parts = [f"Verdict: {verdict.value.replace('_', ' ').title()}"]
 
@@ -216,6 +291,9 @@ class ScoreGenerator:
                 parts.append(f"Strongest dimension: {top_dim[0]} ({top_dim[1]:.0f}/100)")
 
             parts.append(f"Evidence confidence: {assessment.evidence_confidence:.0%}")
+            if quality_note:
+                en_part = quality_note.split(" / ")[-1]
+                parts.append(en_part)
             return ". ".join(parts) + "."
 
         verdict_names = {
@@ -238,6 +316,9 @@ class ScoreGenerator:
             parts.append(f"Dimensi terkuat: {top_dim[0]} ({top_dim[1]:.0f}/100)")
 
         parts.append(f"Keyakinan bukti: {assessment.evidence_confidence:.0%}")
+        if quality_note:
+            id_part = quality_note.split(" / ")[0]
+            parts.append(id_part)
         return ". ".join(parts) + "."
 
 

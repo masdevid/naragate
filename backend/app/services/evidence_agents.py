@@ -81,6 +81,8 @@ class ValuationAgent:
             else:
                 premium_pct[metric] = None
 
+        health = self._extract_health_metrics(company_data)
+
         return ValuationEvidence(
             claim_ticker=ticker,
             category="valuation",
@@ -89,7 +91,35 @@ class ValuationAgent:
             premium_pct=premium_pct,
             evidence_freshness=datetime.now().isoformat(),
             cache_hit=cache_hit,
+            health=health,
         )
+
+    def _extract_health_metrics(self, company_data: Optional[dict]) -> dict:
+        """Banking-health/quality context from the financials section.
+        Never empties the cache; these keys are reused from the same company report."""
+        health = {}
+        if not company_data:
+            return health
+        f = company_data.get("financials") or {}
+        ratios = f.get("historical_financial_ratio") or []
+        latest = ratios[-1] if ratios else {}
+        profitability = latest.get("profitability") or {}
+        if isinstance(profitability.get("roe"), (int, float)):
+            health["roe"] = profitability["roe"]
+        if isinstance(profitability.get("roa"), (int, float)):
+            health["roa"] = profitability["roa"]
+        if isinstance(profitability.get("net_profit_margin"), (int, float)):
+            health["net_profit_margin"] = profitability["net_profit_margin"]
+        # Banking indicators — field names vary across Sectors releases; probe
+        # commonly-observed keys and keep every candidate that is present.
+        for key in ("nim", "npl", "loan_growth", "liquidity"):
+            if key in profitability and isinstance(profitability[key], (int, float)):
+                health[key] = profitability[key]
+        liquidity = latest.get("liquidity") or {}
+        for key in ("nim", "npl", "loan_growth"):
+            if key in liquidity and isinstance(liquidity[key], (int, float)):
+                health[key] = liquidity[key]
+        return health
 
 
 class FundamentalAgent:

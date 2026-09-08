@@ -15,9 +15,10 @@ export interface Claim {
 export interface ValuationEvidence {
   claim_ticker: string;
   category: string;
-  metrics: { pe?: number; pb?: number; ps?: number; pcf?: number };
+  metrics: { pe?: number; pb?: number; ps?: number; pcf?: number; forward_pe?: number };
   subsector_median: { pe?: number; pb?: number; ps?: number };
   premium_pct: { pe?: number; pb?: number; ps?: number };
+  health?: { roe?: number; roa?: number; net_profit_margin?: number; nim?: number; npl?: number; loan_growth?: number };
   evidence_freshness: string;
   cache_hit: boolean;
 }
@@ -80,6 +81,7 @@ export interface SkepticOutput {
 export interface EvidenceAssessment {
   claim_ticker: string;
   claim_category: string;
+  direction?: 'above' | 'below' | 'between' | 'neutral';
   evidence_summary: { valuation?: ValuationEvidence; fundamental?: FundamentalEvidence; market?: MarketEvidence };
   contradictions: string[];
   skeptic_challenges: string[];
@@ -96,6 +98,7 @@ export interface RealityGapScore {
   explanation: string;
   explanation_en?: string;
   confidence: number;
+  direction?: 'above' | 'below' | 'between' | 'neutral';
 }
 
 export interface PipelineEvent {

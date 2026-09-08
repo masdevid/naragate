@@ -7,12 +7,17 @@ export interface RuntimeSettings {
   llm_model?: string;
   sectors_api_key?: string;
   sectors_key_bound_to?: string | null;
+  sectors_key_owner_ip?: string | null;
+  sectors_authorized_ips?: string[];
+  sectors_key_is_owner?: boolean;
   sectors_enforce_per_ip?: boolean;
   client_ip?: string;
   claim_parser_model?: string;
   skeptic_model?: string;
   scorer_model?: string;
-  [key: string]: string | number | boolean | null | undefined;
+  news_model?: string;
+  chat_model?: string;
+  [key: string]: string | number | boolean | string[] | null | undefined;
 }
 
 export interface ValidateResult {
@@ -89,6 +94,26 @@ export class SettingsService {
       })
         .then(r => r.json())
         .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  updateSectorsIp(ip: string, action: 'add' | 'remove'): Observable<any> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/sectors-ips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, action }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.sectors_authorized_ips) {
+            observer.next(data);
+          } else {
+            observer.error(new Error(data?.detail || 'Request failed'));
+          }
+          observer.complete();
+        })
         .catch(err => observer.error(err));
     });
   }

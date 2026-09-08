@@ -31,6 +31,7 @@ Load this skill after all validating agents and the Skeptic have produced their 
 {
   "claim_ticker": "string",
   "claim_category": "string",
+  "claim_direction": "above|below|between|neutral",
   "evidence_summary": {
     "valuation": "object | null",
     "fundamental": "object | null",
@@ -49,3 +50,5 @@ Load this skill after all validating agents and the Skeptic have produced their 
 - Handle missing evidence gracefully (not all claims have all categories)
 - Flag any contradictions between agents explicitly
 - The evidence_confidence score (0-1) reflects how complete and consistent the evidence is
+- For valuation claims, evidence_confidence counts ONLY valuation and fundamental evidence — news, corporate actions, and insider filings must not dilute it
+- Carry the claim's direction into the assessment so the score generator aligns every dimension with the claim (never assume the claim is bullish)

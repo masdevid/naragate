@@ -3,7 +3,7 @@ from app.services.judge import EvidenceJudge, ScoreGenerator
 from app.models.schemas import (
     Claim, ClaimCategory, ClaimDirection, EvidenceAssessment, RealityGapScore,
     ValuationEvidence, FundamentalEvidence, MarketEvidence, SkepticOutput, VerdictBand,
-    FilingsEvidence
+    FilingsEvidence, NewsEvidence
 )
 
 
@@ -39,7 +39,9 @@ class TestEvidenceJudge:
         assessment = judge.assess(claim, evidence)
 
         assert assessment.claim_ticker == "BBCA"
-        assert assessment.evidence_confidence == round(1 / 3, 2)
+        # Valuation confidence counts valuation+fundamental only: 1/2
+        assert assessment.evidence_confidence == round(1 / 2, 2)
+        assert assessment.direction == "above"
         assert "valuation_gap" in assessment.applicable_dimensions
 
     def test_assesses_without_evidence(self, judge, claim):
@@ -69,7 +71,8 @@ class TestEvidenceJudge:
 
         assessment = judge.assess(claim, evidence, skeptic)
 
-        assert assessment.evidence_confidence == round(1 / 3 * 0.8, 2)  # 0.33 * 0.8
+        # Valuation confidence counts valuation+fundamental only: (1/2) * 0.8
+        assert assessment.evidence_confidence == round(1 / 2 * 0.8, 2)  # 0.4
 
     def test_detects_contradiction(self, judge):
         claim = Claim(
@@ -229,8 +232,9 @@ class TestScoreGenerator:
         assessment = EvidenceAssessment(
             claim_ticker="BBCA",
             claim_category="valuation",
+            direction="below",  # discounted vs peers → "cheap" claim
             evidence_summary={
-                "valuation": {"premium_pct": {"pe": -50.0}}  # Big discount
+                "valuation": {"premium_pct": {"pe": -50.0, "pb": -40.0, "ps": -30.0}}  # Big discount
             },
             contradictions=[],
             skeptic_challenges=[],
@@ -241,6 +245,7 @@ class TestScoreGenerator:
         result = generator.compute(assessment, skeptic_score=0.0)
 
         assert result.verdict in [VerdictBand.SUPPORTED, VerdictBand.STRONGLY_SUPPORTED]
+        assert result.reality_gap_score >= 61.0
 
     def test_skeptic_adjusts_score(self, generator):
         assessment = EvidenceAssessment(
@@ -372,3 +377,209 @@ class TestScoreGenerator:
         result = generator.compute(assessment)
 
         assert result.dimensions["insider_bias_gap"] == 50.0
+
+
+class TestDirectionAwareScoring:
+    """Valuation scoring must align with the claim's direction (above/below)."""
+
+    @pytest.fixture
+    def generator(self):
+        return ScoreGenerator()
+
+    @pytest.fixture
+    def judge(self):
+        return EvidenceJudge()
+
+    def test_expensive_claim_all_ratios_positive_is_supported(self, generator):
+        # Issue repro: "BBCA stock price is expensive" — all ratios above the
+        # subsector median. Support must NOT be ~33/MIXED.
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="valuation",
+            direction="above",
+            evidence_summary={
+                "valuation": {
+                    "metrics": {"pe": 25.5, "pb": 5.1, "ps": 6.4, "forward_pe": 24.0, "pcf": 18.2},
+                    "subsector_median": {"pe": 17.5, "pb": 2.9, "ps": 4.1},
+                    "premium_pct": {"pe": 45.7, "pb": 75.9, "ps": 56.1},
+                }
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=1.0,
+            applicable_dimensions=["valuation_gap", "peer_relative_gap", "evidence_confidence"],
+        )
+
+        result = generator.compute(assessment, skeptic_score=0.0)
+
+        assert result.verdict == VerdictBand.STRONGLY_SUPPORTED, (
+            f"Expected STRONGLY_SUPPORTED, got {result.verdict.value} ({result.reality_gap_score})"
+        )
+        assert result.reality_gap_score > 80.0
+
+    def test_expensive_claim_low_confidence_guardrail_still_not_mixed(self, generator):
+        # Even with weak confidence, unanimous ratios cannot produce MIXED.
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="valuation",
+            direction="above",
+            evidence_summary={
+                "valuation": {
+                    "premium_pct": {"pe": 30.0, "pb": 25.0, "ps": 20.0},
+                }
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.3,
+            applicable_dimensions=["valuation_gap", "peer_relative_gap", "evidence_confidence"],
+        )
+
+        result = generator.compute(assessment, skeptic_score=92.0)
+
+        assert result.verdict == VerdictBand.SUPPORTED
+        assert result.reality_gap_score >= 61.0
+
+    def test_cheap_claim_positive_premium_is_contradicted(self, generator):
+        # Claim says "cheap" but all ratios trade ABOVE the median → contradicted.
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="valuation",
+            direction="below",
+            evidence_summary={
+                "valuation": {
+                    "premium_pct": {"pe": 45.7, "pb": 75.9, "ps": 56.1},
+                }
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["valuation_gap", "peer_relative_gap", "evidence_confidence"],
+        )
+
+        result = generator.compute(assessment, skeptic_score=0.0)
+
+        assert result.verdict == VerdictBand.CONTRADICTED
+
+    def test_conflicting_ratios_allow_mixed(self, generator):
+        # PE rich but PB cheap → ratios conflict → MIXED is valid.
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="valuation",
+            direction="above",
+            evidence_summary={
+                "valuation": {
+                    "premium_pct": {"pe": 30.0, "pb": -40.0, "ps": 5.0},
+                }
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["valuation_gap", "peer_relative_gap", "evidence_confidence"],
+        )
+
+        result = generator.compute(assessment, skeptic_score=50.0)
+
+        assert result.verdict in [VerdictBand.MIXED, VerdictBand.SUPPORTED]
+
+    def test_market_momentum_flips_with_direction(self, generator):
+        # A +5% day supports an "above/rising" market claim, contradicts a "below" one.
+        up = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="market",
+            direction="above",
+            evidence_summary={"market": {"performance": {"1d": {"price_change_pct": 5.0}}}},
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["market_momentum_gap", "evidence_confidence"],
+        )
+        down = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="market",
+            direction="below",
+            evidence_summary={"market": {"performance": {"1d": {"price_change_pct": 5.0}}}},
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["market_momentum_gap", "evidence_confidence"],
+        )
+
+        up_result = generator.compute(up)
+        down_result = generator.compute(down)
+
+        assert up_result.dimensions["market_momentum_gap"] == 75.0
+        assert down_result.dimensions["market_momentum_gap"] == 25.0
+
+    def test_valuation_not_diluted_by_news_or_market(self, judge, generator):
+        # A valuation claim must ignore news/market sentiment in confidence.
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.VALUATION,
+            assertion="PE is expensive",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.8,
+        )
+        valuation = ValuationEvidence(
+            claim_ticker="BBCA",
+            category="valuation",
+            metrics={"pe": 25.5, "pb": 5.1, "ps": 6.4},
+            subsector_median={"pe": 17.5, "pb": 2.9, "ps": 4.1},
+            premium_pct={"pe": 45.7, "pb": 75.9, "ps": 56.1},
+            evidence_freshness="2024-01-01",
+            cache_hit=False,
+        )
+        evidence = {
+            "valuation": valuation,
+            "market": MarketEvidence(
+                claim_ticker="BBCA",
+                category="market",
+                performance={"1d": {"price_change_pct": -8.0}},
+                volatility=3.0,
+                evidence_freshness="2024-01-01",
+                cache_hit=False,
+            ),
+            "news": NewsEvidence(
+                claim_ticker="BBCA",
+                category="news",
+                headlines=[{"title": "analysts put buy target"}],
+                corroboration="contradicts",
+                summary="News contradicts",
+                evidence_freshness="2024-01-01",
+                cache_hit=False,
+            ),
+        }
+
+        assessment = judge.assess(claim, evidence, None)
+
+        # Confidence counts valuation+fundamental only: 1/2, untouched by news
+        assert assessment.evidence_confidence == 0.5
+        # News cannot inject a contradiction into a valuation claim
+        assert all("news" not in c.lower() for c in assessment.contradictions)
+
+        result = generator.compute(assessment, skeptic_score=50.0)
+
+        assert result.verdict in [VerdictBand.SUPPORTED, VerdictBand.STRONGLY_SUPPORTED]
+        assert result.verdict != VerdictBand.MIXED
+        assert result.reality_gap_score >= 61.0
+
+    def test_quality_premium_note_added_when_roe_strong(self, generator):
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="valuation",
+            direction="above",
+            evidence_summary={
+                "valuation": {
+                    "premium_pct": {"pe": 45.7, "pb": 75.9, "ps": 56.1},
+                    "health": {"roe": 21.2, "nim": 6.1, "npl": 1.2},
+                }
+            },
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["valuation_gap", "peer_relative_gap", "evidence_confidence"],
+        )
+
+        result = generator.compute(assessment, skeptic_score=50.0)
+
+        assert "quality premium" in result.explanation_en.lower()
+        assert result.verdict in [VerdictBand.SUPPORTED, VerdictBand.STRONGLY_SUPPORTED]

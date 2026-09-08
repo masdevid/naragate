@@ -74,6 +74,7 @@ class ValuationEvidence(BaseModel):
     premium_pct: dict
     evidence_freshness: str
     cache_hit: bool
+    health: Optional[dict] = None
 
 class FundamentalEvidence(BaseModel):
     claim_ticker: str
@@ -132,6 +133,7 @@ class SkepticOutput(BaseModel):
 class EvidenceAssessment(BaseModel):
     claim_ticker: str
     claim_category: str
+    direction: str = "neutral"
     evidence_summary: dict
     contradictions: list[str]
     skeptic_challenges: list[str]
@@ -147,6 +149,7 @@ class RealityGapScore(BaseModel):
     explanation: str
     explanation_en: Optional[str] = None
     confidence: float
+    direction: str = "neutral"
 
 class PipelineEvent(BaseModel):
     event_type: str

@@ -131,6 +131,61 @@ class TestValuationAgent:
             assert evidence.cache_hit is False
             mock_sectors.get_company_report.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_extracts_banking_health_metrics(self, claim):
+        company_data = {
+            "overview": {"sub_sector": "Banks"},
+            "valuation": {"historical_valuation": [{"year": 2025, "pe": 25.5}]},
+            "financials": {
+                "historical_financial_ratio": [
+                    {
+                        "year": 2025,
+                        "profitability": {"roe": 21.2, "roa": 3.1, "nim": 6.1},
+                        "liquidity": {"npl": 1.2, "loan_growth": 9.4},
+                    }
+                ]
+            },
+        }
+        subsector_data = {"statistics": {"filtered_median_pe": 20.0}}
+
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_company_report = AsyncMock(return_value=company_data)
+            mock_sectors.get_subsector_report = AsyncMock(return_value=subsector_data)
+
+            agent = ValuationAgent()
+            evidence = await agent.analyze(claim)
+
+            health = evidence.health or {}
+            assert health["roe"] == 21.2
+            assert health["nim"] == 6.1
+            assert health["npl"] == 1.2
+            assert health["loan_growth"] == 9.4
+
+    @pytest.mark.asyncio
+    async def test_health_metrics_missing_when_financials_absent(self, claim):
+        company_data = {
+            "overview": {"sub_sector": "Banks"},
+            "valuation": {"historical_valuation": [{"year": 2025, "pe": 25.5}]},
+        }
+        subsector_data = {"statistics": {"filtered_median_pe": 20.0}}
+
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.set = AsyncMock()
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_company_report = AsyncMock(return_value=company_data)
+            mock_sectors.get_subsector_report = AsyncMock(return_value=subsector_data)
+
+            agent = ValuationAgent()
+            evidence = await agent.analyze(claim)
+
+            assert (evidence.health or {}) == {}
+
 
 class TestFundamentalAgent:
     """Tests for fundamental evidence retrieval."""

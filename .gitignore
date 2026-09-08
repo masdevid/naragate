@@ -59,3 +59,7 @@ docs/
 # Compiled frontend
 frontend/dist/
 frontend/.angular/
+
+# Playwright
+frontend/playwright-report/
+frontend/test-results/

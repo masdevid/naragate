@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     CLAIM_PARSER_MODEL: str = Field(default="", validation_alias="CLAIM_PARSER_MODEL")
     SKEPTIC_MODEL: str = Field(default="", validation_alias="SKEPTIC_MODEL")
     SCORER_MODEL: str = Field(default="", validation_alias="SCORER_MODEL")
+    NEWS_MODEL: str = Field(default="", validation_alias="NEWS_MODEL")
+    CHAT_MODEL: str = Field(default="", validation_alias="CHAT_MODEL")
 
     # Ports
     FRONTEND_PORT: int = Field(default=4273, validation_alias="FRONTEND_PORT")
@@ -40,6 +42,10 @@ class Settings(BaseSettings):
 
     # Curated stocks
     CURATED_STOCKS: list[str] = Field(default=["BBCA", "BBRI", "BMRI", "TLKM", "UNVR"], validation_alias="CURATED_STOCKS")
+
+    # IPs always authorized to use the shared Sectors key (dev/test bypass of the
+    # per-IP allowlist). Comma-separated; e.g. "127.0.0.1,172.21.0.1".
+    SECTORS_DEV_IPS: str = Field(default="127.0.0.1", validation_alias="SECTORS_DEV_IPS")
 
     # Credit budget for Sectors API (paid credits bucket)
     CREDIT_BUDGET: int = Field(default=600, validation_alias="CREDIT_BUDGET")
@@ -81,6 +87,14 @@ class Settings(BaseSettings):
     @property
     def scorer_model(self) -> str:
         return self.SCORER_MODEL or self.OLLAMA_MODEL
+
+    @property
+    def news_model(self) -> str:
+        return self.NEWS_MODEL or self.OLLAMA_MODEL
+
+    @property
+    def chat_model(self) -> str:
+        return self.CHAT_MODEL or self.OLLAMA_MODEL
 
     class Config:
         env_file = ".env"

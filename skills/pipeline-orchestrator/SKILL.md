@@ -118,12 +118,19 @@ Output: an assessment JSON:
 
 Invoke the `score-generator` skill with the assessment and the skeptic's skepticism score.
 
+Rules for this stage:
+
+- **Direction-aware**: every dimension is scored against the claim's `direction` (`above`/`below`/`between`/`neutral`). A positive premium aligns with an `above` ("expensive") claim — it must never be scored as support for the opposite.
+- **Decoupling**: valuation claims are judged strictly on intrinsic/relative ratios. Market flows, analyst consensus, and news sentiment must not dilute the score for a valuation claim.
+- **Guardrail**: if 100% of the available valuation ratios (PE, PB, PS, forward PE) agree on direction, the verdict cannot be `mixed` — at least `supported` when aligned with the claim, at most `contradicted` when opposed.
+
 Output: the Reality Gap score JSON:
 
 ```json
 {
   "claim_ticker": "BBCA",
   "claim_category": "valuation",
+  "claim_direction": "above",
   "reality_gap_score": 72.0,
   "verdict": "supported",
   "dimensions": {},

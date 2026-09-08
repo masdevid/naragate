@@ -231,29 +231,75 @@ class TestRunPipeline:
             _active_narratives.pop("BBCA labanya jeblok", None)
 
     @pytest.mark.asyncio
-    async def test_pipeline_skips_duplicate_narrative_in_store(self, mock_claim):
+    async def test_pipeline_supersedes_orphaned_claim_in_store_and_proceeds(self, mock_claim, mock_evidence, mock_skeptic):
         _active_narratives.clear()
         with patch("app.services.pipeline.claims_store") as mock_store, \
-             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract:
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract, \
+             patch("app.services.pipeline.get_evidence_for_claim", new_callable=AsyncMock) as mock_evidence_fn, \
+             patch("app.services.pipeline.run_skeptic", new_callable=AsyncMock) as mock_skeptic_fn:
             mock_store.create_claim = AsyncMock(return_value="test-claim-id")
             mock_store.update_claim = AsyncMock()
-            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+            # A non-terminal claim exists in storage but is NOT running in this
+            # process (orphaned, even if recently touched) -> supersede it.
             mock_store.find_active_by_narrative = AsyncMock(return_value={
                 "claim_id": "existing-claim-id",
                 "narrative": "BBCA labanya jeblok",
-                "status": "pending",
+                "status": "parsed",
                 "updated_at": datetime.now().isoformat(),
             })
             mock_extract.return_value = mock_claim
+            mock_evidence_fn.return_value = mock_evidence
+            mock_skeptic_fn.return_value = mock_skeptic
 
             events = []
             async for event in run_pipeline("BBCA labanya jeblok"):
                 events.append(event)
 
             event_types = [e.event_type for e in events]
-            assert "pipeline_duplicate" in event_types
-            assert "pipeline_started" not in event_types
-            mock_store.create_claim.assert_not_called()
+            assert "pipeline_duplicate" not in event_types
+            assert "pipeline_started" in event_types
+
+            # The orphaned claim is marked failed so it no longer looks in-progress.
+            orphan_update = next(
+                c for c in mock_store.update_claim.call_args_list
+                if c.args[0] == "existing-claim-id"
+            )
+            assert orphan_update.args[1]["status"] == ClaimStatus.FAILED.value
+
+    @pytest.mark.asyncio
+    async def test_pipeline_marks_claim_failed_on_client_disconnect(self, mock_claim, mock_evidence, mock_skeptic):
+        _active_narratives.clear()
+        with patch("app.services.pipeline.claims_store") as mock_store, \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract, \
+             patch("app.services.pipeline.get_evidence_for_claim", new_callable=AsyncMock) as mock_evidence_fn, \
+             patch("app.services.pipeline.run_skeptic", new_callable=AsyncMock) as mock_skeptic_fn:
+            mock_store.create_claim = AsyncMock(return_value="test-claim-id")
+            mock_store.update_claim = AsyncMock()
+            mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+            mock_extract.return_value = mock_claim
+            mock_evidence_fn.return_value = mock_evidence
+            mock_skeptic_fn.return_value = mock_skeptic
+
+            agen = run_pipeline("BBCA labanya jeblok")
+            events = []
+            async for event in agen:
+                events.append(event)
+                if event.event_type == "claim_parsed":
+                    break
+
+            # Simulate the SSE client dropping the connection mid-stream:
+            # closing the async generator raises GeneratorExit, which must
+            # mark the claim failed instead of leaving it stuck at "parsed".
+            await agen.aclose()
+
+            assert "pipeline_complete" not in [e.event_type for e in events]
+
+            failed_update = next(
+                c for c in mock_store.update_claim.call_args_list
+                if c.args[0] == "test-claim-id" and c.args[1].get("status") == "failed"
+            )
+            assert "interrupted" in failed_update.args[1]["error"]
+            assert "BBCA labanya jeblok" not in _active_narratives
 
     @pytest.mark.asyncio
     async def test_pipeline_marks_stale_orphan_failed_and_proceeds(self, mock_claim, mock_evidence, mock_skeptic):

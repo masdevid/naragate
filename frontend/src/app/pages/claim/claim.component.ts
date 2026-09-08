@@ -240,6 +240,11 @@ export class ClaimComponent implements OnInit, OnDestroy {
           this.error.set(event.data?.error || this.i18n.t('claim.failed'));
           return;
         }
+        if (event.event_type === 'clarification_required') {
+          this.terminalEvent = true;
+          this.error.set(event.data?.message || this.i18n.t('claim.failed'));
+          return;
+        }
         if (event.event_type === 'pipeline_complete') {
           this.terminalEvent = true;
         }
