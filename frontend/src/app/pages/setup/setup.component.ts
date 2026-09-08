@@ -431,7 +431,9 @@ export class SetupComponent implements OnInit, OnDestroy {
 
   maskedIp = (ip: string): string => {
     if (!ip) return '';
-    return ip.split('.').length === 4 ? '***.***.***.***' : '***';
+    const parts = ip.split('.');
+    if (parts.length !== 4) return '***';
+    return `${parts[0]}.***.***.${parts[3]}`;
   };
 
   private settingsService = inject(SettingsService);
