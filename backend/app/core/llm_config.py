@@ -11,6 +11,7 @@ _ROLE_MODEL_KEYS = {
     "scorer": "scorer_model",
     "news": "news_model",
     "chat": "chat_model",
+    "follow_up": "follow_up_model",
 }
 
 
@@ -67,6 +68,8 @@ def llm_model(role: str = "default") -> str:
             model = settings.news_model
         elif role == "chat":
             model = settings.chat_model
+        elif role == "follow_up":
+            model = settings.follow_up_model
         else:
             model = settings.OLLAMA_MODEL
     return model

@@ -24,6 +24,18 @@ CREATE TABLE IF NOT EXISTS claims (
 );
 CREATE INDEX IF NOT EXISTS idx_claims_status ON claims(status);
 CREATE INDEX IF NOT EXISTS idx_claims_created ON claims(created_at);
+CREATE TABLE IF NOT EXISTS followup_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_id TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    category TEXT NOT NULL,
+    verdict TEXT NOT NULL,
+    score REAL NOT NULL,
+    suggestion_id TEXT NOT NULL,
+    suggestion_text TEXT NOT NULL,
+    clicked_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_clicked ON followup_feedback(clicked_at);
 """
 
 
@@ -208,6 +220,65 @@ class ClaimsStore:
             "verdict_distribution": verdict_counts,
             "by_ticker": by_ticker,
         }
+
+    async def record_followup_feedback(
+        self,
+        claim_id: str,
+        ticker: str,
+        category: str,
+        verdict: str,
+        score: float,
+        suggestion_id: str,
+        suggestion_text: str,
+    ) -> None:
+        await self.connect()
+        assert self._db is not None
+        await self._db.execute(
+            "INSERT INTO followup_feedback "
+            "(claim_id, ticker, category, verdict, score, suggestion_id, suggestion_text, clicked_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                claim_id,
+                ticker,
+                category,
+                verdict,
+                score,
+                suggestion_id,
+                suggestion_text,
+                datetime.now().isoformat(),
+            ),
+        )
+        await self._db.commit()
+
+    async def recent_followup_feedback(self, limit: int = 20) -> list[dict]:
+        await self.connect()
+        assert self._db is not None
+        cur = await self._db.execute(
+            "SELECT claim_id, ticker, category, verdict, score, suggestion_id, suggestion_text, clicked_at "
+            "FROM followup_feedback ORDER BY clicked_at DESC LIMIT ?",
+            (limit,),
+        )
+        rows = await cur.fetchall()
+        await cur.close()
+        return [dict(r) for r in rows]
+
+    async def followup_topic_counts(self, field: str, limit: int = 5) -> list[dict]:
+        """Count clicks grouped by a feedback field, most-clicked first.
+
+        `field` must be one of: ticker, category, verdict.
+        """
+        if field not in ("ticker", "category", "verdict"):
+            raise ValueError(f"Unsupported topic field: {field}")
+        await self.connect()
+        assert self._db is not None
+        cur = await self._db.execute(
+            f"SELECT {field} AS value, COUNT(*) AS clicks FROM followup_feedback "
+            f"GROUP BY {field} ORDER BY clicks DESC LIMIT ?",
+            (limit,),
+        )
+        rows = await cur.fetchall()
+        await cur.close()
+        return [{"value": r["value"], "clicks": r["clicks"]} for r in rows]
 
     async def find_active_by_narrative(self, narrative: str, limit: int = 50) -> Optional[dict]:
         await self.connect()

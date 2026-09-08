@@ -74,6 +74,7 @@ export default {
   'settings.field_scorer': 'Model Score Generator',
   'settings.field_news': 'Model News Agent',
   'settings.field_chat': 'Model Chat',
+  'settings.field_follow_up': 'Model Follow-Up',
   'settings.section_sectors': 'Sectors API',
   'settings.field_sectors_key': 'Kunci API',
   'settings.sectors_key_placeholder': 'Masukkan kunci API Sectors v2',
@@ -280,6 +281,13 @@ export default {
   'verdict.mixed': 'Campuran',
   'verdict.supported': 'Didukung',
   'verdict.strongly_supported': 'Sangat Didukung',
+
+  // Verdict legend
+  'verdict.legend.title': 'Cara membaca skor',
+  'verdict.legend.contradicted': 'Bukti bertentangan dengan klaim',
+  'verdict.legend.mixed': 'Bukti bercampur atau saling bertentangan',
+  'verdict.legend.supported': 'Bukti secara umum mendukung klaim',
+  'verdict.legend.strongly_supported': 'Bukti sangat mendukung klaim',
 
   // Skeptic panel
   'skeptic.title': 'Analisis Skeptis',

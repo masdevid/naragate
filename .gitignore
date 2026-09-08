@@ -50,6 +50,7 @@ backend/test_data/
 # Development artifacts
 .scratch/
 .opencode/
+.codegraph/
 AGENTS.md
 docs/
 

@@ -74,6 +74,7 @@ export default {
   'settings.field_scorer': 'Score Generator Model',
   'settings.field_news': 'News Agent Model',
   'settings.field_chat': 'Chat Model',
+  'settings.field_follow_up': 'Follow-Up Model',
   'settings.section_sectors': 'Sectors API',
   'settings.field_sectors_key': 'API Key',
   'settings.sectors_key_placeholder': 'Enter your Sectors v2 API key',
@@ -280,6 +281,13 @@ export default {
   'verdict.mixed': 'Mixed',
   'verdict.supported': 'Supported',
   'verdict.strongly_supported': 'Strongly Supported',
+
+  // Verdict legend
+  'verdict.legend.title': 'How to read the score',
+  'verdict.legend.contradicted': 'Evidence contradicts the claim',
+  'verdict.legend.mixed': 'Evidence is mixed or conflicting',
+  'verdict.legend.supported': 'Evidence broadly supports the claim',
+  'verdict.legend.strongly_supported': 'Evidence strongly supports the claim',
 
   // Skeptic panel
   'skeptic.title': 'Skeptic Analysis',

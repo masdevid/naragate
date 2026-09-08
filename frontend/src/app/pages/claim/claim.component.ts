@@ -6,12 +6,13 @@ import { I18nService } from '../../services/i18n.service';
 import { FormatService } from '../../services/format.service';
 import { PipelineEvent } from '../../models/pipeline.model';
 import { PipelineProgressComponent } from '../../components/pipeline-progress/pipeline-progress.component';
+import { AgentFlowComponent } from '../../components/agent-flow/agent-flow.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-claim',
   standalone: true,
-  imports: [PipelineProgressComponent, TPipe],
+  imports: [PipelineProgressComponent, AgentFlowComponent, TPipe],
   template: `
     <div class="claim">
       <div class="claim__inner">
@@ -23,6 +24,10 @@ import { TPipe } from '../../pipes/t.pipe';
 
         <div class="claim__progress">
           <app-pipeline-progress [currentStep]="currentStep()" [completedSteps]="completedSteps()"/>
+        </div>
+
+        <div class="claim__flow">
+          <app-agent-flow [currentStep]="currentStep()" [completedSteps]="completedSteps()"/>
         </div>
 
         @if (connecting()) {
@@ -103,6 +108,11 @@ import { TPipe } from '../../pipes/t.pipe';
       font-style: italic;
     }
     .claim__progress { margin-bottom: var(--space-xl); }
+    .claim__flow {
+      border-top: 1px solid var(--color-rule);
+      padding-top: var(--space-lg);
+      margin-bottom: var(--space-xl);
+    }
     .claim__connecting {
       display: flex; align-items: center; gap: var(--space-sm);
       border-top: 1px solid var(--color-rule); padding: var(--space-lg) 0;

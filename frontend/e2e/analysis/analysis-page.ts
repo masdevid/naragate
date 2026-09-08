@@ -47,11 +47,13 @@ export class ResultsPage {
   readonly statusBanner: Locator;
   readonly statusTitle: Locator;
   readonly retryButton: Locator;
+  readonly suggestionChips: Locator;
 
   constructor(private readonly page: Page) {
     this.statusBanner = page.locator('.results__status');
     this.statusTitle = page.locator('.results__status-title');
     this.retryButton = page.locator('.results__status-btn');
+    this.suggestionChips = page.locator('.chat__suggestion');
   }
 
   async goto(claimId: string): Promise<void> {
@@ -71,5 +73,9 @@ export class ResultsPage {
   async expectCompleted(): Promise<void> {
     await expect(this.statusBanner).not.toBeVisible();
     await expect(this.page.locator('.results__narrative')).toBeVisible();
+  }
+
+  async expectContextualSuggestions(): Promise<void> {
+    await expect(this.suggestionChips.first()).toContainText(/skornya 72/i);
   }
 }

@@ -3,6 +3,24 @@ import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
 
+export interface FollowUpSuggestion {
+  id: string;
+  text: string;
+  text_en: string;
+}
+
+const FALLBACK_EN: FollowUpSuggestion[] = [
+  { id: 'd1', text: 'Why is the score this high?', text_en: 'Why is the score this high?' },
+  { id: 'd2', text: 'What would change this verdict?', text_en: 'What would change this verdict?' },
+  { id: 'd3', text: 'Is the stock fairly valued?', text_en: 'Is the stock fairly valued?' },
+];
+
+const FALLBACK_ID: FollowUpSuggestion[] = [
+  { id: 'd1', text: 'Kenapa skornya setinggi ini?', text_en: 'Why is the score this high?' },
+  { id: 'd2', text: 'Apa yang bisa mengubah verdict ini?', text_en: 'What would change this verdict?' },
+  { id: 'd3', text: 'Apakah sahamnya wajar?', text_en: 'Is the stock fairly valued?' },
+];
+
 @Component({
   selector: 'app-results-chat',
   standalone: true,
@@ -29,8 +47,8 @@ import { TPipe } from '../../pipes/t.pipe';
         </button>
       </div>
       <div class="chat__suggestions">
-        @for (s of suggestions(); track $index) {
-          <button (click)="ask(s)" class="chat__suggestion">{{ s }}</button>
+        @for (s of visibleSuggestions(); track s.id) {
+          <button (click)="ask(s)" class="chat__suggestion">{{ suggestionLabel(s) }}</button>
         }
       </div>
     </div>
@@ -90,18 +108,23 @@ import { TPipe } from '../../pipes/t.pipe';
 })
 export class ResultsChatComponent {
   @Input() messages: () => { role: string; text: string }[] = () => [];
+  @Input() suggestions: () => FollowUpSuggestion[] = () => [];
   @Input() loading = false;
   @Output() sendQuestion = new EventEmitter<string>();
+  @Output() suggestionClicked = new EventEmitter<FollowUpSuggestion>();
 
   question = '';
 
   private i18n = inject(I18nService);
 
-  suggestions(): string[] {
-    const lang = this.i18n.language();
-    return lang === 'en'
-      ? ['Why is the score this high?', 'What would change this verdict?', 'Is the stock fairly valued?']
-      : ['Kenapa skornya setinggi ini?', 'Apa yang bisa mengubah verdict ini?', 'Apakah sahamnya wajar?'];
+  visibleSuggestions(): FollowUpSuggestion[] {
+    const list = this.suggestions();
+    if (list && list.length) return list;
+    return this.i18n.language() === 'en' ? FALLBACK_EN : FALLBACK_ID;
+  }
+
+  suggestionLabel(s: FollowUpSuggestion): string {
+    return this.i18n.language() === 'en' && s.text_en ? s.text_en : s.text;
   }
 
   send() {
@@ -111,8 +134,7 @@ export class ResultsChatComponent {
     this.sendQuestion.emit(q);
   }
 
-  ask(s: string) {
-    this.question = s;
-    this.send();
+  ask(s: FollowUpSuggestion) {
+    this.suggestionClicked.emit(s);
   }
 }

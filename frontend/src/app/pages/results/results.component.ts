@@ -8,7 +8,7 @@ import { ResultsVerdictComponent } from '../../components/results-verdict/result
 import { ResultsEvidenceComponent } from '../../components/results-evidence/results-evidence.component';
 import { ResultsNewsComponent } from '../../components/results-news/results-news.component';
 import { ResultsFilingsComponent } from '../../components/results-filings/results-filings.component';
-import { ResultsChatComponent } from '../../components/results-chat/results-chat.component';
+import { ResultsChatComponent, FollowUpSuggestion } from '../../components/results-chat/results-chat.component';
 import { ResultsRadarComponent } from '../../components/results-radar/results-radar.component';
 import { TPipe } from '../../pipes/t.pipe';
 
@@ -114,8 +114,10 @@ import { TPipe } from '../../pipes/t.pipe';
           @if (claimData().status === 'completed') {
             <app-results-chat
               [messages]="chatMessages"
+              [suggestions]="followupSuggestions"
               [loading]="chatLoading()"
-              (sendQuestion)="sendChat($event)"/>
+              (sendQuestion)="sendChat($event)"
+              (suggestionClicked)="onSuggestionClick($event)"/>
           }
         }
       </div>
@@ -234,6 +236,7 @@ export class ResultsComponent implements OnInit {
 
   chatMessages = signal<{ role: string; text: string }[]>([]);
   chatLoading = signal(false);
+  followupSuggestions = signal<FollowUpSuggestion[]>([]);
 
   ngOnInit() {
     this.claimId = this.route.snapshot.paramMap.get('id') || '';
@@ -247,8 +250,25 @@ export class ResultsComponent implements OnInit {
 
   loadClaim() {
     this.narrativeService.getClaim(this.claimId).subscribe({
-      next: (data) => { this.claimData.set(data); this.loading.set(false); },
+      next: (data) => {
+        this.claimData.set(data);
+        this.loading.set(false);
+        if (data?.status === 'completed') {
+          this.loadSuggestions();
+        }
+      },
       error: (err) => { this.error.set(err.message || this.i18n.t('results.load_error')); this.loading.set(false); },
+    });
+  }
+
+  loadSuggestions() {
+    this.narrativeService.getFollowUpSuggestions(this.claimId).subscribe({
+      next: (res) => {
+        this.followupSuggestions.set(res?.suggestions || []);
+      },
+      error: () => {
+        this.followupSuggestions.set([]);
+      },
     });
   }
 
@@ -310,5 +330,13 @@ export class ResultsComponent implements OnInit {
         this.chatLoading.set(false);
       },
     });
+  }
+
+  onSuggestionClick(s: FollowUpSuggestion) {
+    const text = this.i18n.language() === 'en' && s.text_en ? s.text_en : s.text;
+    this.narrativeService.recordSuggestionFeedback(this.claimId, s.id, s.text).subscribe({
+      error: () => {},
+    });
+    this.sendChat(text);
   }
 }

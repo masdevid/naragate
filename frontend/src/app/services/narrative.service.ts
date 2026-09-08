@@ -186,4 +186,36 @@ export class NarrativeService {
         .catch(err => observer.error(err));
     });
   }
+
+  getFollowUpSuggestions(claimId: string): Observable<any> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/api/v1/claims/${claimId}/suggestions`)
+        .then(r => {
+          if (!r.ok) {
+            throw new Error(`HTTP ${r.status}`);
+          }
+          return r.json();
+        })
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  recordSuggestionFeedback(claimId: string, suggestionId: string, text: string): Observable<any> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/api/v1/claims/${claimId}/suggestions/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suggestion_id: suggestionId, text }),
+      })
+        .then(r => {
+          if (!r.ok) {
+            throw new Error(`HTTP ${r.status}`);
+          }
+          return r.json();
+        })
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
 }

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     SCORER_MODEL: str = Field(default="", validation_alias="SCORER_MODEL")
     NEWS_MODEL: str = Field(default="", validation_alias="NEWS_MODEL")
     CHAT_MODEL: str = Field(default="", validation_alias="CHAT_MODEL")
+    FOLLOW_UP_MODEL: str = Field(default="", validation_alias="FOLLOW_UP_MODEL")
 
     # Ports
     FRONTEND_PORT: int = Field(default=4273, validation_alias="FRONTEND_PORT")
@@ -95,6 +96,10 @@ class Settings(BaseSettings):
     @property
     def chat_model(self) -> str:
         return self.CHAT_MODEL or self.OLLAMA_MODEL
+
+    @property
+    def follow_up_model(self) -> str:
+        return self.FOLLOW_UP_MODEL or self.OLLAMA_MODEL
 
     class Config:
         env_file = ".env"

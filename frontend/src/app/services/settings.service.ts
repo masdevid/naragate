@@ -17,6 +17,7 @@ export interface RuntimeSettings {
   scorer_model?: string;
   news_model?: string;
   chat_model?: string;
+  follow_up_model?: string;
   [key: string]: string | number | boolean | string[] | null | undefined;
 }
 

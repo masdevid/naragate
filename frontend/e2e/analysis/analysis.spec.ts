@@ -49,6 +49,18 @@ test.describe('Analysis edge cases', () => {
           score: { reality_gap_score: 72, verdict: 'supported', explanation: 'ok', dimensions: {} },
         })),
       }));
+      await page.route('**/api/v1/claims/new-claim/suggestions', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          claim_id: 'new-claim',
+          suggestions: [
+            { id: 's1', text: 'Kenapa skornya 72?', text_en: 'Why is the score 72?' },
+            { id: 's2', text: 'Bukti apa yang menguatkan verdict?', text_en: 'What evidence supports the verdict?' },
+          ],
+          cached: false,
+        }),
+      }));
 
       await results.goto('stuck-claim');
       await results.expectStillProcessing();
@@ -59,5 +71,6 @@ test.describe('Analysis edge cases', () => {
       const claim = new ClaimPage(page);
       await claim.waitForCompletionRedirect();
       await results.expectCompleted();
+      await results.expectContextualSuggestions();
     });
 });

@@ -24,6 +24,7 @@ ROLE_SKILLS = {
     "skeptic": "skeptic-agent",
     "news": "news-agent",
     "chat": "chat",
+    "follow_up": "follow-up",
     "scorer": "score-generator",
     "judge": "evidence-judge",
 }

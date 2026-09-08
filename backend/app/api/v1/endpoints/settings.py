@@ -26,6 +26,7 @@ class RuntimeSettings(BaseModel):
     scorer_model: Optional[str] = None
     news_model: Optional[str] = None
     chat_model: Optional[str] = None
+    follow_up_model: Optional[str] = None
 
 
 class ValidateEndpointRequest(BaseModel):
