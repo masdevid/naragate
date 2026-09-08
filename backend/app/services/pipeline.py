@@ -15,6 +15,7 @@ from app.services.judge import evidence_judge, score_generator
 from app.core.usage_tracker import (
     record_pipeline, reset_session_usage, get_session_usage
 )
+from app.core.sectors_client import sectors_client
 
 _active_narratives: dict[str, str] = {}
 
@@ -125,6 +126,39 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
         })
         yield make_event("claim_parsed", claim_id, claim.model_dump(mode="json"))
         yield _usage_event(claim_id)
+
+        if claim.needs_clarification or not sectors_client.validate_ticker(claim.ticker):
+            reason_id = getattr(claim, "reason_id", None) or (
+                "Nilai narasi ini menyebutkan perusahaan atau kode saham tertentu (mis. BBCA, BBRI, TLKM) agar dapat dianalisis."
+            )
+            await claims_store.update_claim(claim_id, {
+                "status": ClaimStatus.FAILED.value,
+                "needs_clarification": True,
+                "missing": claim.missing or ["ticker"],
+                "reason": claim.reason or "No valid 4-letter ticker identified in the narrative",
+                "reason_id": reason_id,
+                "error": "Missing ticker — clarification required before analysis.",
+            })
+            yield make_event("clarification_required", claim_id, {
+                "claim_id": claim_id,
+                "missing": claim.missing or ["ticker"],
+                "reason": claim.reason or "No valid 4-letter ticker identified in the narrative",
+                "reason_id": reason_id,
+                "message": "Tidak dapat mengidentifikasi kode saham dari narasi. Mohon berikan ticker saham untuk dianalisis.",
+            })
+            record_pipeline(completed=False)
+            return
+
+        if not await sectors_client.validate_ticker_exists(claim.ticker):
+            await claims_store.update_claim(claim_id, {
+                "status": ClaimStatus.FAILED.value,
+                "error": f"Ticker not found: {claim.ticker}. Please check the stock symbol.",
+            })
+            yield make_event("pipeline_error", claim_id, {
+                "error": f"Ticker not found: {claim.ticker}. Please check the stock symbol.",
+            })
+            record_pipeline(completed=False)
+            return
 
         yield make_event("evidence_fetching", claim_id, {
             "ticker": claim.ticker,

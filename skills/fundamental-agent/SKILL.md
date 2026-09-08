@@ -14,11 +14,12 @@ Load this skill when a claim has been classified as `fundamental` category and n
 ## Steps
 
 1. Receive the structured Claim object
-2. Check the Evidence Graph for cached company report and quarterly financial data
-3. If cache is stale or missing, fetch from Sectors v2 Company Report (financials section) and Quarterly Financials
-4. Extract metrics: revenue, earnings, EPS, margins, ROE, ROA, debt metrics
-5. Analyze trends over time (is earnings falling or improving?)
-6. Return structured fundamental evidence
+2. **Ticker guardrail**: verify `claim.ticker` is a valid 4-letter code (`^[A-Z]{4}$`, not `UNKNOWN`/`null`/empty). If it is not valid, do NOT call Sectors — return an error and request a valid ticker.
+3. Check the Evidence Graph for cached company report and quarterly financial data
+4. If cache is stale or missing, fetch from Sectors v2 Company Report (financials section) and Quarterly Financials
+5. Extract metrics: revenue, earnings, EPS, margins, ROE, ROA, debt metrics
+6. Analyze trends over time (is earnings falling or improving?)
+7. Return structured fundamental evidence
 
 ## Tools
 
@@ -54,6 +55,7 @@ Load this skill when a claim has been classified as `fundamental` category and n
 ## Rules
 
 - Always check cache first before making Sectors API calls
+- Never call Sectors with an invalid ticker — validate the 4-letter code first; a 404 against a bad ticker still costs credits
 - Use quarterly financials for temporal reasoning — distinguish "profit fell" from "profit has fallen continuously"
 - Respect the harness-injected credit budget
 - Cache misses cost credits

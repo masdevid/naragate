@@ -42,6 +42,10 @@ class Claim(BaseModel):
     confidence: float = Field(default=0.5, ge=0, le=1)
     ticker_valid: bool = True
     narrative_source: Optional[str] = None
+    needs_clarification: bool = False
+    missing: Optional[list[str]] = None
+    reason: Optional[str] = None
+    reason_id: Optional[str] = None
 
 class ClaimCreate(BaseModel):
     narrative: str

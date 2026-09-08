@@ -25,6 +25,13 @@ class TestMakeEvent:
 class TestRunPipeline:
     """Tests for the pipeline orchestrator."""
 
+    @pytest.fixture(autouse=True)
+    def _mock_sectors_guard(self):
+        with patch("app.services.pipeline.sectors_client.validate_ticker", return_value=True), \
+             patch("app.services.pipeline.sectors_client.validate_ticker_exists", new_callable=AsyncMock) as mock_exists:
+            mock_exists.return_value = True
+            yield
+
     @pytest.fixture
     def mock_claim(self):
         return Claim(
@@ -361,3 +368,98 @@ class TestRunPipeline:
                 if c.args[1].get("evidence") is not None
             )
             assert "filings" in evidence_update.args[1]["evidence"]
+
+
+class TestTickerGuardrail:
+    """Tests for the ticker clarification guardrail that halts deep analysis."""
+
+    @pytest.fixture
+    def _patch_pipeline(self):
+        mock_store = AsyncMock()
+        mock_store.create_claim = AsyncMock(return_value="clarify-claim-id")
+        mock_store.update_claim = AsyncMock()
+        mock_store.find_active_by_narrative = AsyncMock(return_value=None)
+        return mock_store
+
+    @pytest.mark.asyncio
+    async def test_clarification_halts_pipeline_and_emits_event(self, _patch_pipeline):
+        claim = Claim(
+            ticker="",
+            category=ClaimCategory.VALUATION,
+            assertion="Saham mahal",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.5,
+            claim_id="clarify-claim-id",
+            ticker_valid=False,
+            needs_clarification=True,
+            missing=["ticker"],
+            reason="No valid 4-letter ticker identified in the narrative",
+            reason_id="Mohon berikan kode saham (mis. BBCA)?",
+        )
+        with patch("app.services.pipeline.claims_store", _patch_pipeline), \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract, \
+             patch("app.services.pipeline.get_evidence_for_claim", new_callable=AsyncMock) as mock_evidence:
+            mock_extract.return_value = claim
+
+            events = []
+            async for event in run_pipeline("Saham perbankan lagi mahal nih"):
+                events.append(event)
+
+        event_types = [e.event_type for e in events]
+        assert "clarification_required" in event_types
+        assert "pipeline_complete" not in event_types
+        assert "evidence_fetching" not in event_types
+
+        clarification = next(e for e in events if e.event_type == "clarification_required")
+        assert clarification.data["claim_id"] == "clarify-claim-id"
+        assert "ticker" in clarification.data["missing"]
+        assert clarification.data["reason_id"]
+
+        mock_evidence.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_clarification_marks_claim_failed(self, _patch_pipeline):
+        claim = Claim(
+            ticker="",
+            category=ClaimCategory.VALUATION,
+            assertion="Saham mahal",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.5,
+            claim_id="clarify-claim-id",
+            needs_clarification=True,
+            missing=["ticker"],
+        )
+        with patch("app.services.pipeline.claims_store", _patch_pipeline), \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract:
+            mock_extract.return_value = claim
+
+            async for _ in run_pipeline("Saham mahal"):
+                pass
+
+        last_update = _patch_pipeline.update_claim.call_args_list[-1].args[1]
+        assert last_update["status"] == ClaimStatus.FAILED.value
+        assert last_update["needs_clarification"] is True
+
+    @pytest.mark.asyncio
+    async def test_invalid_format_ticker_triggers_clarification(self, _patch_pipeline):
+        claim = Claim(
+            ticker="UNKNOWN",
+            category=ClaimCategory.VALUATION,
+            assertion="Saham mahal",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.5,
+            claim_id="clarify-claim-id",
+            ticker_valid=False,
+        )
+        with patch("app.services.pipeline.claims_store", _patch_pipeline), \
+             patch("app.services.pipeline.extract_claim", new_callable=AsyncMock) as mock_extract, \
+             patch("app.services.pipeline.sectors_client.validate_ticker", return_value=False):
+            mock_extract.return_value = claim
+
+            events = []
+            async for event in run_pipeline("Saham mahal nih"):
+                events.append(event)
+
+        event_types = [e.event_type for e in events]
+        assert "clarification_required" in event_types
+        assert "evidence_fetching" not in event_types

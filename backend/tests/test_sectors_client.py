@@ -1,11 +1,14 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from app.core.sectors_client import SectorsClient
 
 
 @pytest.fixture
 def client():
-    return SectorsClient()
+    c = SectorsClient()
+    c._company_cache = {"tickers": set(), "ts": 0.0}
+    c._subsector_cache = {"slugs": set(), "ts": 0.0}
+    return c
 
 
 class TestGetFilings:
@@ -74,3 +77,127 @@ class TestGetFilings:
             )
             with pytest.raises(httpx.HTTPStatusError):
                 await client.get_filings("ZZZZ")
+
+
+class TestValidateTicker:
+    """Tests for ticker format validation (free, no API call)."""
+
+    def test_valid_idx_tickers(self, client):
+        assert client.validate_ticker("BBCA") is True
+        assert client.validate_ticker("BBRI") is True
+        assert client.validate_ticker("TLKM") is True
+        assert client.validate_ticker("ABCD") is True
+
+    def test_rejects_lowercase(self, client):
+        assert client.validate_ticker("bbca") is False
+        assert client.validate_ticker("BbCa") is False
+
+    def test_rejects_too_short(self, client):
+        assert client.validate_ticker("BBC") is False
+        assert client.validate_ticker("BB") is False
+        assert client.validate_ticker("B") is False
+
+    def test_rejects_too_long(self, client):
+        assert client.validate_ticker("BBCAA") is False
+        assert client.validate_ticker("BBCAX") is False
+
+    def test_rejects_numbers(self, client):
+        assert client.validate_ticker("1234") is False
+        assert client.validate_ticker("BB12") is False
+
+    def test_rejects_special_characters(self, client):
+        assert client.validate_ticker("BB.CA") is False
+        assert client.validate_ticker("BB-CA") is False
+        assert client.validate_ticker("BB CA") is False
+
+    def test_rejects_unknown(self, client):
+        assert client.validate_ticker("UNKNOWN") is False
+
+    def test_rejects_empty_and_none(self, client):
+        assert client.validate_ticker("") is False
+        assert client.validate_ticker(None) is False  # type: ignore
+
+    def test_rejects_suffix(self, client):
+        assert client.validate_ticker("BBCA.JK") is False
+        assert client.validate_ticker("BBCA SI") is False
+
+
+class TestCreditRecording:
+    """Tests that credits are only recorded on successful API responses."""
+
+    @pytest.mark.asyncio
+    async def test_no_credit_on_404(self, client):
+        import httpx
+        with patch("app.core.sectors_client.record_sectors_call") as mock_record, \
+             patch.object(client.client, "get", new_callable=AsyncMock) as mock_http:
+            mock_response = Mock()
+            mock_response.status_code = 404
+
+            def raise_for_status():
+                raise httpx.HTTPStatusError(
+                    "404 Not Found", request=Mock(), response=mock_response
+                )
+            mock_response.raise_for_status = raise_for_status
+            mock_http.return_value = mock_response
+
+            with pytest.raises(httpx.HTTPStatusError):
+                await client._get("/v2/daily/ZZZZ/")
+
+            mock_record.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_credit_recorded_on_success(self, client):
+        with patch("app.core.sectors_client.record_sectors_call") as mock_record, \
+             patch.object(client.client, "get", new_callable=AsyncMock) as mock_http:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {"data": []}
+            mock_http.return_value = mock_response
+
+            result = await client._get("/v2/daily/BBCA/")
+
+            mock_record.assert_called_once_with(endpoint="/v2/daily/BBCA/")
+            assert result == {"data": []}
+
+
+class TestCompanyCache:
+    """Tests for company list caching and ticker existence validation."""
+
+    @pytest.mark.asyncio
+    async def test_validate_ticker_exists_with_cache(self, client):
+        client._company_cache = {"tickers": {"BBCA", "BBRI", "TLKM"}, "ts": 9999999999.0}
+        assert await client.validate_ticker_exists("BBCA") is True
+        assert await client.validate_ticker_exists("ZZZZ") is False
+
+    @pytest.mark.asyncio
+    async def test_validate_ticker_exists_fetches_when_empty(self, client):
+        with patch.object(client.client, "get", new_callable=AsyncMock) as mock_http:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.raise_for_status.return_value = None
+            mock_response.json.return_value = {"results": [{"symbol": "BBCA"}, {"symbol": "BBRI"}]}
+            mock_http.return_value = mock_response
+
+            with patch("app.core.sectors_client.record_sectors_call"):
+                result = await client.validate_ticker_exists("BBCA")
+
+            assert result is True
+            assert "BBCA" in client._company_cache["tickers"]
+
+    @pytest.mark.asyncio
+    async def test_validate_ticker_exists_returns_true_on_fetch_error(self, client):
+        import httpx
+        with patch.object(client.client, "get", new_callable=AsyncMock) as mock_http:
+            mock_response = Mock()
+
+            def raise_for_status():
+                raise httpx.HTTPStatusError(
+                    "500 Error", request=Mock(), response=mock_response
+                )
+            mock_response.raise_for_status = raise_for_status
+            mock_http.return_value = mock_response
+
+            result = await client.validate_ticker_exists("BBCA")
+
+            assert result is True

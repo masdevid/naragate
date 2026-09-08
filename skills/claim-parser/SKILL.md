@@ -17,6 +17,38 @@ Extract a structured financial claim from the narrative. Return ONLY a JSON obje
 - magnitude: optional numeric qualifier
 - confidence: 0-1 confidence in extraction
 
+## Ticker guardrail (CRITICAL)
+
+A valid `ticker` MUST be exactly **4 uppercase letters** (e.g. `BBCA`, `BBRI`, `TLKM`).
+It must be a specific stock — never `UNKNOWN`, `~`, `null`, an empty string, a company name,
+a market index, or a sector name.
+
+Only extract a ticker when the narrative names a **specific listed company** whose 4-letter
+code you are confident about (direct name match or well-known code). Common mappings:
+- "Bank Central Asia" / "BCA" → `BBCA`
+- "Bank Rakyat Indonesia" / "BRI" → `BBRI`
+- "Bank Mandiri" → `BMRI`
+- "Telkom" → `TLKM`
+- "Unilever Indonesia" → `UNVR`
+
+If you CANNOT identify a valid 4-letter ticker (the narrative mentions no company, only a sector,
+an index like "IHSG", or a vague referent), then **do NOT guess**. Return a clarification signal
+instead of a fabricated claim:
+
+```json
+{
+  "ticker": null,
+  "needs_clarification": true,
+  "missing": ["ticker"],
+  "reason": "No specific listed company identified in the narrative",
+  "reason_id": "Nilai narasi ini menyebut perusahaan atau kode saham tertentu yang akan dianalisis (mis. BBCA, BBRI, TLKM)?",
+  "confidence": 0.0
+}
+```
+
+The `needs_clarification: true` signal tells the orchestrator to STOP and ask the user for the
+ticker before running any credit-consuming evidence retrieval. Never fabricate a ticker.
+
 Indonesian term mappings:
 - "mahal" = valuation premium
 - "murah" = valuation discount

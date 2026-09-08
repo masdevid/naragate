@@ -14,12 +14,13 @@ Load this skill when a claim has been classified as `valuation` category and nee
 ## Steps
 
 1. Receive the structured Claim object
-2. Check the Evidence Graph for cached company report data for the ticker
-3. If cache is stale or missing, fetch from Sectors v2 Company Report endpoint (valuation section)
-4. Also fetch Subsector Report for peer median comparison
-5. Extract valuation metrics: PE, PB, PS, PCF
-6. Compare against subsector median
-7. Return structured valuation evidence
+2. **Ticker guardrail**: verify `claim.ticker` is a valid 4-letter code (`^[A-Z]{4}$`, not `UNKNOWN`/`null`/empty). If it is not valid, do NOT call Sectors — return an error and request a valid ticker.
+3. Check the Evidence Graph for cached company report data for the ticker
+4. If cache is stale or missing, fetch from Sectors v2 Company Report endpoint (valuation section)
+5. Also fetch Subsector Report for peer median comparison
+6. Extract valuation metrics: PE, PB, PS, PCF
+7. Compare against subsector median
+8. Return structured valuation evidence
 
 ## Tools
 
@@ -57,6 +58,7 @@ Load this skill when a claim has been classified as `valuation` category and nee
 ## Rules
 
 - Always check cache first before making Sectors API calls
+- Never call Sectors with an invalid ticker — validate the 4-letter code first; a 404 against a bad ticker still costs credits
 - Use only the exact sections needed (valuation, subsector) — never fetch broad payloads
 - Calculate premium as `(stock_metric - subsector_median) / subsector_median * 100`
 - Respect the harness-injected credit budget — cache misses cost credits

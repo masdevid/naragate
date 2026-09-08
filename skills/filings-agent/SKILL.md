@@ -14,12 +14,13 @@ Load this skill when a claim has been classified as `insider_trading` category a
 ## Steps
 
 1. Receive the structured Claim object
-2. Check the Evidence Graph for cached filings data for the ticker
-3. If cache is stale or missing, fetch from Sectors v2 Filings endpoint (insider_trade type)
-4. Parse filing records: date, insider name, title, transaction type, shares, price, value
-5. Compute net bias: sum of buy volume vs sell volume across recent filings
-6. Generate summary of insider activity pattern
-7. Return structured filings evidence
+2. **Ticker guardrail**: verify `claim.ticker` is a valid 4-letter code (`^[A-Z]{4}$`, not `UNKNOWN`/`null`/empty). If it is not valid, do NOT call Sectors — return an error and request a valid ticker.
+3. Check the Evidence Graph for cached filings data for the ticker
+4. If cache is stale or missing, fetch from Sectors v2 Filings endpoint (insider_trade type)
+5. Parse filing records: date, insider name, title, transaction type, shares, price, value
+6. Compute net bias: sum of buy volume vs sell volume across recent filings
+7. Generate summary of insider activity pattern
+8. Return structured filings evidence
 
 ## Tools
 
@@ -53,6 +54,7 @@ Load this skill when a claim has been classified as `insider_trading` category a
 ## Rules
 
 - Always check cache first before making Sectors API calls
+- Never call Sectors with an invalid ticker — validate the 4-letter code first; a 404 against a bad ticker still costs credits
 - Fetch only insider_trade type — ignore annual_report, prospectus
 - Compute recent_bias from last 10 filings maximum
 - Respect the harness-injected credit budget — cache misses cost credits

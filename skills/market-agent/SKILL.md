@@ -14,11 +14,12 @@ Load this skill when a claim has been classified as `market` category and needs 
 ## Steps
 
 1. Receive the structured Claim object
-2. Check the Evidence Graph for cached daily transaction data
-3. If cache is stale or missing, fetch from Sectors v2 Daily Transaction API
-4. Extract price and volume data across time windows (1D, 7D, 30D)
-5. Compare against the claim's directional assertion
-6. Return structured market evidence
+2. **Ticker guardrail**: verify `claim.ticker` is a valid 4-letter code (`^[A-Z]{4}$`, not `UNKNOWN`/`null`/empty). If it is not valid, do NOT call Sectors — return an error and request a valid ticker.
+3. Check the Evidence Graph for cached daily transaction data
+4. If cache is stale or missing, fetch from Sectors v2 Daily Transaction API
+5. Extract price and volume data across time windows (1D, 7D, 30D)
+6. Compare against the claim's directional assertion
+7. Return structured market evidence
 
 ## Tools
 
@@ -45,6 +46,7 @@ Load this skill when a claim has been classified as `market` category and needs 
 ## Rules
 
 - Always check cache first before making Sectors API calls
+- Never call Sectors with an invalid ticker — validate the 4-letter code first; a 404 against a bad ticker still costs credits
 - Map Indonesian terms: `anjlok`/`jeblok` → negative price change, `meroket`/`meledak` → strong positive change
 - Respect the harness-injected credit budget
 - Daily transaction data TTL: 1 hour

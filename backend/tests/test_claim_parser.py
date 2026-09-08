@@ -190,3 +190,52 @@ class TestExtractClaim:
             mock_ollama.return_value = llm_response
             claim = await extract_claim("PE BBCA mahal")
             assert claim.category == ClaimCategory.VALUATION
+
+    @pytest.mark.asyncio
+    async def test_marks_missing_ticker_as_clarification(self):
+        llm_response = '{"ticker": null, "needs_clarification": true, "missing": ["ticker"], "reason_id": "Nilai kode saham?"}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("Saham perbankan lagi mahal nih")
+            assert claim.needs_clarification is True
+            assert claim.missing == ["ticker"]
+            assert claim.ticker == ""
+            assert claim.ticker_valid is False
+
+    @pytest.mark.asyncio
+    async def test_marks_unknown_ticker_as_clarification(self):
+        llm_response = '{"ticker": "UNKNOWN", "category": "valuation", "assertion": "mahal", "direction": "above"}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("Saham mahal")
+            assert claim.needs_clarification is True
+            assert claim.ticker == "UNKNOWN"
+            assert claim.ticker_valid is False
+
+    @pytest.mark.asyncio
+    async def test_invalid_format_ticker_triggers_clarification(self):
+        llm_response = '{"ticker": "PT_MAJUBERSAMA", "category": "valuation", "assertion": "mahal", "direction": "above"}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("Perusahaan maju bersama mahal")
+            assert claim.needs_clarification is True
+            assert claim.ticker_valid is False
+
+    @pytest.mark.asyncio
+    async def test_non_curated_but_valid_format_not_clarification(self):
+        # A valid 4-letter ticker outside the curated list must NOT trigger clarification
+        # (existence is checked separately against the full company universe)
+        llm_response = '{"ticker": "ACES", "category": "valuation", "assertion": "mahal", "direction": "above"}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("Ace Hardware mahal")
+            assert claim.needs_clarification is False
+            assert claim.ticker_valid is False  # not in curated list, but format is OK
+
+    @pytest.mark.asyncio
+    async def test_valid_ticker_not_clarification(self):
+        llm_response = '{"ticker": "BBCA", "category": "fundamental", "assertion": "laba jeblok", "direction": "below", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_ollama:
+            mock_ollama.return_value = llm_response
+            claim = await extract_claim("BBCA labanya jeblok")
+            assert claim.needs_clarification is False

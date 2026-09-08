@@ -113,8 +113,23 @@ async def extract_claim(
     )
     data = parse_llm_response(raw)
 
-    ticker = data.get("ticker", "UNKNOWN").upper().replace(".JK", "")
+    needs_clarification = bool(data.get("needs_clarification"))
+    reason = data.get("reason")
+    reason_id = data.get("reason_id")
+    missing = data.get("missing")
+
+    raw_ticker = data.get("ticker", "UNKNOWN")
+    ticker = str(raw_ticker).upper().replace(".JK", "") if raw_ticker else ""
     ticker_valid = ticker in CURATED_TICKERS
+
+    if needs_clarification or not re.match(r"^[A-Z]{4}$", ticker) or ticker == "UNKNOWN":
+        needs_clarification = True
+        if not reason_id:
+            reason_id = "Nilai narasi ini menyebutkan perusahaan atau kode saham tertentu (mis. BBCA, BBRI, TLKM) agar dapat dianalisis."
+        if not reason:
+            reason = "No valid 4-letter ticker identified in the narrative"
+        if not missing:
+            missing = ["ticker"]
 
     category_str = data.get("category", "valuation").lower()
     try:
@@ -141,4 +156,8 @@ async def extract_claim(
         confidence=_parse_confidence(data.get("confidence", 0.5)),
         ticker_valid=ticker_valid,
         narrative_source=narrative,
+        needs_clarification=needs_clarification,
+        missing=missing,
+        reason=reason,
+        reason_id=reason_id,
     )

@@ -25,16 +25,18 @@ Drive the agent sequence that turns an Indonesian market narrative into a Realit
 
 ## Stages
 1. **Parse** — invoke `claim-parser` on the narrative to get a Claim JSON
-2. **Evidence** — invoke the category evidence agent (`valuation-agent`, `fundamental-agent`, or `market-agent` per claim.category) plus `news-agent` to get evidence JSON
-3. **Skeptic** — invoke `skeptic-agent` with the claim and evidence to get a SkepticAnalysis JSON
-4. **Judge** — invoke `evidence-judge` with the claim, evidence, and skeptic analysis to get an Assessment JSON
-5. **Score** — invoke `score-generator` with the assessment and the skeptic score to get the Reality Gap score and verdict
+2. **Ticker guardrail** — validate the claim's ticker (exactly 4 uppercase letters, specific listed company). If the parser returned `needs_clarification: true` or the ticker is invalid/UNKNOWN/empty, STOP and return the clarification request to the caller so the user supplies the ticker. Do NOT proceed to evidence retrieval without a valid ticker.
+3. **Evidence** — invoke the category evidence agent (`valuation-agent`, `fundamental-agent`, or `market-agent` per claim.category) plus `news-agent` to get evidence JSON
+4. **Skeptic** — invoke `skeptic-agent` with the claim and evidence to get a SkepticAnalysis JSON
+5. **Judge** — invoke `evidence-judge` with the claim, evidence, and skeptic analysis to get an Assessment JSON
+6. **Score** — invoke `score-generator` with the assessment and the skeptic score to get the Reality Gap score and verdict
 
 ## Handoffs
+- After parsing, run the ticker guardrail; only pass a valid ticker to the evidence agents
 - Pass the Claim JSON to the evidence agents
 - Pass claim + evidence to `skeptic-agent`
 - Pass claim + evidence + skeptic to `evidence-judge`
 - Pass assessment + skeptic score to `score-generator`
 
 ## Output contract
-Return the final Reality Gap score and verdict as specified by the `score-generator` skill.
+Return the final Reality Gap score and verdict as specified by the `score-generator` skill. If the ticker guardrail halts the pipeline, return the clarification request (ticker: null, needs_clarification: true) instead of a score.

@@ -8,6 +8,12 @@ description: Analyze news headlines to corroborate or contradict a financial cla
 You are a news corroboration analyst. Given a financial claim and recent news headlines
 for the same company, determine whether the news supports, contradicts, or is neutral toward the claim.
 
+## Ticker guardrail
+
+Before fetching news, verify the ticker is a valid 4-letter code (`^[A-Z]{4}$`, not `UNKNOWN`/`null`/empty).
+If not valid, do NOT call Sectors — a 404 against a bad ticker still costs credits. Return an error
+requesting a valid ticker.
+
 Claim: {assertion} ({ticker})
 Category: {category}
 News headlines:

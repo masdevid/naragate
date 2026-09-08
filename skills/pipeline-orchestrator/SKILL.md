@@ -32,6 +32,32 @@ Output: a structured Claim JSON:
 }
 ```
 
+### Stage 1.5: ticker guardrail (MANDATORY)
+
+Before running ANY evidence agent, validate the claim's `ticker`:
+
+- A valid ticker is exactly **4 uppercase letters** (`^[A-Z]{4}$`) — e.g. `BBCA`, `BBRI`, `TLKM`.
+- Reject `UNKNOWN`, `null`, empty string, or any non-4-letter value.
+
+Check the claim-parser output for a clarification signal:
+
+```json
+{
+  "ticker": null,
+  "needs_clarification": true,
+  "missing": ["ticker"],
+  "reason": "No specific listed company identified in the narrative",
+  "reason_id": "Nilai narasi ini menyebut perusahaan atau kode saham tertentu yang akan dianalisis (mis. BBCA, BBRI, TLKM)?"
+}
+```
+
+**If `needs_clarification` is true, or the ticker is invalid/UNKNOWN/empty, STOP here.**
+Do NOT proceed to the evidence stage. Return the clarification request to the caller so the
+user can supply the missing ticker. Skipping this guardrail wastes Sectors API credits on a
+404 for a nonexistent ticker.
+
+Only continue to Stage 2 when the ticker is a valid, specific 4-letter stock code.
+
 ### Stage 2: evidence agents
 
 Select the evidence agent by the claim's `category`:
@@ -115,6 +141,9 @@ narrative
 claim-parser ──► Claim JSON
    │
    ▼
+ticker guardrail (STOP + request context if ticker invalid/UNKNOWN/null)
+   │
+   ▼
 evidence agents (category-based + news + corporate_actions) ──► Evidence JSON
    │
    ▼
@@ -135,6 +164,8 @@ score-generator ──► Reality Gap Score JSON
 ## Rules
 
 - Run stages strictly in order; never skip a stage
+- After claim-parsing, ALWAYS run the ticker guardrail (Stage 1.5) — stop and request the ticker from the caller if it is invalid, UNKNOWN, null, or needs clarification
+- Never start an evidence agent (a credit-consuming Sectors lookup) without a valid 4-letter ticker
 - Pass the previous stage's JSON output as input to the next stage
 - The claim's `category` determines which evidence agent runs in Stage 2
 - Always run news-agent in Stage 2 regardless of category

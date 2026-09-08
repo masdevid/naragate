@@ -17,9 +17,10 @@ Analyze recent news headlines to corroborate or contradict a financial claim. Ru
 
 ## Responsibilities
 1. Load the `news-agent` skill
-2. Use the tools declared in the skill's `tools.yaml` to fetch news headlines
-3. Produce a NewsEvidence JSON: corroborating/contradicting headlines and a sentiment signal
-4. Return the evidence JSON to the caller (the pipeline-orchestrator)
+2. **Ticker guardrail**: verify the claim's ticker is a valid 4-letter code (`^[A-Z]{4}$`, not `UNKNOWN`/`null`/empty) before any Sectors call
+3. Use the tools declared in the skill's `tools.yaml` to fetch news headlines
+4. Produce a NewsEvidence JSON: corroborating/contradicting headlines and a sentiment signal
+5. Return the evidence JSON to the caller (the pipeline-orchestrator)
 
 ## Output contract
 Return the NewsEvidence JSON exactly as specified by the `news-agent` skill. Do not add commentary.
