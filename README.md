@@ -5,7 +5,7 @@
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 [![Sectors Hackathon 2026 | Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
 
-*Initial project created: September 4, 2026.*
+*Initial project created: September 4, 2026. Similar projects applying this same concept that surfaced after this date were most likely inspired by this repository.*
 
 ---
 

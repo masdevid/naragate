@@ -39,6 +39,7 @@ npx skills add /path/to/market-narrative-gap -a claude-code
 | `evidence-judge` | Aggregate evidence from all agents and the Skeptic into a unified assessment |
 | `score-generator` | Compute the Reality Gap score (0-100) and verdict |
 | `chat` | Answer follow-up questions about a completed Reality Gap analysis |
+| `follow-up` | Generate personalized follow-up question templates for a completed analysis |
 | `pipeline-orchestrator` | Define the agent sequence as a standalone workflow any harness can invoke |
 | `renderer` | Convert any agent's JSON output into narrative prose |
 
@@ -47,6 +48,25 @@ npx skills add /path/to/market-narrative-gap -a claude-code
 Each skill outputs structured JSON. The `renderer` skill converts any agent's JSON output into narrative prose for non-UI consumers.
 
 The `pipeline-orchestrator` skill defines the full pipeline sequence:
+
+```mermaid
+flowchart TD
+    O[pipeline-orchestrator] -->|1. parse| CP[claim-parser]
+    CP -->|Claim JSON| VA[valuation-agent]
+    CP -->|Claim JSON| FA[fundamental-agent]
+    CP -->|Claim JSON| MA[market-agent]
+    CP -->|Claim JSON, always| NA[news-agent]
+    VA -->|2. evidence| SK[skeptic-agent]
+    FA -->|2. evidence| SK
+    MA -->|2. evidence| SK
+    NA -->|2. evidence| SK
+    SK -->|3. SkepticAnalysis| JJ[evidence-judge]
+    JJ -->|4. Assessment| SG[score-generator]
+    SG -->|5. score| RG([Reality Gap score + verdict])
+    RG -.->|completed analysis| CH[chat]
+    RG -.->|completed analysis| FU[follow-up]
+    CP -.->|any JSON| RD[renderer]
+```
 
 1. `claim-parser` → extract structured claim
 2. Evidence agent (valuation/fundamental/market based on claim category) → retrieve evidence
