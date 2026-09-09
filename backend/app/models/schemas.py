@@ -42,6 +42,9 @@ class Claim(BaseModel):
     confidence: float = Field(default=0.5, ge=0, le=1)
     ticker_valid: bool = True
     narrative_source: Optional[str] = None
+    is_policy: bool = False
+    sector: Optional[str] = None
+    sector_members: Optional[list[str]] = None
     needs_clarification: bool = False
     missing: Optional[list[str]] = None
     reason: Optional[str] = None
@@ -156,3 +159,9 @@ class PipelineEvent(BaseModel):
     claim_id: str
     data: dict
     timestamp: str
+
+class PolicyEvent(BaseModel):
+    date: str
+    actor: Optional[str] = None
+    keyword: str
+    headline: str = ""

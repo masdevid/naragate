@@ -10,6 +10,11 @@ from app.models.schemas import (
 from app.services.claims_store import claims_store
 from app.services.claim_parser import extract_claim
 from app.services.evidence_agents import get_evidence_for_claim
+from app.services.sector_evidence import get_sector_evidence
+from app.services.policy_event_agent import extract_policy_events_from_sector
+from app.services.policy_reaction import gather_policy_reactions
+from app.services.policy_rescore import schedule_sector_rescore
+from app.services.follow_up import get_suggestions
 from app.services.skeptic import run_skeptic
 from app.services.judge import evidence_judge, score_generator
 from app.core.usage_tracker import (
@@ -81,6 +86,21 @@ def _usage_event(claim_id: str) -> PipelineEvent:
     })
 
 
+async def _pregenerate_followups(claim_id: str) -> None:
+    """Generate follow-up templates right after pipeline completion.
+
+    Runs as a background task so the results page finds the templates already
+    cached instead of waiting for a fresh LLM generation. Failures are
+    swallowed: the suggestions endpoint falls back to lazy generation.
+    """
+    try:
+        state = await claims_store.get_claim(claim_id)
+        if state:
+            await get_suggestions(claim_id, state)
+    except Exception:
+        pass
+
+
 async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
     start_time = time.time()
     reset_session_usage()
@@ -117,28 +137,35 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
         yield _usage_event(claim_id)
 
         if claim.needs_clarification or not sectors_client.validate_ticker(claim.ticker):
-            reason_id = getattr(claim, "reason_id", None) or (
-                "Nilai narasi ini menyebutkan perusahaan atau kode saham tertentu (mis. BBCA, BBRI, TLKM) agar dapat dianalisis."
-            )
-            await claims_store.update_claim(claim_id, {
-                "status": ClaimStatus.FAILED.value,
-                "needs_clarification": True,
-                "missing": claim.missing or ["ticker"],
-                "reason": claim.reason or "No valid 4-letter ticker identified in the narrative",
-                "reason_id": reason_id,
-                "error": "Missing ticker — clarification required before analysis.",
-            })
-            yield make_event("clarification_required", claim_id, {
-                "claim_id": claim_id,
-                "missing": claim.missing or ["ticker"],
-                "reason": claim.reason or "No valid 4-letter ticker identified in the narrative",
-                "reason_id": reason_id,
-                "message": "Tidak dapat mengidentifikasi kode saham dari narasi. Mohon berikan ticker saham untuk dianalisis.",
-            })
-            record_pipeline(completed=False)
-            return
+            if claim.is_policy and claim.sector_members:
+                yield make_event("policy_sector_resolved", claim_id, {
+                    "sector": claim.sector,
+                    "members": claim.sector_members,
+                    "keyword": getattr(claim, "keyword_matched", None),
+                })
+            else:
+                reason_id = getattr(claim, "reason_id", None) or (
+                    "Nilai narasi ini menyebutkan perusahaan atau kode saham tertentu (mis. BBCA, BBRI, TLKM) agar dapat dianalisis."
+                )
+                await claims_store.update_claim(claim_id, {
+                    "status": ClaimStatus.FAILED.value,
+                    "needs_clarification": True,
+                    "missing": claim.missing or ["ticker"],
+                    "reason": claim.reason or "No valid 4-letter ticker identified in the narrative",
+                    "reason_id": reason_id,
+                    "error": "Missing ticker — clarification required before analysis.",
+                })
+                yield make_event("clarification_required", claim_id, {
+                    "claim_id": claim_id,
+                    "missing": claim.missing or ["ticker"],
+                    "reason": claim.reason or "No valid 4-letter ticker identified in the narrative",
+                    "reason_id": reason_id,
+                    "message": "Tidak dapat mengidentifikasi kode saham dari narasi. Mohon berikan ticker saham untuk dianalisis.",
+                })
+                record_pipeline(completed=False)
+                return
 
-        if not await sectors_client.validate_ticker_exists(claim.ticker):
+        if not claim.is_policy and not await sectors_client.validate_ticker_exists(claim.ticker):
             await claims_store.update_claim(claim_id, {
                 "status": ClaimStatus.FAILED.value,
                 "error": f"Ticker not found: {claim.ticker}. Please check the stock symbol.",
@@ -152,26 +179,62 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
         yield make_event("evidence_fetching", claim_id, {
             "ticker": claim.ticker,
             "category": claim.category.value,
+            "sector": claim.sector,
         })
 
-        evidence = {}
-        try:
-            evidence = await get_evidence_for_claim(claim)
-            await claims_store.update_claim(claim_id, {
-                "evidence": {k: v.model_dump(mode="json") if hasattr(v, "model_dump") else v for k, v in evidence.items()},
-                "status": ClaimStatus.EVIDENCE_RETRIEVED.value,
-            })
-        except Exception as e:
-            await claims_store.update_claim(claim_id, {"evidence_error": str(e)})
+        if claim.is_policy:
+            evidence = {}
+            sector_evidence = {}
+            policy_events = []
+            try:
+                sector_evidence = await get_sector_evidence(
+                    claim.sector,
+                    claim.sector_members or [],
+                    claim.category,
+                )
+                evidence = sector_evidence
+                policy_events = extract_policy_events_from_sector(
+                    sector_evidence, claim.sector
+                )
+                reactions = await gather_policy_reactions(
+                    claim.sector_members or [],
+                    [e["date"] for e in policy_events if e.get("date")],
+                )
+                evidence["policy"] = {
+                    "policy_events": policy_events,
+                    "reactions": reactions,
+                }
+                await claims_store.update_claim(claim_id, {
+                    "evidence": evidence,
+                    "policy_events": policy_events,
+                    "status": ClaimStatus.EVIDENCE_RETRIEVED.value,
+                })
+            except Exception as e:
+                await claims_store.update_claim(claim_id, {"evidence_error": str(e)})
+            yield make_event("sector_evidence_ready", claim_id, sector_evidence)
+            yield make_event("policy_event_labeled", claim_id, {"policy_events": policy_events})
+            if policy_events and claim.sector:
+                schedule_sector_rescore(claim.sector)
+            yield _usage_event(claim_id)
+        else:
+            evidence = {}
+            try:
+                evidence = await get_evidence_for_claim(claim)
+                await claims_store.update_claim(claim_id, {
+                    "evidence": {k: v.model_dump(mode="json") if hasattr(v, "model_dump") else v for k, v in evidence.items()},
+                    "status": ClaimStatus.EVIDENCE_RETRIEVED.value,
+                })
+            except Exception as e:
+                await claims_store.update_claim(claim_id, {"evidence_error": str(e)})
 
-        evidence_data = {}
-        for k, v in evidence.items():
-            if hasattr(v, "model_dump"):
-                evidence_data[k] = v.model_dump(mode="json")
-            else:
-                evidence_data[k] = v
-        yield make_event("evidence_ready", claim_id, evidence_data)
-        yield _usage_event(claim_id)
+            evidence_data = {}
+            for k, v in evidence.items():
+                if hasattr(v, "model_dump"):
+                    evidence_data[k] = v.model_dump(mode="json")
+                else:
+                    evidence_data[k] = v
+            yield make_event("evidence_ready", claim_id, evidence_data)
+            yield _usage_event(claim_id)
 
         yield make_event("skeptic_analysis", claim_id, {"stage": "skeptic"})
         skeptic = None
@@ -221,6 +284,7 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
             "score": score.reality_gap_score,
         })
         record_pipeline(completed=True)
+        asyncio.create_task(_pregenerate_followups(claim_id))
 
     except Exception as e:
         message = str(e) or f"{type(e).__name__}"
