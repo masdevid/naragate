@@ -6,8 +6,8 @@ import pytest
 from app.services.policy_signal import (
     aggregate_verdict,
     classify_signal_for_name,
-    daily_chunks,
     daily_close_series,
+    daily_epoch_chunks,
     policy_window_indices,
     returns_in_percent,
 )
@@ -163,10 +163,16 @@ class TestRunPrecheck:
     async def test_fetches_and_merges_on_miss(self, monkeypatch):
         from app.core.evidence_cache import cache
         monkeypatch.setattr(cache, "get", _async_dict_get({}))
+        monkeypatch.setattr(cache, "get_daily_chunk", _async_chunk_get({}))
         merges = {"n": 0}
+
         async def fake_merge(ticker, key, value, ttl=None):
             merges["n"] += 1
+
         monkeypatch.setattr(cache, "merge", fake_merge)
+        async def fake_chunk_set(ticker, epoch_start, rows, ttl=None):
+            pass
+        monkeypatch.setattr(cache, "set_daily_chunk", fake_chunk_set)
         dates = policy_dates_spread()
         tx = synthetic_daily(vol=0.01, policy_dates=dates, policy_move=0.08, seed=12)
         async def fake_fetch(_ticker, start=None, end=None):
@@ -180,35 +186,44 @@ class TestRunPrecheck:
 
 
 class TestDailyChunks:
-    def test_single_chunk_within_max(self):
-        start = date(2026, 1, 1)
-        chunks = daily_chunks(start, start + timedelta(days=60))
-        assert chunks == [("2026-01-01", "2026-03-02")]
-        assert (date.fromisoformat(chunks[0][1]) - date.fromisoformat(chunks[0][0])).days == 60
+    def test_single_epoch_within_window(self):
+        start = date(2025, 12, 1)
+        chunks = daily_epoch_chunks(start, start + timedelta(days=60))
+        assert len(chunks) == 1
+        epoch_start, epoch_end, fetch_start, fetch_end = chunks[0]
+        assert (epoch_end - epoch_start).days == 89
+        assert fetch_start == start
+        assert fetch_end == start + timedelta(days=60)
 
-    def test_year_window_subdivides_into_90_day_chunks(self):
+    def test_year_window_subdivides_into_five_aligned_epochs(self):
         end = date(2026, 9, 9)
         start = end - timedelta(days=365)
-        chunks = daily_chunks(start, end)
+        chunks = daily_epoch_chunks(start, end)
         assert len(chunks) == 5
-        for a, b in chunks:
-            span = (date.fromisoformat(b) - date.fromisoformat(a)).days
-            assert 0 <= span <= 89
-        assert chunks[0][0] == start.isoformat()
-        assert chunks[-1][1] == end.isoformat()
-        for (_, prev_b), (cur_a, _) in zip(chunks, chunks[1:]):
-            assert (date.fromisoformat(cur_a) - date.fromisoformat(prev_b)).days == 1
+        for epoch_start, epoch_end, fetch_start, fetch_end in chunks:
+            assert (epoch_end - epoch_start).days == 89
+            assert fetch_start <= fetch_end
+        assert chunks[0][2] == start
+        assert chunks[-1][3] == end
+        for (_, prev_end, _, _), (cur_start, _, _, _) in zip(chunks, chunks[1:]):
+            assert (cur_start - prev_end).days == 1
 
     @pytest.mark.asyncio
     async def test_fetch_merges_chunks_and_dedups(self, monkeypatch):
         from app.core.evidence_cache import cache
         monkeypatch.setattr(cache, "get", _async_dict_get({}))
+        monkeypatch.setattr(cache, "get_daily_chunk", _async_chunk_get({}))
         stored = {}
+        chunk_writes = {}
 
         async def fake_merge(ticker, key, value, ttl=None):
             stored[ticker] = value
 
+        async def fake_chunk_set(ticker, epoch_start, rows, ttl=None):
+            chunk_writes[(ticker, epoch_start)] = rows
+
         monkeypatch.setattr(cache, "merge", fake_merge)
+        monkeypatch.setattr(cache, "set_daily_chunk", fake_chunk_set)
 
         calls = []
 
@@ -218,8 +233,8 @@ class TestDailyChunks:
             s = date.fromisoformat(start)
             e = date.fromisoformat(end)
             return [
-                {"date": (s + timedelta(days=1)).isoformat(), "close": 100.0 + i, "volume": 1}
-                for i in range((e - s).days - 1)
+                {"date": (s + timedelta(days=i)).isoformat(), "close": 100.0 + i, "volume": 1}
+                for i in range((e - s).days + 1)
             ]
 
         monkeypatch.setattr("app.services.policy_signal.sectors_client.get_daily_transaction", fake_get)
@@ -229,19 +244,64 @@ class TestDailyChunks:
         assert hit is False
         assert data is not None
         assert len(calls) == 5
+        assert len(chunk_writes) == 5
         assert stored["ADRO"] == data
         assert data[0]["date"] < data[-1]["date"]
+
+    @pytest.mark.asyncio
+    async def test_incremental_refetch_reuses_cached_epochs(self, monkeypatch):
+        from app.core.evidence_cache import cache
+        monkeypatch.setattr(cache, "get", _async_dict_get({}))
+        chunk_store = {}
+
+        async def fake_chunk_get(ticker, epoch_start):
+            return chunk_store.get((ticker, epoch_start))
+
+        async def fake_chunk_set(ticker, epoch_start, rows, ttl=None):
+            chunk_store[(ticker, epoch_start)] = rows
+
+        monkeypatch.setattr(cache, "get_daily_chunk", fake_chunk_get)
+
+        async def fake_merge(ticker, key, value, ttl=None):
+            pass
+
+        monkeypatch.setattr(cache, "merge", fake_merge)
+        calls = {"n": 0}
+
+        async def fake_get(ticker, start=None, end=None):
+            calls["n"] += 1
+            s = date.fromisoformat(start)
+            return [{"date": s.isoformat(), "close": 100.0, "volume": 1}]
+
+        monkeypatch.setattr("app.services.policy_signal.sectors_client.get_daily_transaction", fake_get)
+        # First run: warm every epoch.
+        monkeypatch.setattr(cache, "set_daily_chunk", fake_chunk_set)
+        from app.services.policy_signal import fetch_daily_transaction
+        first, _ = await fetch_daily_transaction("ADRO")
+        epoch_calls = calls["n"]
+        assert epoch_calls == 5
+
+        # Second run: every epoch is cached -> zero API calls.
+        await fetch_daily_transaction("ADRO")
+        assert calls["n"] == epoch_calls
+        assert first is not None
 
     @pytest.mark.asyncio
     async def test_chunk_failure_raises_and_never_caches(self, monkeypatch):
         from app.core.evidence_cache import cache
         monkeypatch.setattr(cache, "get", _async_dict_get({}))
+        monkeypatch.setattr(cache, "get_daily_chunk", _async_chunk_get({}))
         stored = {}
+        saw_chunk_set = []
 
         async def fake_merge(ticker, key, value, ttl=None):
             stored[ticker] = value
 
+        async def fake_chunk_set(ticker, epoch_start, rows, ttl=None):
+            saw_chunk_set.append(epoch_start)
+
         monkeypatch.setattr(cache, "merge", fake_merge)
+        monkeypatch.setattr(cache, "set_daily_chunk", fake_chunk_set)
 
         async def fake_get(ticker, start=None, end=None):
             raise RuntimeError("boom")
@@ -252,11 +312,18 @@ class TestDailyChunks:
         with pytest.raises(RuntimeError, match="boom"):
             await fetch_daily_transaction("ADRO")
         assert stored == {}
+        assert saw_chunk_set == []
 
 
 def _async_dict_get(env):
     async def get(ticker):
         return env.get(ticker)
+    return get
+
+
+def _async_chunk_get(env):
+    async def get(ticker, epoch_start):
+        return env.get((ticker, epoch_start))
     return get
 
 

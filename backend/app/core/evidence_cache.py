@@ -43,6 +43,30 @@ class EvidenceGraphCache:
             await self.connect()
         await self._redis.delete(f"evidence:{ticker}")
 
+    # --- Chunk-keyed daily series (T1) --------------------------------------
+    # The 12-month daily window is fetched in deterministic 90-day epochs so a
+    # re-run reuses historical chunks and only a brand-new epoch costs an API
+    # call. Keys are addressed by (ticker, epoch_start), independent of the
+    # sliding window, so the same chunk is hit again on every later run.
+
+    @staticmethod
+    def _chunk_key(ticker: str, epoch_start: str) -> str:
+        return f"evidence:chunk:{ticker}:{epoch_start}"
+
+    async def get_daily_chunk(self, ticker: str, epoch_start: str) -> list | None:
+        if not self._redis:
+            await self.connect()
+        data = await self._redis.get(self._chunk_key(ticker, epoch_start))
+        if data:
+            return json.loads(data)
+        return None
+
+    async def set_daily_chunk(self, ticker: str, epoch_start: str, rows: list, ttl: int = None):
+        if not self._redis:
+            await self.connect()
+        ttl = ttl or settings.EVIDENCE_CACHE_TTL_DAILY
+        await self._redis.setex(self._chunk_key(ticker, epoch_start), ttl, json.dumps(rows))
+
     # --- Sector-keyed entries (T3) -----------------------------------------
     # Policy claims resolve to a sector, not a single ticker. Their evidence is
     # gathered once per sector and reused across member claims. All methods

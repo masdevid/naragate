@@ -37,17 +37,27 @@ STRONG_RATIO = 2.0           # ratio for a strong beacon name
 POLICY_WINDOW_DAYS = 2       # trading days on each side of an announcement
 DAILY_WINDOW_DAYS = 365      # T1 inspects 12 months of daily closes per name
 SECTORS_MAX_WINDOW_DAYS = 90  # Sectors caps each daily call at 90 days
+CHUNK_EPOCH_ORIGIN = date(2000, 1, 1)  # fixed grid anchor for stable chunk keys
+DAILY_CHUNK_TTL = 7 * 86400  # 7 days — historical daily closes are immutable
 
 
-def daily_chunks(start: date, end: date, max_days: int = SECTORS_MAX_WINDOW_DAYS) -> list[tuple[str, str]]:
-    """Inclusive (start, end) slices covering [start, end], each <= max_days."""
-    chunks: list[tuple[str, str]] = []
-    cur = start
-    while cur <= end:
-        chunk_end = min(cur + timedelta(days=max_days - 1), end)
-        chunks.append((cur.isoformat(), chunk_end.isoformat()))
-        cur = chunk_end + timedelta(days=1)
-    return chunks
+def daily_epoch_chunks(start: date, end: date) -> list[tuple[date, date, date, date]]:
+    """Fixed-grid 90-day epochs intersecting [start, end].
+
+    Returns (epoch_start, epoch_end, fetch_start, fetch_end): the full epoch
+    span (used as the cache key and the Sectors request) and the clipped span
+    that overlaps the window (used when assembling). Epoch boundaries come from
+    a fixed calendar grid so historical chunks stay cacheable as the window
+    slides forward — only a brand-new epoch costs an API call.
+    """
+    first = (start - CHUNK_EPOCH_ORIGIN).days // SECTORS_MAX_WINDOW_DAYS
+    last = (end - CHUNK_EPOCH_ORIGIN).days // SECTORS_MAX_WINDOW_DAYS
+    out: list[tuple[date, date, date, date]] = []
+    for k in range(first, last + 1):
+        epoch_start = CHUNK_EPOCH_ORIGIN + timedelta(days=SECTORS_MAX_WINDOW_DAYS * k)
+        epoch_end = epoch_start + timedelta(days=SECTORS_MAX_WINDOW_DAYS - 1)
+        out.append((epoch_start, epoch_end, max(epoch_start, start), min(epoch_end, end)))
+    return out
 
 
 @dataclass
@@ -207,9 +217,11 @@ def aggregate_verdict(results: list[NameResult]) -> tuple[str, str]:
 async def fetch_daily_transaction(ticker: str) -> tuple[list | None, bool]:
     """Cache-first daily transactions for a ticker. Returns (data, cache_hit).
 
-    On a miss, fetches a rolling 12-month window in 90-day chunks (Sectors caps
-    each daily call at 90 days). Any chunk failure aborts the whole fetch so a
-    truncated window is never cached as if it were the full 12 months.
+    Historical data arrives in deterministic 90-day epochs (fixed calendar grid,
+    keyed by (ticker, epoch_start) with a long TTL), so a re-run only hits the
+    API for epochs it has never cached — the sliding-window matures incrementally
+    instead of refetching the whole 12 months. Any chunk fetch failure aborts
+    the whole window so a truncated series is never cached as complete.
     """
     cached = await cache.get(ticker)
     if cached and "daily_transaction" in cached:
@@ -220,14 +232,18 @@ async def fetch_daily_transaction(ticker: str) -> tuple[list | None, bool]:
     start = end - timedelta(days=DAILY_WINDOW_DAYS)
     merged: dict[str, dict] = {}
     error: Exception | None = None
-    for chunk_start, chunk_end in daily_chunks(start, end):
-        try:
-            rows = await sectors_client.get_daily_transaction(ticker, start=chunk_start, end=chunk_end)
-        except Exception as exc:  # noqa: BLE001 — abort the window, never partially cache
-            error = exc
-            break
+    for epoch_start, epoch_end, fetch_start, fetch_end in daily_epoch_chunks(start, end):
+        rows = await cache.get_daily_chunk(ticker, epoch_start.isoformat())
+        if rows is None:
+            try:
+                rows = await sectors_client.get_daily_transaction(ticker, start=epoch_start.isoformat(), end=epoch_end.isoformat())
+            except Exception as exc:  # noqa: BLE001 — abort the window, never partially cache
+                error = exc
+                break
+            await cache.set_daily_chunk(ticker, epoch_start.isoformat(), rows or [], ttl=DAILY_CHUNK_TTL)
         for row in rows or []:
-            merged[row["date"]] = row
+            if fetch_start.isoformat() <= row["date"] <= fetch_end.isoformat():
+                merged[row["date"]] = row
 
     if error is not None:
         raise error
