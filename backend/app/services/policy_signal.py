@@ -41,6 +41,14 @@ CHUNK_EPOCH_ORIGIN = date(2000, 1, 1)  # fixed grid anchor for stable chunk keys
 DAILY_CHUNK_TTL = 7 * 86400  # 7 days — historical daily closes are immutable
 
 
+class PrecheckCacheCold(Exception):
+    """Raised when a cached-only pre-check needs data no epoch cache holds.
+
+    Signals the call site (e.g. the API) to serve a 503 instead of silently
+    burning Sectors credits or returning a truncated window.
+    """
+
+
 def daily_epoch_chunks(start: date, end: date) -> list[tuple[date, date, date, date]]:
     """Fixed-grid 90-day epochs intersecting [start, end].
 
@@ -214,7 +222,7 @@ def aggregate_verdict(results: list[NameResult]) -> tuple[str, str]:
     return verdict, rationale
 
 
-async def fetch_daily_transaction(ticker: str) -> tuple[list | None, bool]:
+async def fetch_daily_transaction(ticker: str, cached_only: bool = False) -> tuple[list | None, bool]:
     """Cache-first daily transactions for a ticker. Returns (data, cache_hit).
 
     Historical data arrives in deterministic 90-day epochs (fixed calendar grid,
@@ -222,6 +230,10 @@ async def fetch_daily_transaction(ticker: str) -> tuple[list | None, bool]:
     API for epochs it has never cached — the sliding-window matures incrementally
     instead of refetching the whole 12 months. Any chunk fetch failure aborts
     the whole window so a truncated series is never cached as complete.
+
+    With `cached_only` set, a missing epoch raises PrecheckCacheCold instead of
+    calling the API — so a cached-only caller never spends credits (or silently
+    analyzes a truncated window) on a cold cache.
     """
     cached = await cache.get(ticker)
     if cached and "daily_transaction" in cached:
@@ -235,6 +247,8 @@ async def fetch_daily_transaction(ticker: str) -> tuple[list | None, bool]:
     for epoch_start, epoch_end, fetch_start, fetch_end in daily_epoch_chunks(start, end):
         rows = await cache.get_daily_chunk(ticker, epoch_start.isoformat())
         if rows is None:
+            if cached_only:
+                raise PrecheckCacheCold(f"{ticker}: epoch {epoch_start.isoformat()} not cached")
             try:
                 rows = await sectors_client.get_daily_transaction(ticker, start=epoch_start.isoformat(), end=epoch_end.isoformat())
             except Exception as exc:  # noqa: BLE001 — abort the window, never partially cache
@@ -254,14 +268,18 @@ async def fetch_daily_transaction(ticker: str) -> tuple[list | None, bool]:
     return data, False
 
 
-async def run_precheck(policy_events: list[PolicyEvent] | None = None, window_days: int = POLICY_WINDOW_DAYS) -> PrecheckReport:
+async def run_precheck(
+    policy_events: list[PolicyEvent] | None = None,
+    window_days: int = POLICY_WINDOW_DAYS,
+    cached_only: bool = False,
+) -> PrecheckReport:
     events = list(policy_events or ENERGY_POLICY_EVENTS)
     policy_dates = [e["date"] for e in events]
     results: list[NameResult] = []
 
     for candidate in CANDIDATE_ENERGY_NAMES:
         try:
-            tx, cache_hit = await fetch_daily_transaction(candidate["ticker"])
+            tx, cache_hit = await fetch_daily_transaction(candidate["ticker"], cached_only=cached_only)
             results.append(classify_signal_for_name(
                 candidate["ticker"],
                 tx or [],
@@ -272,6 +290,8 @@ async def run_precheck(policy_events: list[PolicyEvent] | None = None, window_da
                 prior_price_regime=candidate["prior_price_regime"],
                 cache_hit=cache_hit,
             ))
+        except PrecheckCacheCold:
+            raise  # the API's cached-only mode surfaces a 503 instead of fetch_failed rows
         except Exception as exc:  # noqa: BLE001 — keep the pre-check running
             results.append(NameResult(
                 ticker=candidate["ticker"],
