@@ -23,6 +23,7 @@ Everything here is pure & deterministic except the fetch, which is cache-first.
 
 import statistics
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
 from app.core.evidence_cache import cache
 from app.core.sectors_client import sectors_client
@@ -34,6 +35,19 @@ MIN_DAILY_VOL = 0.3          # % — daily vol floor for a "real" market
 MIN_POLICY_RATIO = 1.5       # on-window / off-window mean |return| for signal
 STRONG_RATIO = 2.0           # ratio for a strong beacon name
 POLICY_WINDOW_DAYS = 2       # trading days on each side of an announcement
+DAILY_WINDOW_DAYS = 365      # T1 inspects 12 months of daily closes per name
+SECTORS_MAX_WINDOW_DAYS = 90  # Sectors caps each daily call at 90 days
+
+
+def daily_chunks(start: date, end: date, max_days: int = SECTORS_MAX_WINDOW_DAYS) -> list[tuple[str, str]]:
+    """Inclusive (start, end) slices covering [start, end], each <= max_days."""
+    chunks: list[tuple[str, str]] = []
+    cur = start
+    while cur <= end:
+        chunk_end = min(cur + timedelta(days=max_days - 1), end)
+        chunks.append((cur.isoformat(), chunk_end.isoformat()))
+        cur = chunk_end + timedelta(days=1)
+    return chunks
 
 
 @dataclass
@@ -191,12 +205,35 @@ def aggregate_verdict(results: list[NameResult]) -> tuple[str, str]:
 
 
 async def fetch_daily_transaction(ticker: str) -> tuple[list | None, bool]:
-    """Cache-first daily transactions for a ticker. Returns (data, cache_hit)."""
+    """Cache-first daily transactions for a ticker. Returns (data, cache_hit).
+
+    On a miss, fetches a rolling 12-month window in 90-day chunks (Sectors caps
+    each daily call at 90 days). Any chunk failure aborts the whole fetch so a
+    truncated window is never cached as if it were the full 12 months.
+    """
     cached = await cache.get(ticker)
     if cached and "daily_transaction" in cached:
         record_sectors_cache_hit()
         return cached["daily_transaction"], True
-    data = await sectors_client.get_daily_transaction(ticker)
+
+    end = date.today()
+    start = end - timedelta(days=DAILY_WINDOW_DAYS)
+    merged: dict[str, dict] = {}
+    error: Exception | None = None
+    for chunk_start, chunk_end in daily_chunks(start, end):
+        try:
+            rows = await sectors_client.get_daily_transaction(ticker, start=chunk_start, end=chunk_end)
+        except Exception as exc:  # noqa: BLE001 — abort the window, never partially cache
+            error = exc
+            break
+        for row in rows or []:
+            merged[row["date"]] = row
+
+    if error is not None:
+        raise error
+    data = [row for _, row in sorted(merged.items())]
+    if not data:
+        return None, False
     await cache.merge(ticker, "daily_transaction", data, ttl=settings.EVIDENCE_CACHE_TTL_DAILY)
     return data, False
 

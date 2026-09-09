@@ -6,6 +6,7 @@ import pytest
 from app.services.policy_signal import (
     aggregate_verdict,
     classify_signal_for_name,
+    daily_chunks,
     daily_close_series,
     policy_window_indices,
     returns_in_percent,
@@ -168,7 +169,7 @@ class TestRunPrecheck:
         monkeypatch.setattr(cache, "merge", fake_merge)
         dates = policy_dates_spread()
         tx = synthetic_daily(vol=0.01, policy_dates=dates, policy_move=0.08, seed=12)
-        async def fake_fetch(_ticker):
+        async def fake_fetch(_ticker, start=None, end=None):
             return tx
         monkeypatch.setattr("app.services.policy_signal.sectors_client.get_daily_transaction", fake_fetch)
         from app.services.policy_signal import run_precheck
@@ -176,6 +177,81 @@ class TestRunPrecheck:
         report = await run_precheck([{"date": dates[0], "title": "t", "subsector": "s", "description": "d", "verified": False}])
         assert merges["n"] == 5
         assert report.verdict in ("PASS", "CONDITIONAL")
+
+
+class TestDailyChunks:
+    def test_single_chunk_within_max(self):
+        start = date(2026, 1, 1)
+        chunks = daily_chunks(start, start + timedelta(days=60))
+        assert chunks == [("2026-01-01", "2026-03-02")]
+        assert (date.fromisoformat(chunks[0][1]) - date.fromisoformat(chunks[0][0])).days == 60
+
+    def test_year_window_subdivides_into_90_day_chunks(self):
+        end = date(2026, 9, 9)
+        start = end - timedelta(days=365)
+        chunks = daily_chunks(start, end)
+        assert len(chunks) == 5
+        for a, b in chunks:
+            span = (date.fromisoformat(b) - date.fromisoformat(a)).days
+            assert 0 <= span <= 89
+        assert chunks[0][0] == start.isoformat()
+        assert chunks[-1][1] == end.isoformat()
+        for (_, prev_b), (cur_a, _) in zip(chunks, chunks[1:]):
+            assert (date.fromisoformat(cur_a) - date.fromisoformat(prev_b)).days == 1
+
+    @pytest.mark.asyncio
+    async def test_fetch_merges_chunks_and_dedups(self, monkeypatch):
+        from app.core.evidence_cache import cache
+        monkeypatch.setattr(cache, "get", _async_dict_get({}))
+        stored = {}
+
+        async def fake_merge(ticker, key, value, ttl=None):
+            stored[ticker] = value
+
+        monkeypatch.setattr(cache, "merge", fake_merge)
+
+        calls = []
+
+        async def fake_get(ticker: str, start: str | None = None, end: str | None = None) -> list:
+            assert start is not None and end is not None
+            calls.append((ticker, start, end))
+            s = date.fromisoformat(start)
+            e = date.fromisoformat(end)
+            return [
+                {"date": (s + timedelta(days=1)).isoformat(), "close": 100.0 + i, "volume": 1}
+                for i in range((e - s).days - 1)
+            ]
+
+        monkeypatch.setattr("app.services.policy_signal.sectors_client.get_daily_transaction", fake_get)
+        from app.services.policy_signal import fetch_daily_transaction
+
+        data, hit = await fetch_daily_transaction("ADRO")
+        assert hit is False
+        assert data is not None
+        assert len(calls) == 5
+        assert stored["ADRO"] == data
+        assert data[0]["date"] < data[-1]["date"]
+
+    @pytest.mark.asyncio
+    async def test_chunk_failure_raises_and_never_caches(self, monkeypatch):
+        from app.core.evidence_cache import cache
+        monkeypatch.setattr(cache, "get", _async_dict_get({}))
+        stored = {}
+
+        async def fake_merge(ticker, key, value, ttl=None):
+            stored[ticker] = value
+
+        monkeypatch.setattr(cache, "merge", fake_merge)
+
+        async def fake_get(ticker, start=None, end=None):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr("app.services.policy_signal.sectors_client.get_daily_transaction", fake_get)
+        from app.services.policy_signal import fetch_daily_transaction
+
+        with pytest.raises(RuntimeError, match="boom"):
+            await fetch_daily_transaction("ADRO")
+        assert stored == {}
 
 
 def _async_dict_get(env):
