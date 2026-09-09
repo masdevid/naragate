@@ -9,6 +9,7 @@ import { ResultsEvidenceComponent } from '../../components/results-evidence/resu
 import { ResultsNewsComponent } from '../../components/results-news/results-news.component';
 import { ResultsFilingsComponent } from '../../components/results-filings/results-filings.component';
 import { ResultsChatComponent, FollowUpSuggestion } from '../../components/results-chat/results-chat.component';
+import { ResultsPolicyComponent } from '../../components/results-policy/results-policy.component';
 import { ResultsRadarComponent } from '../../components/results-radar/results-radar.component';
 import { TPipe } from '../../pipes/t.pipe';
 
@@ -22,6 +23,7 @@ import { TPipe } from '../../pipes/t.pipe';
     ResultsNewsComponent,
     ResultsFilingsComponent,
     ResultsChatComponent,
+    ResultsPolicyComponent,
     ResultsRadarComponent,
     TPipe,
   ],
@@ -89,6 +91,8 @@ import { TPipe } from '../../pipes/t.pipe';
               [explanation]="explanation"/>
             <app-results-radar [dimensions]="dimensions"/>
           }
+
+          <app-results-policy/>
 
           @if (claimData().evidence) {
             <app-results-evidence

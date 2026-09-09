@@ -207,6 +207,18 @@ export default {
   'results.corp_actions_title': 'Corporate Actions',
   'results.filings_title': 'Insider Filings',
 
+  // Policy pre-check
+  'results.policy.title': 'Policy Amplifier Pre-Check',
+  'results.policy.beacons': 'Beacon list',
+  'results.policy.ticker': 'Ticker',
+  'results.policy.subsector': 'Subsector',
+  'results.policy.vol': 'Daily Vol',
+  'results.policy.ratio': 'Policy Ratio',
+  'results.policy.regime': 'Price Regime',
+  'results.policy.signal': 'Signal',
+  'results.policy.classification': 'Classification',
+  'results.policy.events': 'Verified Policy Events',
+
   // Radar chart
   'radar.title': 'Evidence Dimensions',
   'dimension.valuation_gap': 'Valuation Gap',

@@ -207,6 +207,18 @@ export default {
   'results.corp_actions_title': 'Aksi Korporasi',
   'results.filings_title': 'Transaksi Insider',
 
+  // Policy pre-check
+  'results.policy.title': 'Pre-Check Amplifier Kebijakan',
+  'results.policy.beacons': 'Daftar beacon',
+  'results.policy.ticker': 'Ticker',
+  'results.policy.subsector': 'Subsektor',
+  'results.policy.vol': 'Vol Harian',
+  'results.policy.ratio': 'Rasio Kebijakan',
+  'results.policy.regime': 'Regime Harga',
+  'results.policy.signal': 'Sinyal',
+  'results.policy.classification': 'Klasifikasi',
+  'results.policy.events': 'Peristiwa Kebijakan Terverifikasi',
+
   // Radar chart
   'radar.title': 'Dimensi Bukti',
   'dimension.valuation_gap': 'Gap Valuasi',

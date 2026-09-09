@@ -138,6 +138,18 @@ export class NarrativeService {
     });
   }
 
+  getPrecheck(): Observable<any> {
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/api/v1/precheck/`)
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
   deleteClaim(claimId: string): Observable<any> {
     return new Observable(observer => {
       fetch(`${this.apiUrl}/api/v1/claims/${claimId}`, { method: 'DELETE' })
