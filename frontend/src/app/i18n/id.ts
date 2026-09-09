@@ -45,13 +45,22 @@ export default {
   'dashboard.start_setup': 'Mulai Pengaturan',
   'dashboard.fix': 'Buka Pengaturan',
   'dashboard.dismiss': 'Tutup',
-  'dashboard.try_example': 'Coba Contoh',
-  'dashboard.example_narrative': 'BBCA labanya jeblok tapi PE-nya mahal. Padahal pendapatan dan laba bersihnya tumbuh dua digit kuartal ke kuartal.',
+  'scanner.title': 'Analisis Baru',
+  'scanner.mode_single': 'Tunggal',
+  'scanner.mode_bulk': 'Pindai Massal',
   'dashboard.examples_title': 'Atau mulai dari contoh kurasi',
   'dashboard.examples.valuation': 'PE BBCA mahal di 25x, jauh di atas rata-rata sektor 18x.',
   'dashboard.examples.fundamental': 'Pendapatan TLKM terus tumbuh tapi laba bersihnya menyusut setiap kuartal.',
   'dashboard.examples.market': 'Saham UNVR turun 15% dalam seminggu, investor panik.',
   'dashboard.examples.news': 'BMRI disebut bank terbaik di Indonesia saat ini setelah berita laba rekor.',
+  'dashboard.examples.policy_bbm': 'Subsidi BBM dipangkas — harga BBM bersubsidi naik kuartal ini.',
+  'dashboard.examples.policy_hba': 'HBA batu bara ditetapkan naik untuk Q3 — untung ADRO ikut naik.',
+  'dashboard.examples.policy_nickel': 'Larangan ekspor bijih nikel diperketat — INCO untung dari hilirisasi.',
+  'dashboard.examples.no_ticker': 'Saham perbankan sedang mahal.',
+  'dashboard.examples.contradiction': 'Laba BBRI naik tapi sahamnya terus turun 20% bulan ini.',
+  'dashboard.examples.future_price': 'Harga saham BBCA akan berlipat tahun ini.',
+  'dashboard.examples.below_cpo': 'Harga CPO turun — laba AALI tertekan.',
+  'dashboard.examples.below_auto': 'Penjualan mobil melemah kuartal ini — pendapatan ASII akan merosot.',
 
   // Settings
   'settings.title': 'Pengaturan',
@@ -132,13 +141,6 @@ export default {
   'usage.llm_calls': 'Panggilan LLM',
   'usage.loading': 'Memuat pemakaian...',
   'usage.load_error': 'Gagal memuat data pemakaian',
-
-  // Pipeline steps
-  'pipeline.parse': 'Parse',
-  'pipeline.evidence': 'Bukti',
-  'pipeline.skeptic': 'Skeptis',
-  'pipeline.judge': 'Hakim',
-  'pipeline.score': 'Skor',
 
   // Claim page
   'claim.back': 'Kembali',
@@ -250,8 +252,7 @@ export default {
   'trend.empty': 'Belum ada analisis',
 
   // Bulk scanner
-  'bulk.title': 'Pemindai Massal',
-  'bulk.placeholder': 'Satu narasi per baris. Setiap baris dianalisis secara independen.',
+  'bulk.placeholder': 'Satu narasi per baris. Duplikat antar baris terdeteksi otomatis.',
   'bulk.scan_btn': 'Pindai semua',
   'bulk.running': 'Memindai…',
   'bulk.progress': '{{current}}/{{total}}',

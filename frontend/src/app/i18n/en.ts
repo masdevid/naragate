@@ -45,13 +45,22 @@ export default {
   'dashboard.start_setup': 'Start Setup',
   'dashboard.fix': 'Open Settings',
   'dashboard.dismiss': 'Dismiss',
-  'dashboard.try_example': 'Try an Example',
-  'dashboard.example_narrative': 'BBCA earnings are crashing but its PE is expensive. Yet revenue and net profit keep growing double digits quarter over quarter.',
+  'scanner.title': 'New Analysis',
+  'scanner.mode_single': 'Single',
+  'scanner.mode_bulk': 'Bulk Scan',
   'dashboard.examples_title': 'Or start from a curated example',
   'dashboard.examples.valuation': 'BBCA PE is expensive at 25x, far above the sector average of 18x.',
   'dashboard.examples.fundamental': 'TLKM revenue keeps growing but net profit is shrinking every quarter.',
   'dashboard.examples.market': 'UNVR stock has dropped 15% in a week, investors are panicking.',
   'dashboard.examples.news': 'BMRI is being called the best bank in Indonesia right now after record profit news.',
+  'dashboard.examples.policy_bbm': 'The BBM fuel subsidy is being cut — subsidized prices rise this quarter.',
+  'dashboard.examples.policy_hba': 'Coal reference price HBA is set higher for Q3 — ADRO profits follow.',
+  'dashboard.examples.policy_nickel': 'Nickel ore export ban tightened — INCO gains from downstreaming.',
+  'dashboard.examples.no_ticker': 'Banking stocks are expensive.',
+  'dashboard.examples.contradiction': 'BBRI profit grows but its stock keeps falling 20% this month.',
+  'dashboard.examples.future_price': 'BBCA shares will double this year.',
+  'dashboard.examples.below_cpo': 'CPO prices are falling — AALI profits are under pressure.',
+  'dashboard.examples.below_auto': 'Auto sales are weak this quarter — ASII revenue will slide.',
 
   // Settings
   'settings.title': 'Settings',
@@ -132,13 +141,6 @@ export default {
   'usage.llm_calls': 'LLM Calls',
   'usage.loading': 'Loading usage...',
   'usage.load_error': 'Failed to load usage data',
-
-  // Pipeline steps
-  'pipeline.parse': 'Parse',
-  'pipeline.evidence': 'Evidence',
-  'pipeline.skeptic': 'Skeptic',
-  'pipeline.judge': 'Judge',
-  'pipeline.score': 'Score',
 
   // Claim page
   'claim.back': 'Back',
@@ -250,8 +252,7 @@ export default {
   'trend.empty': 'No analyses yet',
 
   // Bulk scanner
-  'bulk.title': 'Bulk Scanner',
-  'bulk.placeholder': 'One narrative per line. Each line is analyzed independently.',
+  'bulk.placeholder': 'One narrative per line. Duplicates across lines are detected automatically.',
   'bulk.scan_btn': 'Scan all',
   'bulk.running': 'Scanning…',
   'bulk.progress': '{{current}}/{{total}}',
