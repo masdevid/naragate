@@ -1,19 +1,33 @@
 import { Routes } from '@angular/router';
-import { ClaimComponent } from './pages/claim/claim.component';
-import { ResultsComponent } from './pages/results/results.component';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { HistoryComponent } from './pages/history/history.component';
-import { SettingsComponent } from './pages/settings/settings.component';
-import { SetupComponent } from './pages/setup/setup.component';
-import { UsageComponent } from './pages/usage/usage.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'claim', component: ClaimComponent },
-  { path: 'results/:id', component: ResultsComponent },
-  { path: 'settings', component: SettingsComponent },
-  { path: 'setup', component: SetupComponent },
-  { path: 'usage', component: UsageComponent },
-  { path: 'history', component: HistoryComponent },
-  { path: 'dashboard', component: DashboardComponent },
+  {
+    path: 'claim',
+    loadComponent: () => import('./pages/claim/claim.component').then(m => m.ClaimComponent),
+  },
+  {
+    path: 'results/:id',
+    loadComponent: () => import('./pages/results/results.component').then(m => m.ResultsComponent),
+  },
+  {
+    path: 'settings',
+    loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent),
+  },
+  {
+    path: 'setup',
+    loadComponent: () => import('./pages/setup/setup.component').then(m => m.SetupComponent),
+  },
+  {
+    path: 'usage',
+    loadComponent: () => import('./pages/usage/usage.component').then(m => m.UsageComponent),
+  },
+  {
+    path: 'history',
+    loadComponent: () => import('./pages/history/history.component').then(m => m.HistoryComponent),
+  },
+  {
+    path: 'dashboard',
+    loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent),
+  },
 ];

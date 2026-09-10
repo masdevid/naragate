@@ -5,14 +5,13 @@ import { NarrativeService } from '../../services/narrative.service';
 import { I18nService } from '../../services/i18n.service';
 import { FormatService } from '../../services/format.service';
 import { PipelineEvent } from '../../models/pipeline.model';
-import { PipelineProgressComponent } from '../../components/pipeline-progress/pipeline-progress.component';
 import { AgentFlowComponent } from '../../components/agent-flow/agent-flow.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-claim',
   standalone: true,
-  imports: [PipelineProgressComponent, AgentFlowComponent, TPipe],
+  imports: [AgentFlowComponent, TPipe],
   template: `
     <div class="claim">
       <div class="claim__inner">
@@ -20,10 +19,6 @@ import { TPipe } from '../../pipes/t.pipe';
 
         <div class="claim__narrative">
           <p class="claim__quote">&ldquo;{{ narrative() }}&rdquo;</p>
-        </div>
-
-        <div class="claim__progress">
-          <app-pipeline-progress [currentStep]="currentStep()" [completedSteps]="completedSteps()"/>
         </div>
 
         <div class="claim__flow">
@@ -107,7 +102,6 @@ import { TPipe } from '../../pipes/t.pipe';
       line-height: 1.55;
       font-style: italic;
     }
-    .claim__progress { margin-bottom: var(--space-xl); }
     .claim__flow {
       border-top: 1px solid var(--color-rule);
       padding-top: var(--space-lg);
@@ -219,6 +213,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
   private thinkingMap = new Map<string, string>();
   private terminalEvent = false;
+  private pipelineStart = 0;
 
   ngOnInit() {
     this.sub = this.route.queryParams.subscribe(params => {
@@ -230,6 +225,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.sub?.unsubscribe(); }
 
   startPipeline() {
+    this.pipelineStart = Date.now();
     this.narrativeService.analyze(this.narrative()).subscribe({
       next: (event) => {
         this.connecting.set(false);
@@ -261,7 +257,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
         if (event.event_type === 'pipeline_duplicate') {
           this.terminalEvent = true;
           this.claimId.set(event.data?.claim_id || event.claim_id);
-          setTimeout(() => this.router.navigate(['/results', this.claimId()]), 1000);
+          this.navigateToResults();
         }
         this.currentEvent.set(event);
         this.claimId.set(event.data?.claim_id || event.claim_id);
@@ -270,7 +266,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
         }
         this.currentStep.set(event.event_type);
         if (event.event_type === 'pipeline_complete') {
-          setTimeout(() => this.router.navigate(['/results', this.claimId()]), 1000);
+          this.navigateToResults();
         }
       },
       error: (err) => {
@@ -294,6 +290,14 @@ export class ClaimComponent implements OnInit, OnDestroy {
     const next = current + delta;
     this.thinkingMap.set(agent, next);
     this.thinking.set({ agent, text: next });
+  }
+
+  private navigateToResults() {
+    // When the pipeline finishes in under a second, hold the completed
+    // agent-flow animation on screen a little longer so it doesn't flash by.
+    const elapsed = Date.now() - this.pipelineStart;
+    const extraDelay = Math.max(0, 1000 - elapsed);
+    setTimeout(() => this.router.navigate(['/results', this.claimId()]), 1000 + extraDelay);
   }
 
   getEventTitle(): string {
