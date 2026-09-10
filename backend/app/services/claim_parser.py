@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.models.schemas import Claim, ClaimCategory, ClaimDirection
 from app.core import llm_client
+from app.services.sector_resolver import resolve_sector_from_narrative
 
 CURATED_TICKERS = {"BBCA", "BBRI", "BMRI", "TLKM", "UNVR"}
 
@@ -122,14 +123,20 @@ async def extract_claim(
     ticker = str(raw_ticker).upper().replace(".JK", "") if raw_ticker else ""
     ticker_valid = ticker in CURATED_TICKERS
 
+    if ticker_valid or re.match(r"^[A-Z]{4}$", ticker):
+        sector_resolved = None
+    else:
+        sector_resolved = resolve_sector_from_narrative(narrative)
+
     if needs_clarification or not re.match(r"^[A-Z]{4}$", ticker) or ticker == "UNKNOWN":
-        needs_clarification = True
-        if not reason_id:
-            reason_id = "Nilai narasi ini menyebutkan perusahaan atau kode saham tertentu (mis. BBCA, BBRI, TLKM) agar dapat dianalisis."
-        if not reason:
-            reason = "No valid 4-letter ticker identified in the narrative"
-        if not missing:
-            missing = ["ticker"]
+        if not sector_resolved:
+            needs_clarification = True
+            if not reason_id:
+                reason_id = "Nilai narasi ini menyebutkan perusahaan atau kode saham tertentu (mis. BBCA, BBRI, TLKM) agar dapat dianalisis."
+            if not reason:
+                reason = "No valid 4-letter ticker identified in the narrative"
+            if not missing:
+                missing = ["ticker"]
 
     category_str = data.get("category", "valuation").lower()
     try:
@@ -160,4 +167,7 @@ async def extract_claim(
         missing=missing,
         reason=reason,
         reason_id=reason_id,
+        is_policy=sector_resolved is not None,
+        sector=sector_resolved.sector if sector_resolved else None,
+        sector_members=sector_resolved.members if sector_resolved else None,
     )

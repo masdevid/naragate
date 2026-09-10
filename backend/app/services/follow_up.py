@@ -1,7 +1,12 @@
+import asyncio
 import json
 
 from app.core import llm_client
 from app.services.claims_store import claims_store
+
+# In-flight suggestion generations keyed by claim id, shared between the
+# pipeline-completion pre-generation and the suggestions endpoint.
+_inflight_generations: dict[str, asyncio.Task] = {}
 
 FOLLOW_UP_PROMPT = """You are Naragate's follow-up assistant. A user just ran a Reality Gap analysis on a market narrative.
 Generate 3-5 short follow-up question templates that this specific user would most likely want to ask,
@@ -142,14 +147,37 @@ async def generate_suggestions(claim_state: dict) -> list[dict]:
     return DEFAULT_SUGGESTIONS
 
 
+async def _generate_and_cache(claim_id: str, claim_state: dict) -> list[dict]:
+    """Generate templates and persist them on the claim state."""
+    suggestions = await generate_suggestions(claim_state)
+    await claims_store.update_claim(claim_id, {"followup_suggestions": suggestions})
+    return suggestions
+
+
 async def get_suggestions(claim_id: str, claim_state: dict) -> dict:
-    """Return cached templates for a claim, generating and caching on first call."""
+    """Return cached templates for a claim, generating and caching on first call.
+
+    Generation for the same claim is deduplicated through an in-flight task so
+    a request arriving while pre-generation (triggered at pipeline completion)
+    is still running awaits that task instead of starting a second LLM call.
+    The task itself persists the suggestions, so a cancelled request never
+    loses a completed generation.
+    """
     cached = claim_state.get("followup_suggestions")
     if cached:
         return {"claim_id": claim_id, "suggestions": cached, "cached": True}
 
-    suggestions = await generate_suggestions(claim_state)
-    await claims_store.update_claim(claim_id, {"followup_suggestions": suggestions})
+    task = _inflight_generations.get(claim_id)
+    if task is None or task.done():
+        task = asyncio.create_task(_generate_and_cache(claim_id, claim_state))
+        _inflight_generations[claim_id] = task
+        task.add_done_callback(
+            lambda t: _inflight_generations.pop(claim_id, None)
+            if _inflight_generations.get(claim_id) is t
+            else None
+        )
+
+    suggestions = await asyncio.shield(task)
     return {"claim_id": claim_id, "suggestions": suggestions, "cached": False}
 
 

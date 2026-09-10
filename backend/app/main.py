@@ -13,7 +13,7 @@ from app.core.sectors_client import sectors_client
 from app.core.evidence_cache import cache as evidence_cache
 from app.core.llm_config import llm_endpoint
 from app.core.sectors_config import sectors_api_key
-from app.api.v1.endpoints import claims, evidence, stream
+from app.api.v1.endpoints import claims, evidence, precheck, stream
 from app.api.v1.endpoints import settings as settings_router
 from app.api.v1.endpoints import usage as usage_router
 
@@ -75,6 +75,7 @@ app.add_middleware(
 
 app.include_router(claims.router, prefix="/api/v1/claims", tags=["claims"])
 app.include_router(evidence.router, prefix="/api/v1/evidence", tags=["evidence"])
+app.include_router(precheck.router, prefix="/api/v1/precheck", tags=["precheck"])
 app.include_router(stream.router, prefix="/api/v1/stream", tags=["stream"])
 app.include_router(settings_router.router, prefix="/api/v1/settings", tags=["settings"])
 app.include_router(usage_router.router, prefix="/api/v1/usage", tags=["usage"])

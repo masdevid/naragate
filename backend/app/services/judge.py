@@ -4,6 +4,48 @@ from app.models.schemas import (
     ValuationEvidence, FundamentalEvidence, MarketEvidence, SkepticOutput
 )
 
+# T5 — policy narrative gap dimension thresholds.
+MAX_PRIOR_DRIFT = 0.3        # % — run-up drift that disqualifies a "reaction"
+MIN_POLICY_REACTION = 0.3    # % — post-announcement move floor for a signal
+POLICY_REACTION_SCALE = 5.0  # multiplies % move, mirroring market_momentum_gap
+
+
+def _clean_policy_reactions(policy_evidence: Optional[dict]) -> list[dict]:
+    """Reactions respecting timing discipline.
+
+    The move must be measured strictly AFTER the policy date (structural in how
+    reactions are gathered) and the same name must not already have been
+    drifting in the prior period — otherwise the post-policy move is not
+    attributable to the policy event.
+    """
+    reactions = ((policy_evidence or {}).get("reactions")) or []
+    clean = []
+    for r in reactions:
+        prior = r.get("prior_return")
+        post = r.get("post_return")
+        if not isinstance(prior, (int, float)) or not isinstance(post, (int, float)):
+            continue
+        if abs(prior) >= MAX_PRIOR_DRIFT:
+            continue
+        clean.append(r)
+    return clean
+
+
+def policy_narrative_dimension(policy_evidence: Optional[dict], direction: str) -> float:
+    """Score the sector's reaction to the labeled policy event.
+
+    Any timing violation (run-up drift, no clean reactions, no meaningful
+    post-policy move) scores neutral (50) — never a fabricated signal.
+    """
+    clean = _clean_policy_reactions(policy_evidence)
+    if not clean:
+        return 50.0
+    post = sum(r["post_return"] for r in clean) / len(clean)
+    if abs(post) < MIN_POLICY_REACTION:
+        return 50.0
+    factor = -1.0 if direction == "below" else 1.0
+    return round(max(0.0, min(100.0, 50.0 + factor * post * POLICY_REACTION_SCALE)), 2)
+
 
 class EvidenceJudge:
     def assess(self, claim: Claim, evidence: dict, skeptic: Optional[SkepticOutput] = None) -> EvidenceAssessment:
@@ -14,6 +56,7 @@ class EvidenceJudge:
         fundamental = evidence.get("fundamental")
         market = evidence.get("market")
         news = evidence.get("news")
+        policy = evidence.get("policy")
         corporate_actions = evidence.get("corporate_actions")
         filings = evidence.get("filings")
 
@@ -25,6 +68,8 @@ class EvidenceJudge:
             evidence_summary["market"] = market.model_dump(mode="json") if hasattr(market, "model_dump") else market
         if news:
             evidence_summary["news"] = news.model_dump(mode="json") if hasattr(news, "model_dump") else news
+        if policy:
+            evidence_summary["policy"] = policy.model_dump(mode="json") if hasattr(policy, "model_dump") else policy
         if corporate_actions:
             evidence_summary["corporate_actions"] = corporate_actions.model_dump(mode="json") if hasattr(corporate_actions, "model_dump") else corporate_actions
         if filings:
@@ -42,6 +87,22 @@ class EvidenceJudge:
             corroboration = news.corroboration if hasattr(news, "corroboration") else "neutral"
             if corroboration == "contradicts":
                 contradictions.append("Recent news contradicts the claim's direction")
+
+        # T5: a sector that reacts against the claim's direction is a contradiction —
+        # but only for non-valuation categories (anti-dilution guardrail).
+        if policy and claim.category.value != "valuation":
+            clean = _clean_policy_reactions(evidence_summary.get("policy"))
+            if clean:
+                post = sum(r["post_return"] for r in clean) / len(clean)
+                direction = claim.direction.value
+                contradicts = (
+                    (direction == "below" and post >= MIN_POLICY_REACTION)
+                    or (direction == "above" and post <= -MIN_POLICY_REACTION)
+                )
+                if contradicts:
+                    contradictions.append(
+                        "The sector's reaction to the policy announcement contradicts the claim's direction"
+                    )
 
         if corporate_actions:
             relevant = corporate_actions.relevant_events if hasattr(corporate_actions, "relevant_events") else []
@@ -65,9 +126,9 @@ class EvidenceJudge:
         if cat == "valuation":
             applicable_dimensions = ["valuation_gap", "peer_relative_gap", "evidence_confidence"]
         elif cat == "fundamental":
-            applicable_dimensions = ["earnings_gap", "evidence_confidence", "market_momentum_gap"]
+            applicable_dimensions = ["earnings_gap", "policy_narrative_gap", "evidence_confidence", "market_momentum_gap"]
         elif cat == "market":
-            applicable_dimensions = ["market_momentum_gap", "evidence_confidence", "valuation_gap"]
+            applicable_dimensions = ["market_momentum_gap", "policy_narrative_gap", "evidence_confidence", "valuation_gap"]
         elif cat == "peer_comparison":
             applicable_dimensions = ["peer_relative_gap", "evidence_confidence", "valuation_gap"]
         elif cat == "insider_trading":
@@ -98,8 +159,8 @@ class EvidenceJudge:
 class ScoreGenerator:
     DIMENSION_WEIGHTS = {
         "valuation": {"valuation_gap": 0.4, "peer_relative_gap": 0.3, "evidence_confidence": 0.3},
-        "fundamental": {"earnings_gap": 0.4, "evidence_confidence": 0.3, "market_momentum_gap": 0.3},
-        "market": {"market_momentum_gap": 0.5, "evidence_confidence": 0.3, "valuation_gap": 0.2},
+        "fundamental": {"earnings_gap": 0.3, "policy_narrative_gap": 0.2, "evidence_confidence": 0.3, "market_momentum_gap": 0.2},
+        "market": {"market_momentum_gap": 0.4, "policy_narrative_gap": 0.2, "evidence_confidence": 0.3, "valuation_gap": 0.1},
         "peer_comparison": {"peer_relative_gap": 0.5, "evidence_confidence": 0.3, "valuation_gap": 0.2},
         "insider_trading": {"insider_bias_gap": 0.5, "evidence_confidence": 0.3, "market_momentum_gap": 0.2},
     }
@@ -233,6 +294,9 @@ class ScoreGenerator:
                         dim_score = 50.0
                 else:
                     dim_score = 50.0
+            elif dim == "policy_narrative_gap":
+                policy = evidence_summary.get("policy")
+                dim_score = policy_narrative_dimension(policy, direction) if policy else 50.0
             else:
                 dim_score = 50.0
 

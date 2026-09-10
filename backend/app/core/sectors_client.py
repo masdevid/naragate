@@ -108,8 +108,13 @@ class SectorsClient:
         params = {"sections": ",".join(sections)} if sections else None
         return await self._get(f"/v2/subsector/report/{sub_sector}/", params=params)
 
-    async def get_daily_transaction(self, ticker: str) -> list:
-        return await self._get(f"/v2/daily/{ticker}/")
+    async def get_daily_transaction(self, ticker: str, start: str | None = None, end: str | None = None) -> list:
+        params = {}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return await self._get(f"/v2/daily/{ticker}/", params=params or None)
 
     async def get_news(self, ticker: str, limit: int = 20) -> dict:
         return await self._get(f"/v2/news/", params={"symbols": ticker, "limit": limit})
