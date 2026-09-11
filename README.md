@@ -1,6 +1,6 @@
 # Naragate
 
-**AI evidence engine that detects financial claims in Indonesian market narratives and verifies them against real financial data.**
+**AI evidence engine that detects financial claims in Indonesian market narratives — and now amplifies them with live policy intelligence.**
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 [![Sectors Hackathon 2026 | Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
@@ -12,6 +12,52 @@
 ## Live Demo
 
 Built for the **Sectors Hackathon 2026** — [Track 1 · AI Agents & Assistants](https://hackathon.sectors.app/tracks/ai-agents-assistants). Try the web UI: **[https://naragate.ilkomers.com/](https://naragate.ilkomers.com/)**
+
+---
+
+## What It Does
+
+Indonesian retail investors are bombarded with market narratives every day — *"BBCA labanya jeblok"*, *"PE-nya masih mahal"*, *"Pemerintah naikkan subsidi BBM"* — and most of them are wrong, misleading, or incomplete.
+
+Naragate is an **AI-powered financial fact-check engine** that takes any Indonesian market narrative, extracts specific financial claims, verifies them against real Sectors v2 financial data, and produces a **Reality Gap Score** (0–100) showing how strongly the evidence aligns with the claim.
+
+**Now with the Policy-Narrative Amplifier** — a first-of-its-kind dimension that detects Indonesian energy policy events, automatically re-scores affected claims when policy news lands, and surfaces the policy-risk signal hidden inside ticker-less narratives like *"subsidi BBM naik"* or *"HBA turun"*.
+
+---
+
+## 🚀 Features
+
+### Policy-Narrative Amplifier *(New)*
+
+- **Policy Pre-Check** — validates the policy→price signal hypothesis with a 12-month price-volatility analysis on candidate energy names (zero-credit on warm re-runs)
+- **Anchored Sector Resolver** — deterministic, auditable mapping from Indonesian policy vocabulary to sector members — no LLM, no guesswork
+- **Sector-Scoped Evidence Graph** — policy evidence gathered once per sector and shared across all member claims — zero extra API credits
+- **Policy-Event Labeling** — auto-labels news headlines with date, actor, and policy keyword from existing corpus (no new data sources)
+- **Policy-Narrative Gap Score** — a new scoring dimension that measures sector price reactions strictly after labeled policy events, with timing discipline
+- **Background Re-Score** — claims are automatically re-scored when a policy event lands — live policy-risk monitoring, not retrospective explainer
+- **Anti-Dilution Guardrail** — the policy dimension is never applied to valuation claims, preserving score integrity
+
+### Dashboard Scanner
+
+- **Single/Bulk Mode Toggle** — paste one narrative or many (line-by-line)
+- **12 Curated Narrative Tiles** — instant demo examples across normal, policy, edge-case, and contradiction categories
+- **Bulk Progress Tracking** — queue processing with duplicate detection, results route to history on completion
+
+### Multi-LLM Provider Connector
+
+- Connect to **Ollama, OpenAI, OpenRouter, Groq, Together**, or any custom OpenAI-compatible endpoint
+- Live endpoint validation with auto-discovered models
+- Per-agent model overrides (Claim Parser, Skeptic, Scorer, Judge)
+
+### Usage & Credit Dashboard
+
+- Real-time Sects API budget tracking (total, cached, remaining)
+- LLM token consumption and estimated cost
+- Daily breakdown of API calls, tokens, and pipeline stats
+
+### Bilingual Interface
+
+- Full **English / Indonesian** UI toggle across all pages
 
 ---
 
@@ -30,19 +76,27 @@ This is especially difficult for novice retail traders who have little or no kno
 
 The result is an information gap. Beginners may trust a persuasive narrative because they cannot quickly challenge it, reject useful information because it looks too technical, or make a decision based on a single number without understanding its context. Manually checking a claim means opening several reports, finding comparable periods, calculating changes, and deciding which evidence is relevant. That process is slow and intimidating even before a beginner reaches an investment decision.
 
-Naragate is designed to make this first verification step easier. It translates a market narrative into specific claims, connects each claim to relevant financial evidence, and explains whether the available data supports, contradicts, or only partially supports the statement. It does not remove the need to learn or perform personal research; it gives a novice a clearer starting point and questions to investigate.
+**Now add policy narratives**: statements like *"pemerintah naikkan subsidi BBM"* or *"HBA turun signifikan"* don't name a ticker, but they visibly move energy, commodity, and defense-adjacent stocks. Today, these fall through the cracks — there's no claim to extract, no ticker to verify, and no evidence to score. Naragate's Policy-Narrative Amplifier closes this gap.
 
 ## Solution
 
-Naragate analyzes any Indonesian market narrative in real-time and produces a **Reality Gap Score** — a 0–100 measure of how strongly the financial evidence aligns with the claim.
+Naragate analyzes any Indonesian market narrative in real-time and produces a **Reality Gap Score** — a 0–100 measure of how strongly the financial evidence aligns with the claim. With the Policy-Narrative Amplifier, it also detects policy events, resolves them to affected sector members, and feeds a new policy-narrative gap dimension into the score.
 
 **Input:**
-> "BBCA labanya jeblok, PE-nya masih mahal banget, mending pindah ke BBRI"
+> *"BBCA labanya jeblok, PE-nya masih mahal banget, mending pindah ke BBRI"*
 
 **Output:**
 - Extracted claims: "BBCA profits collapsed", "BBCA PE is expensive", "BBRI is better"
 - Evidence: Actual PE ratios, profit margins, quarterly financials
 - Verdict: **Mixed (45/100)** — profits declined but PE is within sector average
+
+**Policy Input:**
+> *"Pemerintah naikkan subsidi BBM, dampaknya ke energi"*
+
+**Policy Output:**
+- Resolved sector: Energy (3 member tickers)
+- Policy events verified with timing discipline
+- Policy-narrative gap dimension integrated into Reality Gap Score for market & fundamental claims
 
 ## Who It's For
 
@@ -51,6 +105,7 @@ Naragate analyzes any Indonesian market narrative in real-time and produces a **
 | **Retail investors** | Paste a WhatsApp message, get instant fact-check |
 | **Financial analysts** | Verify claims before including in reports |
 | **Compliance teams** | Screen social media for misleading financial claims |
+| **Policy-exposed funds** | Monitor policy-risk signals across energy, commodity, and defense sectors |
 
 ## Architecture
 
@@ -63,22 +118,29 @@ flowchart LR
   Data --> Sectors[Sectors v2]
   Analysis --> Cache[Cached data]
   Analysis --> LLM[AI language model]
+  Policy[Policy narrative] --> Resolver[Sector resolver]
+  Resolver --> PolicyEvidence[Policy-event labeling]
+  PolicyEvidence --> Scorer[Policy gap dimension]
+  Scorer --> Result
 
   subgraph Naragate[Naragate]
     App
     Analysis
     Result
     Cache
+    Resolver
+    Scorer
   end
 ```
 
 ### Multi-Agent Pipeline
 
-1. **Claim Parser** — Extracts structured claims from Indonesian text
+1. **Claim Parser** — Extracts structured claims from Indonesian text (with policy claim detection)
 2. **Evidence Agents** — Valuation (PE, PB, PS, PCF), Fundamental (revenue, earnings, margins), Market (price, volume, volatility), News (corroboration)
 3. **Skeptic Agent** — Challenges claims with negation bias
 4. **Evidence Judge** — Aggregates evidence from all agents
-5. **Score Generator** — Computes Reality Gap Score (0–100)
+5. **Score Generator** — Computes Reality Gap Score (0–100) with policy-narrative dimension
+6. **Policy Amplifier** — Sector resolver → Event labeling → Gap scoring → Background re-score trigger
 
 ### Pi Coding Agent Harness
 
@@ -122,7 +184,7 @@ Download from https://ollama.com and open it. Then pull a model by opening a ter
 ollama pull gemma3:12b
 ```
 
-> Prefer a cloud LLM instead? You can skip Ollama and just paste an OpenAI-compatible endpoint into the web UI later.
+> Prefer a cloud LLM instead? You can skip Ollama and just paste an OpenAI-compatible endpoint into the web UI later — connect to OpenAI, OpenRouter, Groq, Together, or any custom provider from the LLM Connector page.
 
 ### 3. Start Naragate
 
@@ -144,26 +206,26 @@ To stop Naragate: run `stop.sh` (macOS/Linux) or `stop.bat` (Windows).
 
 ### First Analysis
 
-1. Type or paste an Indonesian market narrative, e.g. *"BBCA labanya jeblok, PE-nya masih mahal banget, mending pindah ke BBRI"* — or click **Try an Example**.
+1. Type or paste an Indonesian market narrative, e.g. *"BBCA labanya jeblok, PE-nya masih mahal banget, mending pindah ke BBRI"* — or click any of the 12 curated narrative tiles on the Dashboard.
 2. Click **Analyze**.
 3. Watch the pipeline execute in real-time.
-4. Review the Reality Gap Score and evidence breakdown.
+4. Review the Reality Gap Score, policy amplification results, and evidence breakdown.
 
 ## Configuration
 
-All settings are configurable via the web UI at `/settings`:
+All settings are configurable via the web UI:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | Sectors API Key | Your API key | Required |
-| LLM Provider | Local Ollama or another compatible provider | Local Ollama |
+| LLM Provider | Ollama, OpenAI, OpenRouter, Groq, Together, or custom | Local Ollama |
 | LLM API Key | For paid providers | Optional (local Ollama) |
 | Default Model | Model for all agents | Set in the setup wizard |
 | Claim Parser Model | Override for claim extraction | Uses default |
 | Skeptic Model | Override for skepticism | Uses default |
 | Scorer Model | Override for scoring | Uses default |
 
-Keys and models set in the web UI take precedence over `.env`. You can leave `.env` empty and configure everything from the browser.
+Keys and models set in the web UI take precedence over `.env`. You can leave `.env` empty and configure everything from the browser. Manage and validate LLM connections from **Settings → LLM Connector**.
 
 ## Troubleshooting ("I'm stuck")
 
@@ -184,11 +246,19 @@ Keys and models set in the web UI take precedence over `.env`. You can leave `.e
 |-------|------------|
 | Frontend | Angular 22, Tailwind CSS |
 | Backend | FastAPI, Python 3.12 |
-| Orchestration | Multi-agent pipeline (5 stages) via Pi Coding Agent harness |
+| Orchestration | Multi-agent pipeline (6 stages) via Pi Coding Agent harness |
 | Persistence | SQLite (claims), Redis (cache) |
-| LLM | Any OpenAI-compatible provider |
+| LLM | Any OpenAI-compatible provider (Ollama, OpenAI, OpenRouter, Groq, Together) |
 | Data | Sectors v2 API |
 | Deployment | Docker Compose |
+
+## Innovation Highlights
+
+1. **Policy-Narrative Amplifier** — First system to detect Indonesian energy policy events and dynamically re-score financial claims based on policy-risk signals. Validated via 12-month price-signal pre-check with zero-credit warm re-runs.
+2. **Credit-Budget Discipline** — Engineered around strict Sectors API credit limits (1,600 credit budget). Fixed-grid caching delivers 0-credit warm re-runs. All Sectors calls route through the Evidence Graph cache first. Live usage dashboard shows exactly where every credit goes.
+3. **Multi-LLM Provider Support** — Connect to 6+ providers from one unified connector with live endpoint validation and auto-discovered models. No vendor lock-in.
+4. **Bilingual Interface** — Full Indonesian/English UI toggle for the target market.
+5. **Anti-Dilution Architecture** — Policy dimensions are gated by claim category (never on valuation), ensuring score integrity is preserved at every layer.
 
 ## Data Usage
 
