@@ -307,6 +307,14 @@ export default {
   'skeptic.title': 'Skeptic Analysis',
   'skeptic.strength': 'Strength',
   'skeptic.ambiguity': 'Ambiguity Points',
+  'section_help.verdict': 'The Reality Gap score measures how far this claim sits from what the financials and market data actually show. Treat a wide gap as a reason to slow down, not to dismiss the story entirely.',
+  'section_help.radar': 'The radar breaks that gap down by factor, so you can see where the narrative is strongest and where it stretches the evidence.',
+  'section_help.policy': 'A policy pre-check for the sector\u2019s upcoming decision windows: volume behaviour, price regime, policy signal and the events that matter. It shows whether the market has already started trading the news.',
+  'section_help.evidence': 'This is ground truth: valuation, fundamentals and market action from Sectors data. When the numbers do not move with the story, that gap is the whole story.',
+  'section_help.news': 'Read whether the market is independently confirming or contradicting the claim. A headline that already happened weighs more than one that is only promised.',
+  'section_help.filings': 'Filings are regulator-attested insider transactions \u2014 the hardest evidence to fake. Net insider buying supports the story; net selling is the smartest people voting the other way.',
+  'section_help.skeptic': 'This section argues the other side: counter-arguments, ambiguous wording, and evidence that is missing entirely. Read it so you are not convinced only when it feels good.',
+  'section_help.chat': 'Ask anything about the claim. The assistant reasons over the evidence above, so you can interrogate the verdict instead of taking it on faith.',
   'skeptic.missing': 'Missing Evidence',
 
   // Cache

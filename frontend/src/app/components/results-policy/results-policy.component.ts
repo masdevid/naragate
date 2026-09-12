@@ -1,15 +1,17 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { NarrativeService } from '../../services/narrative.service';
+import { SectionHelpComponent } from '../section-help/section-help.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-results-policy',
   standalone: true,
-  imports: [TPipe],
+  imports: [SectionHelpComponent, TPipe],
   template: `
     @if (precheck(); as p) {
       <section class="policy">
         <p class="policy__label">{{ 'results.policy.title' | t }}</p>
+        <app-section-help helpKey="section_help.policy"/>
 
         <div class="policy__verdict-row">
           <span class="policy__verdict" [attr.data-verdict]="p.verdict">{{ p.verdict }}</span>

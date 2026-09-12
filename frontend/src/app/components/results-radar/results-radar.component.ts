@@ -1,14 +1,16 @@
 import { Component, Input, inject } from '@angular/core';
 import { I18nService } from '../../services/i18n.service';
+import { SectionHelpComponent } from '../section-help/section-help.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-results-radar',
   standalone: true,
-  imports: [TPipe],
+  imports: [SectionHelpComponent, TPipe],
   template: `
     <div class="radar">
       <h3 class="radar__title">{{ 'radar.title' | t }}</h3>
+      <app-section-help helpKey="section_help.radar"/>
       <svg class="radar__svg" [attr.viewBox]="viewBox" role="img"
         [attr.aria-label]="'radar.title' | t">
         @for (ring of rings; track ring) {

@@ -1,5 +1,6 @@
 import { Component, Input, inject } from '@angular/core';
 import { EvidenceCardComponent } from '../evidence-card/evidence-card.component';
+import { SectionHelpComponent } from '../section-help/section-help.component';
 import { I18nService } from '../../services/i18n.service';
 import { FormatService } from '../../services/format.service';
 import { TPipe } from '../../pipes/t.pipe';
@@ -7,9 +8,10 @@ import { TPipe } from '../../pipes/t.pipe';
 @Component({
   selector: 'app-results-filings',
   standalone: true,
-  imports: [EvidenceCardComponent, TPipe],
+  imports: [EvidenceCardComponent, SectionHelpComponent, TPipe],
   template: `
     <div class="filings">
+      <app-section-help helpKey="section_help.filings"/>
       @if (filings()) {
         <app-evidence-card [title]="'results.filings_title' | t" [cacheHit]="filings().cache_hit">
           <div class="filings__body">

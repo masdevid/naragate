@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../services/i18n.service';
+import { SectionHelpComponent } from '../section-help/section-help.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 export interface FollowUpSuggestion {
@@ -24,10 +25,11 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
 @Component({
   selector: 'app-results-chat',
   standalone: true,
-  imports: [FormsModule, TPipe],
+  imports: [FormsModule, SectionHelpComponent, TPipe],
   template: `
     <div class="chat">
       <p class="chat__label">{{ 'chat.title' | t }}</p>
+      <app-section-help helpKey="section_help.chat"/>
       <div class="chat__log">
         @for (msg of messages(); track $index) {
           <div class="chat__msg" [class.chat__msg--user]="msg.role === 'user'">

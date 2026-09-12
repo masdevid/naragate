@@ -1,13 +1,15 @@
 import { Component, Input } from '@angular/core';
 import { ScoreGaugeComponent } from '../score-gauge/score-gauge.component';
 import { VerdictBadgeComponent } from '../verdict-badge/verdict-badge.component';
+import { SectionHelpComponent } from '../section-help/section-help.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-results-verdict',
   standalone: true,
-  imports: [ScoreGaugeComponent, VerdictBadgeComponent, TPipe],
+  imports: [ScoreGaugeComponent, VerdictBadgeComponent, SectionHelpComponent, TPipe],
   template: `
+    <app-section-help helpKey="section_help.verdict"/>
     <div class="verdict">
       <app-score-gauge [score]="score()"/>
       <div class="verdict__text">

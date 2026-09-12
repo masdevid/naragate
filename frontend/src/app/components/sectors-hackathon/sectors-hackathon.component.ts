@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-sectors-hackathon',
   standalone: true,
-  imports: [RouterLink, TPipe],
+  imports: [TPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a routerLink="/usage" class="flex min-w-0 shrink items-center gap-3 sm:shrink-0">
+    <a href="https://hackathon.sectors.app" target="_blank" rel="noopener"
+      class="flex min-w-0 shrink items-center gap-3 sm:shrink-0">
       <img alt="" loading="lazy" width="20" height="24" decoding="async" class="h-6 w-5"
         src="https://hackathon.sectors.app/brand/sectors-icon.svg" style="color: transparent;">
       <span class="min-w-0">

@@ -1,14 +1,16 @@
 import { Component, Input, inject } from '@angular/core';
 import { EvidenceCardComponent } from '../evidence-card/evidence-card.component';
+import { SectionHelpComponent } from '../section-help/section-help.component';
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-results-news',
   standalone: true,
-  imports: [EvidenceCardComponent, TPipe],
+  imports: [EvidenceCardComponent, SectionHelpComponent, TPipe],
   template: `
     <div class="news">
+      <app-section-help helpKey="section_help.news"/>
       @if (news()) {
         <app-evidence-card [title]="'results.news_title' | t" [cacheHit]="news().cache_hit">
           <div class="news__body">

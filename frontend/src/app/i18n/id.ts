@@ -308,6 +308,14 @@ export default {
   'skeptic.strength': 'Kekuatan',
   'skeptic.ambiguity': 'Poin Ambiguitas',
   'skeptic.missing': 'Bukti yang Hilang',
+  'section_help.verdict': 'Skor Reality Gap mengukur seberapa jauh klaim ini dari apa yang sebenarnya ditunjukkan laporan keuangan dan data pasar. Gap yang lebar adalah alasan untuk memperlambat, bukan untuk menolak ceritanya begitu saja.',
+  'section_help.radar': 'Radar ini memecah gap tersebut menurut faktornya, sehingga Anda bisa melihat di mana narasi paling kuat dan di mana ia terlalu memaksakan bukti.',
+  'section_help.policy': 'Pra-pemeriksaan kebijakan untuk jendela keputusan yang akan datang: perilaku volume, rezim harga, sinyal kebijakan, dan agenda acara yang penting. Ini menunjukkan apakah pasar sudah mulai memperdagangkan kabar tersebut.',
+  'section_help.evidence': 'Ini adalah fakta dasar: valuasi, fundamental, dan pergerakan pasar dari data Sectors. Ketika angka-angka tidak bergerak mengikuti cerita, gap itulah inti ceritanya.',
+  'section_help.news': 'Baca apakah pasar secara independen mengonfirmasi atau membantah klaim. Judul berita yang sudah terjadi jauh lebih berbobot daripada yang baru dijanjikan.',
+  'section_help.filings': 'Filings adalah transaksi insider yang terverifikasi regulator \u2014 bukti paling sulit untuk dipalsukan. Net buying oleh insider mendukung cerita; net selling adalah orang-orang terpintar memilih arah yang berlawanan.',
+  'section_help.skeptic': 'Bagian ini membela sisi sebaliknya: kontra-argumen, kata-kata yang ambigu, dan bukti yang sama sekali tidak ada. Bacalah agar Anda tidak mudah yakin hanya karena terasa enak.',
+  'section_help.chat': 'Tanyakan apa saja tentang klaim ini. Asisten ini bernalar di atas bukti di atas, sehingga Anda bisa menginterogasi verdict alih-alih menerimanya bulat-bulat.',
 
   // Cache
   'cache.hit': 'cache',

@@ -1,14 +1,16 @@
 import { Component, Input, inject } from '@angular/core';
 import { I18nService } from '../../services/i18n.service';
+import { SectionHelpComponent } from '../section-help/section-help.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-skeptic-panel',
   standalone: true,
-  imports: [TPipe],
+  imports: [SectionHelpComponent, TPipe],
   template: `
     <div class="skeptic">
       <h3 class="skeptic__title">{{ 'skeptic.title' | t }}</h3>
+      <app-section-help helpKey="section_help.skeptic"/>
 
       @for (arg of counterArguments; track arg.point) {
         <div class="skeptic__arg">

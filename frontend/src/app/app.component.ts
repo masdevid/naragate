@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { UpperCasePipe } from '@angular/common';
 import { I18nService } from './services/i18n.service';
@@ -30,7 +30,12 @@ interface NavItem {
         <div class="nav__lang">
           <a routerLink="/usage" class="nav__credit" (click)="closeMenu()">
             @if (credit()) {
-              {{ 'nav.credit' | t }} {{ credit()!.remaining }} / {{ credit()!.budget }}
+              <span class="nav__credit-val"
+                [class.nav__credit-val--ok]="creditLevel() === 'ok'"
+                [class.nav__credit-val--warn]="creditLevel() === 'warn'"
+                [class.nav__credit-val--danger]="creditLevel() === 'danger'">
+                {{ 'nav.credit' | t }} {{ credit()!.remaining }} / {{ credit()!.budget }}
+              </span>
             } @else {
               {{ 'nav.credit' | t }}
             }
@@ -136,6 +141,15 @@ interface NavItem {
     .nav__credit:hover {
       color: var(--color-ink);
       border-color: var(--color-accent);
+    }
+    .nav__credit-val--ok {
+      color: var(--color-success);
+    }
+    .nav__credit-val--warn {
+      color: var(--color-warning);
+    }
+    .nav__credit-val--danger {
+      color: var(--color-danger);
     }
     .nav__lang {
       display: flex;
@@ -276,6 +290,14 @@ export class AppComponent implements OnInit {
 
   menuOpen = signal(false);
   credit = signal<{ remaining: number; budget: number } | null>(null);
+  creditLevel = computed<'ok' | 'warn' | 'danger'>(() => {
+    const c = this.credit();
+    if (!c || c.budget <= 0) return 'ok';
+    const pct = (c.remaining / c.budget) * 100;
+    if (pct <= 15) return 'danger';
+    if (pct <= 30) return 'warn';
+    return 'ok';
+  });
 
   constructor() {
     this.router.events.subscribe(event => {
