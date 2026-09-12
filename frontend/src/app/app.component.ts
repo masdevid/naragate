@@ -4,6 +4,7 @@ import { UpperCasePipe } from '@angular/common';
 import { I18nService } from './services/i18n.service';
 import { SettingsService } from './services/settings.service';
 import { UsageService } from './services/usage.service';
+import { NaraWordmarkComponent } from './components/nara-wordmark/nara-wordmark.component';
 import { TPipe } from './pipes/t.pipe';
 
 interface NavItem {
@@ -14,10 +15,10 @@ interface NavItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent],
   template: `
     <nav class="nav" [class.nav--open]="menuOpen()">
-      <a routerLink="/dashboard" class="nav__brand" (click)="closeMenu()">Naragate</a>
+      <a routerLink="/dashboard" class="nav__brand" (click)="closeMenu()"><app-nara-wordmark /></a>
 
       <div class="nav__links">
         @for (item of menuItems; track item.route) {
@@ -25,15 +26,8 @@ interface NavItem {
             [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
             class="nav__link" (click)="closeMenu()">{{ item.labelKey | t }}</a>
         }
-        @if (credit()) {
-          <a routerLink="/usage" class="nav__credit" [attr.title]="'nav.sectors_credits' | t">
-            <span class="nav__credit-label">{{ 'nav.sectors_credits' | t }}</span>
-            <span class="nav__credit-val" [class.nav__credit-val--low]="credit()!.remaining < 200">
-              {{ credit()!.remaining }} / {{ credit()!.budget }}
-            </span>
-          </a>
-        }
         <div class="nav__lang">
+          <a routerLink="/usage" class="nav__credit" (click)="closeMenu()">{{ 'nav.credit' | t }}</a>
           @for (lang of langs; track lang.code) {
             <button class="nav__lang-btn" [class.nav__lang-btn--active]="i18n.language() === lang.code"
               (click)="i18n.setLanguage(lang.code)">
@@ -60,11 +54,7 @@ interface NavItem {
               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
               class="nav__panel-link" (click)="closeMenu()">{{ item.labelKey | t }}</a>
           }
-          @if (credit()) {
-            <a routerLink="/usage" class="nav__panel-credit" [attr.title]="'nav.sectors_credits' | t">
-              {{ 'nav.sectors_credits' | t }} &middot; {{ credit()!.remaining }} / {{ credit()!.budget }}
-            </a>
-          }
+          <a routerLink="/usage" class="nav__panel-credit" (click)="closeMenu()">{{ 'nav.credit' | t }}</a>
           <div class="nav__panel-lang">
             @for (lang of langs; track lang.code) {
               <button class="nav__lang-btn" [class.nav__lang-btn--active]="i18n.language() === lang.code"
@@ -79,7 +69,14 @@ interface NavItem {
     <router-outlet></router-outlet>
     <footer class="disclaimer">
       <p class="disclaimer__text">{{ 'disclaimer.text' | t }}</p>
-      <p class="disclaimer__copy">&copy; 2026 {{ 'footer.copyright' | t }}</p>
+      <div class="disclaimer__bottom">
+        <p class="disclaimer__copy">&copy; 2026 {{ 'footer.copyright' | t }}</p>
+        @if (credit()) {
+          <a routerLink="/usage" class="disclaimer__sectors" [attr.title]="'footer.sectors' | t">
+            {{ 'footer.sectors' | t }} &middot; {{ credit()!.remaining }} / {{ credit()!.budget }}
+          </a>
+        }
+      </div>
     </footer>
   `,
   styles: [`
@@ -121,32 +118,21 @@ interface NavItem {
       color: var(--color-ink);
     }
     .nav__credit {
-      display: flex;
-      align-items: baseline;
-      gap: var(--space-2xs);
-      font-family: var(--font-mono);
-      font-size: var(--text-2xs);
-      text-decoration: none;
+      background: none;
+      border: 1px solid transparent;
       color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0.04em;
+      text-decoration: none;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      cursor: pointer;
       padding: var(--space-3xs) var(--space-xs);
-      border: 1px solid var(--color-paper-3);
       transition: all var(--dur-short) var(--ease-out);
     }
     .nav__credit:hover {
       color: var(--color-ink);
-      border-color: var(--color-dim);
-    }
-    .nav__credit-label {
-      color: var(--color-dim);
-    }
-    .nav__credit-val {
-      color: var(--color-success);
-      white-space: nowrap;
-    }
-    .nav__credit-val--low {
-      color: var(--color-danger);
+      border-color: var(--color-accent);
     }
     .nav__lang {
       display: flex;
@@ -208,12 +194,30 @@ interface NavItem {
       letter-spacing: 0.02em;
     }
     .disclaimer__copy {
-      margin-top: var(--space-xs);
       font-family: var(--font-mono);
       font-size: var(--text-2xs);
       color: var(--color-dim);
       letter-spacing: 0.04em;
       text-transform: uppercase;
+    }
+    .disclaimer__bottom {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-top: var(--space-xs);
+    }
+    .disclaimer__sectors {
+      font-family: var(--font-mono);
+      font-size: var(--text-2xs);
+      color: var(--color-dim);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .disclaimer__sectors:hover {
+      color: var(--color-ink);
     }
     @media (max-width: 768px) {
       .nav { padding: var(--space-sm) var(--space-md); }
@@ -277,7 +281,6 @@ export class AppComponent implements OnInit {
     { route: '/dashboard', labelKey: 'nav.dashboard' },
     { route: '/history', labelKey: 'nav.history' },
     { route: '/settings', labelKey: 'nav.settings' },
-    { route: '/usage', labelKey: 'nav.usage' },
   ];
 
   menuOpen = signal(false);

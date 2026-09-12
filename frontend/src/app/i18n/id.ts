@@ -6,7 +6,7 @@ export default {
   'nav.usage': 'Pemakaian',
   'nav.menu': 'Buka menu',
   'nav.close': 'Tutup menu',
-  'nav.sectors_credits': 'Kredit Sectors',
+  'nav.credit': 'Kredit',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -322,4 +322,5 @@ export default {
 
   // Footer
   'footer.copyright': 'masdevid (DepodTech)',
+  'footer.sectors': 'Hackathon Sectors',
 } as Record<string, string>;
