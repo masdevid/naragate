@@ -20,6 +20,7 @@ import { TPipe } from '../../pipes/t.pipe';
   template: `
     <app-dashboard-warnings
       [setupComplete]="setupComplete()"
+      [showDetailWarnings]="setupComplete()"
       [llmConfigured]="llmConfigured()"
       [sectorsConfigured]="sectorsConfigured()"
       (goSetup)="goSetup()"

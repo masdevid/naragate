@@ -15,7 +15,7 @@ import { TPipe } from '../../pipes/t.pipe';
         </div>
       </div>
     }
-    @if (!llmConfigured) {
+    @if (!llmConfigured && showDetailWarnings) {
       <div class="warn reveal" style="--i: 0">
         <div class="warn__inner">
           <span class="warn__icon">!</span>
@@ -25,7 +25,7 @@ import { TPipe } from '../../pipes/t.pipe';
         </div>
       </div>
     }
-    @if (!sectorsConfigured) {
+    @if (!sectorsConfigured && showDetailWarnings) {
       <div class="warn warn--yellow reveal" style="--i: 0">
         <div class="warn__inner">
           <span class="warn__icon">!</span>
@@ -96,6 +96,8 @@ import { TPipe } from '../../pipes/t.pipe';
 })
 export class DashboardWarningsComponent {
   @Input() setupComplete = true;
+  /** When false, the LLM/Sectors warnings are suppressed: the single Setup banner already covers them. */
+  @Input() showDetailWarnings = true;
   @Input() llmConfigured = true;
   @Input() sectorsConfigured = true;
   @Output() goSetup = new EventEmitter<void>();

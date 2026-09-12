@@ -120,11 +120,18 @@ class TestSectorsKeyAllowlist:
         with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
             assert sectors_api_key() == "shared_key"
 
-    def test_unauthorized_ip_gets_no_key(self):
+    def test_unauthorized_ip_gets_no_key_when_enforced(self):
+        from app.core.client_ip import set_client_ip
+        set_client_ip("9.9.9.9")
+        with patch("app.core.sectors_config._load_runtime",
+                   return_value=self._runtime(sectors_enforce_per_ip=True)):
+            assert sectors_api_key() == ""
+
+    def test_unauthorized_ip_gets_key_by_default(self):
         from app.core.client_ip import set_client_ip
         set_client_ip("9.9.9.9")
         with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
-            assert sectors_api_key() == ""
+            assert sectors_api_key() == "shared_key"
 
     def test_dev_ip_bypasses_allowlist(self):
         from app.core.client_ip import set_client_ip

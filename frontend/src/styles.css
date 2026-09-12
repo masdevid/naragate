@@ -83,7 +83,7 @@
   --z-toast:    500;
 }
 
-html { overflow-x: clip; }
+html { overflow-x: clip; background: var(--color-paper); }
 body { overflow-x: clip; }
 
 * {

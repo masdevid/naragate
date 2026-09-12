@@ -86,11 +86,20 @@ def sectors_ip_authorized(data: dict, ip: str) -> bool:
         return True
     if ip in dev_ips():
         return True
-    if not data.get("sectors_enforce_per_ip", True):
+    if not sectors_per_ip_enforced(data):
         return True
     if data.get("sectors_key_owner_ip") == ip:
         return True
     return ip in (data.get("sectors_authorized_ips") or [])
+
+
+def sectors_per_ip_enforced(data: dict) -> bool:
+    """Whether the per-IP Sectors allowlist is active for the current config.
+
+    Defaults to OFF: a key configured at the server level is shared by every
+    client. Explicitly opt in via the runtime setting or SECTORS_ENFORCE_PER_IP.
+    """
+    return bool(data.get("sectors_enforce_per_ip", settings.SECTORS_ENFORCE_PER_IP))
 
 
 def sectors_key_for_ip(data: dict, ip: str) -> str:

@@ -37,7 +37,19 @@ class TestSectorsAuthorizedIps:
         assert data["sectors_api_key"] == "shared_key"
 
     @pytest.mark.asyncio
-    async def test_non_owner_cannot_replace_key(self, settings_file):
+    async def test_non_owner_cannot_replace_key_when_enforced(self, settings_file):
+        _write(settings_file, {
+            "sectors_api_key": "shared_key",
+            "sectors_key_owner_ip": "1.2.3.4",
+            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
+            "sectors_enforce_per_ip": True,
+        })
+        async with _client({"X-Real-IP": "5.6.7.8"}) as client:
+            r = await client.put("/api/v1/settings", json={"sectors_api_key": "other_key"})
+        assert r.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_any_ip_can_replace_key_by_default(self, settings_file):
         _write(settings_file, {
             "sectors_api_key": "shared_key",
             "sectors_key_owner_ip": "1.2.3.4",
@@ -45,7 +57,9 @@ class TestSectorsAuthorizedIps:
         })
         async with _client({"X-Real-IP": "5.6.7.8"}) as client:
             r = await client.put("/api/v1/settings", json={"sectors_api_key": "other_key"})
-        assert r.status_code == 403
+        assert r.status_code == 200
+        data = __import__("json").loads(settings_file.read_text())
+        assert data["sectors_api_key"] == "other_key"
 
     @pytest.mark.asyncio
     async def test_owner_adds_ip(self, settings_file):

@@ -11,7 +11,7 @@ export default {
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
-  'dashboard.headline': 'Financial navigation in the age of {{_}}fake narratives{{_}}.',
+  'dashboard.headline': 'Financial navigation in the age of {{_}}fake narratives',
   'dashboard.headline_accent': 'fake narratives',
   'dashboard.sub': 'Paste an Indonesian market claim. Nara Agent will verify it against real financial data and test its accuracy.',
   'dashboard.textarea_placeholder': 'BBCA revenue is crashing but its PE is expensive...',
@@ -116,7 +116,7 @@ export default {
   'settings.pick_model': 'Pick model:',
   'settings.no_models': 'No models found',
   'settings.auto_saved': 'Auto-saved',
-  'settings.save_error': 'Could not save settings: {detail}',
+  'settings.save_error': 'Could not save settings: {{detail}}',
   'settings.open_connector': 'Open LLM Connector',
   'connector.back': 'Back to settings',
   'connector.title': 'LLM Connector',
@@ -127,7 +127,7 @@ export default {
   'connector.field_endpoint': 'Endpoint URL',
   'connector.endpoint_placeholder': 'https://api.example.com/v1',
   'connector.validating': 'Validating…',
-  'connector.valid_ok': 'Connected — {count} model(s) found',
+  'connector.valid_ok': 'Connected — {{count}} model(s) found',
   'connector.valid_error': 'Could not connect to this endpoint',
   'connector.token_hint': 'This provider authenticates with an API key or access token.',
   'connector.generate_token': 'Generate a token',

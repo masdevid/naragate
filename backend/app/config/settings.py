@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # per-IP allowlist). Comma-separated; e.g. "127.0.0.1,172.21.0.1".
     SECTORS_DEV_IPS: str = Field(default="127.0.0.1", validation_alias="SECTORS_DEV_IPS")
 
+    # Per-IP gating for the shared Sectors key. When OFF (default), the key
+    # configured server-side (env/.env or runtime_settings.json) is a single
+    # deployment-wide key: any client may use and update it. Turn ON to require
+    # the owner IP to authorize clients before the key is issued to them.
+    SECTORS_ENFORCE_PER_IP: bool = Field(default=False, validation_alias="SECTORS_ENFORCE_PER_IP")
+
     # Credit budget for Sectors API (paid credits bucket)
     CREDIT_BUDGET: int = Field(default=600, validation_alias="CREDIT_BUDGET")
 

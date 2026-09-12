@@ -11,7 +11,7 @@ export default {
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
-  'dashboard.headline': 'Jembatan Navigasi Finansial di Era {{_}}Narasi Palsu{{_}}.',
+  'dashboard.headline': 'Jembatan Navigasi Finansial di Era {{_}}Narasi Palsu',
   'dashboard.headline_accent': 'Narasi Palsu',
   'dashboard.sub': 'Masukkan klaim pasar Indonesia. Nara Agent akan memverifikasinya dengan data keuangan aktual dan menguji keakuratannya.',
   'dashboard.textarea_placeholder': 'BBCA labanya jeblok tapi PE-nya mahal...',
@@ -116,7 +116,7 @@ export default {
   'settings.pick_model': 'Pilih model:',
   'settings.no_models': 'Tidak ada model ditemukan',
   'settings.auto_saved': 'Tersimpan otomatis',
-  'settings.save_error': 'Gagal menyimpan pengaturan: {detail}',
+  'settings.save_error': 'Gagal menyimpan pengaturan: {{detail}}',
   'settings.open_connector': 'Buka Konektor LLM',
   'connector.back': 'Kembali ke pengaturan',
   'connector.title': 'Konektor LLM',
@@ -127,7 +127,7 @@ export default {
   'connector.field_endpoint': 'URL Endpoint',
   'connector.endpoint_placeholder': 'https://api.example.com/v1',
   'connector.validating': 'Memvalidasi…',
-  'connector.valid_ok': 'Terhubung — {count} model ditemukan',
+  'connector.valid_ok': 'Terhubung — {{count}} model ditemukan',
   'connector.valid_error': 'Tidak dapat terhubung ke endpoint ini',
   'connector.token_hint': 'Penyedia ini memakai API key atau token akses.',
   'connector.generate_token': 'Buat token',

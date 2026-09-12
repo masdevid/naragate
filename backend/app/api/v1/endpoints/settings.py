@@ -8,7 +8,7 @@ from typing import Optional
 
 from app.core.client_ip import resolve_client_ip, set_client_ip
 from app.core.setup import missing_setup_items
-from app.core.sectors_config import _migrate_runtime, dev_ips, sectors_key_for_ip
+from app.core.sectors_config import _migrate_runtime, dev_ips, sectors_key_for_ip, sectors_per_ip_enforced
 
 router = APIRouter()
 
@@ -174,7 +174,9 @@ async def get_settings(request: Request):
     masked["sectors_api_key"] = _mask(this_key)
     masked["sectors_key_owner_ip"] = owner
     masked["sectors_authorized_ips"] = authorized
-    masked["sectors_key_is_owner"] = _ip_is_owner(data, ip)
+    # With per-IP enforcement off the key is deployment-wide, so every client is
+    # effectively the owner (they can view, update, and manage the allowlist).
+    masked["sectors_key_is_owner"] = _ip_is_owner(data, ip) or not sectors_per_ip_enforced(data)
     # Legacy alias kept for frontend compat (any resolved key present).
     masked["sectors_key_bound_to"] = owner if owner else (ip if this_key else None)
     if ip:
@@ -207,7 +209,9 @@ async def update_settings(request: Request, update: RuntimeSettings):
             if "..." in stripped or "••••" in stripped:
                 continue
             owner = current.get("sectors_key_owner_ip")
-            if owner and not _ip_is_owner(current, ip):
+            # Enforce the owner gate only when per-IP gating is switched on.
+            # Otherwise the key is deployment-wide and updatable by any client.
+            if owner and sectors_per_ip_enforced(current) and not _ip_is_owner(current, ip):
                 raise HTTPException(
                     status_code=403,
                     detail="Only the owner IP can change the Sectors API key. Ask the owner to add your IP first.",
