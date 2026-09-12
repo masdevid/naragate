@@ -6,6 +6,7 @@ export default {
   'nav.usage': 'Usage',
   'nav.menu': 'Open menu',
   'nav.close': 'Close menu',
+  'nav.sectors_credits': 'Sectors credits',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',

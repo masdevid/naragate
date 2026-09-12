@@ -741,8 +741,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.saveQueued = true;
       return;
     }
+    if (!this.pendingSave || !Object.keys(this.pendingSave).length) {
+      return;
+    }
     this.saveInFlight = true;
     const payload = { ...this.pendingSave };
+    this.pendingSave = null;
     this.settingsService.updateSettings(payload).subscribe({
       next: () => {
         this.saveInFlight = false;

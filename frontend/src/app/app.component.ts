@@ -3,6 +3,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } fro
 import { UpperCasePipe } from '@angular/common';
 import { I18nService } from './services/i18n.service';
 import { SettingsService } from './services/settings.service';
+import { UsageService } from './services/usage.service';
 import { TPipe } from './pipes/t.pipe';
 
 interface NavItem {
@@ -23,6 +24,14 @@ interface NavItem {
           <a routerLink="{{ item.route }}" routerLinkActive="nav__link--active"
             [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
             class="nav__link" (click)="closeMenu()">{{ item.labelKey | t }}</a>
+        }
+        @if (credit()) {
+          <a routerLink="/usage" class="nav__credit" [attr.title]="'nav.sectors_credits' | t">
+            <span class="nav__credit-label">{{ 'nav.sectors_credits' | t }}</span>
+            <span class="nav__credit-val" [class.nav__credit-val--low]="credit()!.remaining < 200">
+              {{ credit()!.remaining }} / {{ credit()!.budget }}
+            </span>
+          </a>
         }
         <div class="nav__lang">
           @for (lang of langs; track lang.code) {
@@ -50,6 +59,11 @@ interface NavItem {
             <a routerLink="{{ item.route }}" routerLinkActive="nav__panel-link--active"
               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
               class="nav__panel-link" (click)="closeMenu()">{{ item.labelKey | t }}</a>
+          }
+          @if (credit()) {
+            <a routerLink="/usage" class="nav__panel-credit" [attr.title]="'nav.sectors_credits' | t">
+              {{ 'nav.sectors_credits' | t }} &middot; {{ credit()!.remaining }} / {{ credit()!.budget }}
+            </a>
           }
           <div class="nav__panel-lang">
             @for (lang of langs; track lang.code) {
@@ -105,6 +119,34 @@ interface NavItem {
     }
     .nav__link:hover, .nav__link--active {
       color: var(--color-ink);
+    }
+    .nav__credit {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2xs);
+      font-family: var(--font-mono);
+      font-size: var(--text-2xs);
+      text-decoration: none;
+      color: var(--color-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: var(--space-3xs) var(--space-xs);
+      border: 1px solid var(--color-paper-3);
+      transition: all var(--dur-short) var(--ease-out);
+    }
+    .nav__credit:hover {
+      color: var(--color-ink);
+      border-color: var(--color-dim);
+    }
+    .nav__credit-label {
+      color: var(--color-dim);
+    }
+    .nav__credit-val {
+      color: var(--color-success);
+      white-space: nowrap;
+    }
+    .nav__credit-val--low {
+      color: var(--color-danger);
     }
     .nav__lang {
       display: flex;
@@ -202,6 +244,20 @@ interface NavItem {
         transition: color var(--dur-short) var(--ease-out);
       }
       .nav__panel-link:hover, .nav__panel-link--active { color: var(--color-ink); }
+      .nav__panel-credit {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-2xs);
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--color-muted);
+        text-decoration: none;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: var(--space-sm) 0;
+        border-bottom: 1px solid var(--color-paper-3);
+      }
+      .nav__panel-credit:hover { color: var(--color-ink); }
       .nav__panel-lang {
         display: flex;
         gap: var(--space-2xs);
@@ -215,6 +271,7 @@ export class AppComponent implements OnInit {
   langs = this.i18n.getLanguages();
   private router = inject(Router);
   private settingsService = inject(SettingsService);
+  private usageService = inject(UsageService);
 
   menuItems: NavItem[] = [
     { route: '/dashboard', labelKey: 'nav.dashboard' },
@@ -224,10 +281,14 @@ export class AppComponent implements OnInit {
   ];
 
   menuOpen = signal(false);
+  credit = signal<{ remaining: number; budget: number } | null>(null);
 
   constructor() {
     this.router.events.subscribe(event => {
-      if (event instanceof NavigationEnd) this.menuOpen.set(false);
+      if (event instanceof NavigationEnd) {
+        this.menuOpen.set(false);
+        this.refreshCredit();
+      }
     });
   }
 
@@ -251,5 +312,12 @@ export class AppComponent implements OnInit {
 
   closeMenu() {
     this.menuOpen.set(false);
+  }
+
+  private refreshCredit() {
+    this.usageService.getUsage().subscribe({
+      next: (u) => this.credit.set({ remaining: u.sectors.remaining, budget: u.sectors.budget }),
+      error: () => {},
+    });
   }
 }

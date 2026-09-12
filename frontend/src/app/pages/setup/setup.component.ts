@@ -542,7 +542,10 @@ export class SetupComponent implements OnInit, OnDestroy {
       patch.llm_api_key = f.llm_api_key;
       patch.llm_model = f.llm_model;
     } else if (this.step() === 3) {
-      patch.sectors_api_key = f.sectors_api_key;
+      const sectors = (f.sectors_api_key || '').trim();
+      if (sectors && !sectors.includes('...') && !sectors.includes('••••')) {
+        patch.sectors_api_key = sectors;
+      }
     }
     if (Object.keys(patch).length) {
       this.settingsService.updateSettings(patch).subscribe({ error: () => {} });

@@ -123,6 +123,11 @@ def get_usage_summary(budget: int = 1600) -> dict:
 
     sectors_used = sectors["calls"]
     sectors_pct = round(sectors_used / budget * 100, 1) if budget > 0 else 0
+
+    if "remaining" not in sectors:
+        sectors["remaining"] = budget
+        _save(data)
+
     sectors_remaining = sectors.get("remaining", max(budget - sectors_used, 0))
 
     model = _load_model_name()

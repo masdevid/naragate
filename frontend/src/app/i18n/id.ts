@@ -6,6 +6,7 @@ export default {
   'nav.usage': 'Pemakaian',
   'nav.menu': 'Buka menu',
   'nav.close': 'Tutup menu',
+  'nav.sectors_credits': 'Kredit Sectors',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
