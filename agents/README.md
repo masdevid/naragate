@@ -102,3 +102,7 @@ The generator does not hardcode a model or provider — each harness uses its de
 - **No duplication**: the neutral `.md` files are the single source of truth; generated harness files are derived artifacts, not edited by hand.
 - **Skills stay canonical**: agents load skills by name; the template never embeds skill content.
 - **No hardcoded credentials or budgets**: the harness injects the Sectors API key and credit budget at runtime.
+
+## References
+
+- **[Sectors v2 API — Endpoint Coverage](references/ENDPOINTS.md)** — full endpoint catalog, per-market costs, and Naragate client coverage matrix
