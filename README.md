@@ -153,7 +153,7 @@ Naragate ships two installable packages alongside the app: **skills** (`skills/`
 ### 1. Install skills
 
 ```bash
-npx skills add masdevid/naragate                          # all 11 skills
+npx skills add masdevid/naragate                          # all 13 skills
 npx skills add masdevid/naragate --skill claim-parser     # a single skill
 ```
 

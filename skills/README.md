@@ -40,6 +40,7 @@ npx skills add /path/to/market-narrative-gap -a claude-code
 | `score-generator` | Compute the Reality Gap score (0-100) and verdict |
 | `chat` | Answer follow-up questions about a completed Reality Gap analysis |
 | `follow-up` | Generate personalized follow-up question templates for a completed analysis |
+| `filings-agent` | Retrieve insider trading filings evidence for insider_trading claims |
 | `pipeline-orchestrator` | Define the agent sequence as a standalone workflow any harness can invoke |
 | `renderer` | Convert any agent's JSON output into narrative prose |
 
@@ -56,10 +57,12 @@ flowchart TD
     CP -->|Claim JSON| FA[fundamental-agent]
     CP -->|Claim JSON| MA[market-agent]
     CP -->|Claim JSON, always| NA[news-agent]
+    CP -->|insider_trading| IF[filings-agent]
     VA -->|2. evidence| SK[skeptic-agent]
     FA -->|2. evidence| SK
     MA -->|2. evidence| SK
     NA -->|2. evidence| SK
+    IF -->|2. evidence| SK
     SK -->|3. SkepticAnalysis| JJ[evidence-judge]
     JJ -->|4. Assessment| SG[score-generator]
     SG -->|5. score| RG([Reality Gap score + verdict])
@@ -69,10 +72,11 @@ flowchart TD
 ```
 
 1. `claim-parser` → extract structured claim
-2. Evidence agent (valuation/fundamental/market based on claim category) → retrieve evidence
-3. `skeptic-agent` → challenge the claim
-4. `evidence-judge` → aggregate evidence
-5. `score-generator` → compute Reality Gap score
+2. Ticker guardrail — validate claim ticker is a valid 4-letter code before any evidence retrieval
+3. Evidence agent (valuation/fundamental/market/insider_trading based on claim category) + `news-agent` → retrieve evidence
+4. `skeptic-agent` → challenge the claim
+5. `evidence-judge` → aggregate evidence
+6. `score-generator` → compute Reality Gap score
 
 ## Configuration
 

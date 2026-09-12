@@ -14,10 +14,12 @@ flowchart TD
     CP -->|Claim JSON| FA[fundamental-agent]
     CP -->|Claim JSON| MA[market-agent]
     CP -->|Claim JSON, always| NA[news-agent]
+    CP -->|insider_trading| IF[filings-agent]
     VA -->|2. evidence| SK[skeptic-agent]
     FA -->|2. evidence| SK
     MA -->|2. evidence| SK
     NA -->|2. evidence| SK
+    IF -->|2. evidence| SK
     SK -->|3. SkepticAnalysis JSON| JJ[evidence-judge]
     JJ -->|4. Assessment JSON| SG[score-generator]
     SG -->|5. score| RG([Reality Gap score + verdict])
@@ -29,6 +31,9 @@ Support agents:
 | Agent | Role |
 |-------|------|
 | `chat` | Answers follow-up questions about a completed analysis using only the evidence |
+| `pipeline-orchestrator` | Coordinate multi-stage pipeline execution |
+
+These agents are available outside the main pipeline for secondary tasks.
 
 ## Agents
 
