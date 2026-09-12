@@ -285,6 +285,7 @@ export class AppComponent implements OnInit {
   menuItems: NavItem[] = [
     { route: '/dashboard', labelKey: 'nav.dashboard' },
     { route: '/history', labelKey: 'nav.history' },
+    { route: '/llm-connector', labelKey: 'nav.connector' },
     { route: '/settings', labelKey: 'nav.settings' },
   ];
 

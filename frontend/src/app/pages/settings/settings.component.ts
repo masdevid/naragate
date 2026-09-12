@@ -22,6 +22,10 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
           <div class="settings__toast">{{ 'settings.auto_saved' | t }}</div>
         }
 
+        @if (saveError()) {
+          <div class="settings__save-error">{{ 'settings.save_error' | t:{detail: saveError()!} }}</div>
+        }
+
         <!-- Sectors API -->
         <section class="settings__section">
           <h2 class="settings__heading">{{ 'settings.section_sectors' | t }}</h2>
@@ -108,6 +112,9 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
         <section class="settings__section">
           <h2 class="settings__heading">{{ 'settings.section_llm' | t }}</h2>
           <p class="settings__hint">{{ 'settings.section_llm_hint' | t }}</p>
+          <button class="settings__connector-link" routerLink="/llm-connector">
+            {{ 'settings.open_connector' | t }} &rarr;
+          </button>
 
           <div class="settings__field">
             <label class="settings__label">{{ 'settings.field_endpoint' | t }}</label>
@@ -376,6 +383,32 @@ import { SecretKeyInputComponent } from '../../components/masked-key-input/secre
       letter-spacing: 0.04em;
       margin-bottom: var(--space-lg);
     }
+    .settings__save-error {
+      padding: var(--space-sm) var(--space-md);
+      background: oklch(24% 0.05 20);
+      color: var(--color-danger);
+      font-size: var(--text-xs);
+      line-height: 1.5;
+      margin-bottom: var(--space-lg);
+    }
+    .settings__connector-link {
+      display: inline-block;
+      background: none;
+      border: 1px solid var(--color-paper-3);
+      color: var(--color-muted);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: var(--space-2xs) var(--space-sm);
+      cursor: pointer;
+      margin-bottom: var(--space-lg);
+      transition: all var(--dur-short) var(--ease-out);
+    }
+    .settings__connector-link:hover {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
 
     .settings__section {
       border-top: 1px solid var(--color-rule);
@@ -621,6 +654,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   form = signal<RuntimeSettings>({});
   saved = signal(false);
+  saveError = signal<string | null>(null);
   validating = signal(false);
   validation = signal<ValidateResult | null>(null);
   availableModels = signal<string[]>([]);
@@ -728,6 +762,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   onFieldChange(field: string, value: string) {
     this.form.update(f => ({ ...f, [field]: value || '' }));
+    this.saveError.set(null);
     this.emitSave({ [field]: value || '' });
   }
 
@@ -750,6 +785,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.settingsService.updateSettings(payload).subscribe({
       next: () => {
         this.saveInFlight = false;
+        this.saveError.set(null);
         this.saved.set(true);
         setTimeout(() => this.saved.set(false), 2000);
         if (this.saveQueued) {
@@ -757,8 +793,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
           this.queueSave();
         }
       },
-      error: () => {
+      error: (err: Error) => {
         this.saveInFlight = false;
+        this.saveError.set(err?.message || 'Request failed');
         if (this.saveQueued) {
           this.saveQueued = false;
           this.queueSave();

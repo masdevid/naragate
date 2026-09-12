@@ -21,7 +21,14 @@ import { TPipe } from '../../pipes/t.pipe';
             @if (news().headlines?.length) {
               <ul class="news__list">
                 @for (h of news().headlines.slice(0, 5); track $index) {
-                  <li class="news__item">{{ h.title }}</li>
+                  @if (headlineUrl(h)) {
+                    <li class="news__item">
+                      <a class="news__link" [href]="headlineUrl(h)" target="_blank" rel="noopener">{{ h.title }}</a>
+                      <span class="news__source">{{ headlineSource(h) }}</span>
+                    </li>
+                  } @else {
+                    <li class="news__item">{{ h.title }}</li>
+                  }
                 }
               </ul>
             }
@@ -77,6 +84,22 @@ import { TPipe } from '../../pipes/t.pipe';
       color: var(--color-dim);
       padding-left: var(--space-sm);
       border-left: 1px solid var(--color-rule);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2xs);
+    }
+    .news__link {
+      color: var(--color-muted);
+      line-height: 1.45;
+      text-decoration: none;
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .news__link:hover { color: var(--color-accent); }
+    .news__source {
+      font-size: var(--text-2xs);
+      color: var(--color-accent);
+      text-transform: lowercase;
+      letter-spacing: 0.02em;
     }
     .news__tags { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
     .news__tag {
@@ -103,5 +126,24 @@ export class ResultsNewsComponent {
   summary(evidence: any): string {
     if (!evidence) return '';
     return this.i18n.language() === 'en' && evidence.summary_en ? evidence.summary_en : evidence.summary;
+  }
+
+  headlineUrl(h: any): string {
+    if (!h) return '';
+    const u = h.url || h.link || '';
+    if (u) return u;
+    const s = h.source || '';
+    return s.startsWith('http://') || s.startsWith('https://') || s.startsWith('www.') ? s : '';
+  }
+
+  headlineSource(h: any): string {
+    const u = this.headlineUrl(h) || (h.source ?? '');
+    if (!u) return '';
+    try {
+      const host = new URL(u.startsWith('http') ? u : 'https://' + u).hostname.replace(/^www\./, '');
+      return host || u;
+    } catch {
+      return u;
+    }
   }
 }

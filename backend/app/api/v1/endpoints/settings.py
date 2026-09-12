@@ -16,6 +16,7 @@ SETTINGS_FILE = Path(__file__).parent.parent.parent.parent / "data" / "runtime_s
 
 
 class RuntimeSettings(BaseModel):
+    llm_provider: Optional[str] = None
     llm_endpoint: Optional[str] = None
     llm_api_key: Optional[str] = None
     llm_model: Optional[str] = None

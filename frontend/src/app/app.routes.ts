@@ -15,6 +15,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent),
   },
   {
+    path: 'llm-connector',
+    loadComponent: () => import('./components/llm-connector/llm-connector.component').then(m => m.LlmConnectorComponent),
+  },
+  {
     path: 'setup',
     loadComponent: () => import('./pages/setup/setup.component').then(m => m.SetupComponent),
   },

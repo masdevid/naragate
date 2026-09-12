@@ -23,6 +23,22 @@ Return ONLY valid JSON, no other text."""
 
 
 class NewsAgent:
+    @staticmethod
+    def _headline(item: dict) -> dict:
+        url = item.get("url") or item.get("link") or ""
+        if not url:
+            source = item.get("source") or item.get("publisher") or ""
+            if isinstance(source, str) and source.startswith(("http://", "https://", "www.")):
+                url = source
+        headline = {
+            "title": item.get("title") or item.get("headline") or "",
+            "date": item.get("date") or item.get("published_at") or item.get("timestamp") or "",
+            "source": item.get("source") or item.get("publisher") or "",
+        }
+        if url:
+            headline["url"] = url
+        return headline
+
     async def analyze(self, claim: Claim) -> NewsEvidence:
         ticker = claim.ticker
 
@@ -42,19 +58,11 @@ class NewsAgent:
             if isinstance(items, list):
                 for item in items[:10]:
                     if isinstance(item, dict):
-                        headlines.append({
-                            "title": item.get("title") or item.get("headline") or "",
-                            "date": item.get("date") or item.get("published_at") or item.get("timestamp") or "",
-                            "source": item.get("source") or item.get("publisher") or "",
-                        })
+                        headlines.append(self._headline(item))
         elif isinstance(news_data, list):
             for item in news_data[:10]:
                 if isinstance(item, dict):
-                    headlines.append({
-                        "title": item.get("title") or item.get("headline") or "",
-                        "date": item.get("date") or item.get("published_at") or item.get("timestamp") or "",
-                        "source": item.get("source") or item.get("publisher") or "",
-                    })
+                    headlines.append(self._headline(item))
 
         corroboration = "no_news"
         summary = "Tidak ada berita terbaru untuk saham ini."
