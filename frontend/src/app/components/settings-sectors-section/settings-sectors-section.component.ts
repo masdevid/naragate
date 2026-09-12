@@ -255,8 +255,8 @@ import { SecretKeyInputComponent } from '../masked-key-input/secret-key-input.co
   `],
 })
 export class SettingsSectorsSectionComponent {
-  @Input() sectorsApiKey = '';
-  @Input() keyBoundTo = '';
+  @Input() sectorsApiKey: string | undefined = '';
+  @Input() keyBoundTo: string | null | undefined = '';
   @Input() clientIp: string | null = null;
   @Input() ownerIp: string | null = null;
   @Input() authorizedIps: string[] = [];

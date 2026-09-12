@@ -1,8 +1,8 @@
 import { Component, Input, Output, EventEmitter, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { I18nService } from '../../services/i18n.service';
 import { NarrativeService } from '../../services/narrative.service';
 import { TPipe } from '../../pipes/t.pipe';
+import { DashboardExamplesComponent } from '../dashboard-examples/dashboard-examples.component';
 
 interface BulkItem {
   narrative: string;
@@ -16,7 +16,7 @@ type ScanMode = 'single' | 'bulk';
 @Component({
   selector: 'app-dashboard-input',
   standalone: true,
-  imports: [FormsModule, TPipe],
+  imports: [FormsModule, TPipe, DashboardExamplesComponent],
   template: `
     <section class="input-section reveal" style="--i: 4">
       <div class="input-section__head">
@@ -99,24 +99,14 @@ type ScanMode = 'single' | 'bulk';
       }
 
       @if (mode() === 'single') {
-        <div class="input-section__examples">
-          <p class="input-section__examples-title">{{ 'dashboard.examples_title' | t }}</p>
-          <div class="input-section__examples-grid">
-            @for (ex of examples(); track ex.narrative) {
-              <button class="input-section__example-card" (click)="useExample(ex.narrative)">
-                <span class="input-section__example-tag">{{ ex.tag }}</span>
-                <span class="input-section__example-text">{{ ex.narrative }}</span>
-              </button>
-            }
-          </div>
-        </div>
+        <app-dashboard-examples (use)="useExample($event)"/>
       }
     </section>
   `,
   styles: [`
     :host { display: block; }
     .input-section {
-      padding: 0 var(--space-lg) var(--space-3xl);
+      padding: 0 var(--space-lg) var(--space-xl);
       max-width: 52rem;
       margin: 0 auto;
     }
@@ -194,49 +184,6 @@ type ScanMode = 'single' | 'bulk';
     }
     .input-section__btn:hover { opacity: 0.9; }
     .input-section__btn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .input-section__examples {
-      margin-top: var(--space-xl);
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-    }
-    .input-section__examples-title {
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      color: var(--color-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .input-section__examples-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-      gap: var(--space-sm);
-    }
-    .input-section__example-card {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2xs);
-      text-align: left;
-      background: none;
-      border: 1px solid var(--color-paper-3);
-      color: var(--color-ink);
-      padding: var(--space-md);
-      cursor: pointer;
-      transition: border-color var(--dur-short) var(--ease-out);
-    }
-    .input-section__example-card:hover { border-color: var(--color-accent); }
-    .input-section__example-tag {
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      color: var(--color-accent);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    .input-section__example-text {
-      font-size: var(--text-sm);
-      color: var(--color-muted);
-      line-height: 1.5;
-    }
     .bulk__actions {
       display: flex;
       align-items: center;
@@ -313,7 +260,6 @@ export class DashboardInputComponent {
   items = signal<BulkItem[]>([]);
   doneCount = signal(0);
 
-  private i18n = inject(I18nService);
   private narrativeService = inject(NarrativeService);
 
   setMode(mode: ScanMode) {
@@ -333,25 +279,6 @@ export class DashboardInputComponent {
   progressPct(): number {
     const total = this.lines().length;
     return total ? Math.round((this.doneCount() / total) * 100) : 0;
-  }
-
-  examples(): { tag: string; narrative: string }[] {
-    const en = this.i18n.language() === 'en';
-    const t = (key: string) => this.i18n.t(key);
-    return [
-      { tag: en ? 'Valuation' : 'Valuasi', narrative: t('dashboard.examples.valuation') },
-      { tag: en ? 'Fundamental' : 'Fundamental', narrative: t('dashboard.examples.fundamental') },
-      { tag: en ? 'Market' : 'Pasar', narrative: t('dashboard.examples.market') },
-      { tag: en ? 'News' : 'Berita', narrative: t('dashboard.examples.news') },
-      { tag: en ? 'Policy \u00b7 BBM' : 'Kebijakan \u00b7 BBM', narrative: t('dashboard.examples.policy_bbm') },
-      { tag: en ? 'Policy \u00b7 HBA' : 'Kebijakan \u00b7 HBA', narrative: t('dashboard.examples.policy_hba') },
-      { tag: en ? 'Policy \u00b7 Nickel' : 'Kebijakan \u00b7 Nikel', narrative: t('dashboard.examples.policy_nickel') },
-      { tag: en ? 'Needs ticker' : 'Butuh kode', narrative: t('dashboard.examples.no_ticker') },
-      { tag: en ? 'Contradiction' : 'Kontradiksi', narrative: t('dashboard.examples.contradiction') },
-      { tag: en ? 'Future price' : 'Harga masa depan', narrative: t('dashboard.examples.future_price') },
-      { tag: en ? 'Below' : 'Turun', narrative: t('dashboard.examples.below_cpo') },
-      { tag: en ? 'Below' : 'Turun', narrative: t('dashboard.examples.below_auto') },
-    ];
   }
 
   useExample(narrative: string) {

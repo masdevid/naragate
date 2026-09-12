@@ -6,6 +6,7 @@ import { SettingsService, RuntimeSettings, ValidateResult } from '../../services
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
 import { SecretKeyInputComponent } from '../../components/masked-key-input/secret-key-input.component';
+import { LlmProviderPickerComponent } from '../../components/llm-provider-picker/llm-provider-picker.component';
 import {
   LLM_PROVIDERS,
   LlmProvider,
@@ -16,7 +17,7 @@ import {
 @Component({
   selector: 'app-llm-connector',
   standalone: true,
-  imports: [FormsModule, TPipe, SecretKeyInputComponent],
+  imports: [FormsModule, TPipe, SecretKeyInputComponent, LlmProviderPickerComponent],
   template: `
     <div class="conn">
       <div class="conn__inner">
@@ -30,18 +31,10 @@ import {
 
         <section class="conn__section">
           <label class="conn__label">{{ 'connector.field_provider' | t }}</label>
-          <div class="conn__providers">
-            @for (p of providers; track p.id) {
-              <button class="conn__provider"
-                [class.conn__provider--active]="selectedProvider() === p.id"
-                (click)="selectProvider(p.id)">
-                <span class="conn__provider-name">{{ p.labelKey | t }}</span>
-                @if (p.default) {
-                  <span class="conn__provider-badge">{{ 'connector.default_badge' | t }}</span>
-                }
-              </button>
-            }
-          </div>
+          <app-llm-provider-picker
+            [providers]="providers"
+            [selectedId]="selectedProvider()"
+            (select)="selectProvider($event)"/>
         </section>
 
         <section class="conn__section">
@@ -188,7 +181,8 @@ import {
       text-transform: uppercase; letter-spacing: 0.06em;
       margin-bottom: var(--space-2xs);
     }
-    .conn__input {
+    .conn__input,
+    .conn__masked-display {
       width: 100%;
       background: var(--color-paper-2);
       border: 1px solid var(--color-paper-3);
@@ -201,21 +195,7 @@ import {
     .conn__input::placeholder { color: var(--color-dim); }
     .conn__input--wide { min-width: 0; }
     .conn__input--flex { flex: 1; min-width: 0; }
-    .conn__endpoint-row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-    }
-    .conn__masked-display {
-      flex: 1;
-      min-width: 0;
-      background: var(--color-paper-2);
-      border: 1px solid var(--color-paper-3);
-      color: var(--color-dim);
-      font-family: var(--font-mono);
-      font-size: var(--text-sm);
-      padding: var(--space-sm) var(--space-md);
-    }
+    .conn__masked-display { flex: 1; min-width: 0; color: var(--color-dim); }
     .conn__masked-display--empty { color: var(--color-dim); }
     .conn__reveal-btn {
       background: none;
@@ -243,31 +223,6 @@ import {
     .conn__status--ok { color: var(--color-success); }
     .conn__status--err { color: var(--color-danger); }
     .conn__status--loading { color: var(--color-warning); }
-
-    .conn__providers {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--space-sm);
-      margin-top: var(--space-sm);
-    }
-    .conn__provider {
-      background: var(--color-paper-2);
-      border: 1px solid var(--color-paper-3);
-      color: var(--color-muted);
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      padding: var(--space-md) var(--space-sm);
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      transition: all var(--dur-short) var(--ease-out);
-    }
-    .conn__provider:hover { border-color: var(--color-dim); color: var(--color-ink); }
-    .conn__provider--active {
-      background: var(--color-accent);
-      border-color: var(--color-accent);
-      color: var(--color-paper);
-    }
 
     .conn__models {
       display: flex; flex-wrap: wrap; gap: var(--space-xs);
@@ -321,7 +276,6 @@ import {
 
     @media (max-width: 640px) {
       .conn { padding: var(--space-lg) var(--space-md); }
-      .conn__providers { grid-template-columns: repeat(2, 1fr); }
     }
   `],
 })

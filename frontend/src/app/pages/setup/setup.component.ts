@@ -1,18 +1,18 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription, Subject, debounceTime, switchMap, tap } from 'rxjs';
 import { SettingsService, RuntimeSettings, ValidateResult, SectorsValidateResult, SetupStatus } from '../../services/settings.service';
-import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
 import { SecretKeyInputComponent } from '../../components/masked-key-input/secret-key-input.component';
+import { SetupLlmStepComponent } from '../../components/setup-llm-step/setup-llm-step.component';
 
 const DISMISS_KEY = 'naragate_setup_dismissed';
 
 @Component({
   selector: 'app-setup',
   standalone: true,
-  imports: [FormsModule, TPipe, SecretKeyInputComponent],
+  imports: [FormsModule, TPipe, SecretKeyInputComponent, SetupLlmStepComponent],
   template: `
     <div class="setup">
       <div class="setup__inner">
@@ -49,76 +49,13 @@ const DISMISS_KEY = 'naragate_setup_dismissed';
             <h1 class="setup__title">{{ 'setup.llm_title' | t }}</h1>
             <p class="setup__text">{{ 'setup.llm_text' | t }}</p>
 
-            <div class="setup__field">
-              <label class="setup__label">{{ 'settings.field_endpoint' | t }}</label>
-              <div class="setup__input-row">
-                @if (showEndpoint()) {
-                  <input [ngModel]="form().llm_endpoint" (ngModelChange)="onEndpointChange($event)"
-                    class="setup__input setup__input--flex"
-                    [placeholder]="'settings.endpoint_placeholder' | t">
-                } @else {
-                  <div class="setup__masked-display"
-                    [class.setup__masked-display--empty]="!maskedEndpoint()">
-                    {{ maskedEndpoint() || ('settings.endpoint_placeholder' | t) }}
-                  </div>
-                }
-                <button type="button" class="setup__reveal-btn"
-                  (click)="showEndpoint.set(!showEndpoint())">
-                  {{ (showEndpoint() ? 'settings.key_hide' : 'settings.key_show') | t }}
-                </button>
-                <span class="setup__status" [class.setup__status--ok]="validation()?.ok === true"
-                  [class.setup__status--err]="validation()?.ok === false"
-                  [class.setup__status--loading]="validating()">
-                  @if (validating()) {
-                    {{ 'settings.validating' | t }}
-                  } @else if (validation()?.ok === true) {
-                    {{ 'settings.valid_ok' | t:{count: validation()!.models.length} }}
-                  } @else if (validation()?.ok === false) {
-                    {{ 'settings.valid_error' | t }}
-                  }
-                </span>
-              </div>
-            </div>
-
-            <div class="setup__field">
-              <label class="setup__label">{{ 'settings.field_api_key' | t }}</label>
-              <div class="setup__masked-row">
-                @if (showLlmKey()) {
-                  <input [ngModel]="form().llm_api_key" (ngModelChange)="onFieldChange('llm_api_key', $event)"
-                    class="setup__input"
-                    placeholder="••••••••••••••••••••••••"
-                    autocomplete="new-password">
-                } @else {
-                  <div class="setup__masked-display"
-                    [class.setup__masked-display--empty]="!maskedLlmKey()">
-                    {{ maskedLlmKey() || ('settings.api_key_placeholder' | t) }}
-                  </div>
-                }
-                <button type="button" class="setup__reveal-btn"
-                  (click)="showLlmKey.set(!showLlmKey())">
-                  {{ (showLlmKey() ? 'settings.key_hide' : 'settings.key_show') | t }}
-                </button>
-              </div>
-            </div>
-
-            <div class="setup__field">
-              <label class="setup__label">{{ 'settings.field_model' | t }}</label>
-              @if (availableModels().length) {
-                <div class="setup__models">
-                  @for (model of availableModels(); track model) {
-                    <button class="setup__model-btn"
-                      [class.setup__model-btn--active]="form().llm_model === model"
-                      (click)="onFieldChange('llm_model', model)">
-                      {{ model }}
-                    </button>
-                  }
-                </div>
-              } @else {
-                <input [ngModel]="form().llm_model" (ngModelChange)="onFieldChange('llm_model', $event)"
-                  class="setup__input"
-                  [placeholder]="'settings.field_model_placeholder' | t">
-              }
-            </div>
+            <app-setup-llm-step
+              [form]="form"
+              [availableModels]="availableModels"
+              [validating]="validating"
+              [validation]="validation"
+              (fieldChange)="onFieldChange($event.field, $event.value)"
+              (endpointChange)="onEndpointChange($event)"/>
 
             <div class="setup__actions">
               <button (click)="skip()" class="setup__btn setup__btn--ghost">{{ 'setup.skip' | t }}</button>
@@ -266,43 +203,6 @@ const DISMISS_KEY = 'naragate_setup_dismissed';
       gap: var(--space-md);
     }
     .setup__input--flex { flex: 1; }
-    .setup__masked-display {
-      flex: 1;
-      min-width: 0;
-      background: var(--color-paper-2);
-      border: 1px solid var(--color-paper-3);
-      color: var(--color-ink);
-      font-family: var(--font-mono);
-      font-size: var(--text-sm);
-      padding: var(--space-sm) var(--space-md);
-      letter-spacing: 0.12em;
-      display: flex;
-      align-items: center;
-      min-height: 2.6rem;
-    }
-    .setup__masked-display--empty {
-      color: var(--color-dim);
-      letter-spacing: 0.02em;
-    }
-    .setup__reveal-btn {
-      background: none;
-      border: none;
-      color: var(--color-dim);
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-      padding: var(--space-2xs) var(--space-sm);
-    }
-    .setup__reveal-btn:hover { color: var(--color-ink); }
-    .setup__masked-row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-    }
     .setup__status {
       display: block;
       margin-top: var(--space-2xs);
@@ -316,31 +216,6 @@ const DISMISS_KEY = 'naragate_setup_dismissed';
     .setup__status--err { color: var(--color-danger); }
     .setup__status--loading { color: var(--color-warning); }
 
-    .setup__models {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-xs);
-    }
-    .setup__model-btn {
-      background: var(--color-paper-2);
-      border: 1px solid var(--color-paper-3);
-      color: var(--color-muted);
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      padding: var(--space-2xs) var(--space-sm);
-      cursor: pointer;
-      transition: all var(--dur-short) var(--ease-out);
-      letter-spacing: 0.02em;
-    }
-    .setup__model-btn:hover {
-      border-color: var(--color-dim);
-      color: var(--color-ink);
-    }
-    .setup__model-btn--active {
-      background: var(--color-accent);
-      border-color: var(--color-accent);
-      color: var(--color-paper);
-    }
     .setup__validate-btn {
       background: none;
       border: 1px solid var(--color-accent);
@@ -405,29 +280,6 @@ export class SetupComponent implements OnInit, OnDestroy {
   sectorsValidating = signal(false);
   sectorsValidation = signal<SectorsValidateResult | null>(null);
   setupStatus = signal<SetupStatus | null>(null);
-  showEndpoint = signal(false);
-  showLlmKey = signal(false);
-
-  maskedEndpoint = computed(() => {
-    const v = this.form().llm_endpoint || '';
-    if (!v || v.length <= 8) return v;
-    try {
-      const url = new URL(v);
-      const host = url.hostname;
-      const maskedHost = host.length > 4 ? host.slice(0, 2) + '*'.repeat(host.length - 4) + host.slice(-2) : '****';
-      return url.protocol + '//' + maskedHost + (url.port ? ':' + url.port : '') + url.pathname;
-    } catch {
-      return v.slice(0, 2) + '*'.repeat(v.length - 4) + v.slice(-2);
-    }
-  });
-
-  maskedLlmKey = computed(() => {
-    const v = this.form().llm_api_key || '';
-    if (!v) return '';
-    return '•'.repeat(Math.min(v.length, 20));
-  });
-
-  maskedClientIp = computed(() => this.maskedIp(this.form().client_ip || ''));
 
   maskedIp = (ip: string): string => {
     if (!ip) return '';
@@ -438,7 +290,6 @@ export class SetupComponent implements OnInit, OnDestroy {
 
   private settingsService = inject(SettingsService);
   private router = inject(Router);
-  private i18n = inject(I18nService);
 
   private endpoint$ = new Subject<string>();
   private subs: Subscription[] = [];

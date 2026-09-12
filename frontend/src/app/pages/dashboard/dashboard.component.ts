@@ -47,7 +47,7 @@ import { TPipe } from '../../pipes/t.pipe';
       display: block;
       max-width: 52rem;
       margin: 0 auto;
-      padding: var(--space-lg);
+      padding: var(--space-md);
       text-align: center;
       font-family: var(--font-mono);
       font-size: var(--text-xs);
@@ -59,7 +59,7 @@ import { TPipe } from '../../pipes/t.pipe';
     }
     .dashboard__history:hover { text-decoration: underline; }
     .footer {
-      padding: var(--space-2xl) var(--space-lg);
+      padding: var(--space-xl) var(--space-lg);
       border-top: 1px solid var(--color-rule);
       max-width: 52rem;
       margin: 0 auto;

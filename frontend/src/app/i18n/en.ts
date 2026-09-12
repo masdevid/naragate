@@ -11,8 +11,8 @@ export default {
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
-  'dashboard.headline': 'Every narrative{{_}}hides a number.',
-  'dashboard.headline_accent': 'hides',
+  'dashboard.headline': 'Financial navigation in the age of {{_}}fake narratives{{_}}.',
+  'dashboard.headline_accent': 'fake narratives',
   'dashboard.sub': 'Paste an Indonesian market claim. Nara Agent will verify it against real financial data and test its accuracy.',
   'dashboard.textarea_placeholder': 'BBCA revenue is crashing but its PE is expensive...',
   'dashboard.analyze_btn': 'Analyze This Narrative',
@@ -70,7 +70,7 @@ export default {
   'settings.saved': 'Saved',
   'settings.back': 'Back',
   'settings.section_llm': 'LLM Provider',
-  'settings.section_llm_hint': 'Any OpenAI-compatible endpoint (Ollama, OpenRouter, Together, Groq, etc.)',
+  'settings.section_llm_hint': 'Pick the default model for analysis. Manage providers, keys and endpoints in the LLM Connector.',
   'settings.field_endpoint': 'Endpoint URL',
   'settings.field_api_key': 'API Key',
   'settings.field_model': 'Default Model',

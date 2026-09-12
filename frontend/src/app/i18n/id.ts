@@ -11,8 +11,8 @@ export default {
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
-  'dashboard.headline': 'Di Balik Setiap Narasi{{_}}Ada Angka.',
-  'dashboard.headline_accent': 'Ada Angka',
+  'dashboard.headline': 'Jembatan Navigasi Finansial di Era {{_}}Narasi Palsu{{_}}.',
+  'dashboard.headline_accent': 'Narasi Palsu',
   'dashboard.sub': 'Masukkan klaim pasar Indonesia. Nara Agent akan memverifikasinya dengan data keuangan aktual dan menguji keakuratannya.',
   'dashboard.textarea_placeholder': 'BBCA labanya jeblok tapi PE-nya mahal...',
   'dashboard.analyze_btn': 'Analisis Narasi Ini',
@@ -70,7 +70,7 @@ export default {
   'settings.saved': 'Tersimpan',
   'settings.back': 'Kembali',
   'settings.section_llm': 'LLM Provider',
-  'settings.section_llm_hint': 'Endpoint OpenAI-compatible (Ollama, OpenRouter, Together, Groq, dll.)',
+  'settings.section_llm_hint': 'Pilih model default untuk analisis. Kelola provider, kunci, dan endpoint di Konektor LLM.',
   'settings.field_endpoint': 'URL Endpoint',
   'settings.field_api_key': 'Kunci API',
   'settings.field_model': 'Model Default',

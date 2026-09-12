@@ -25,7 +25,7 @@ import { TPipe } from '../../pipes/t.pipe';
   styles: [`
     :host { display: block; }
     .hero {
-      padding: var(--space-4xl) var(--space-lg) var(--space-2xl);
+      padding: var(--space-4xl) var(--space-lg) var(--space-xl);
       max-width: 52rem;
       margin: 0 auto;
     }
@@ -41,7 +41,7 @@ import { TPipe } from '../../pipes/t.pipe';
       font-size: var(--text-display);
       line-height: 1.02;
       color: var(--color-ink);
-      max-width: 18ch;
+      max-width: 24ch;
     }
     .hero__accent {
       font-style: normal;
