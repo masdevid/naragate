@@ -5,6 +5,7 @@ import { I18nService } from './services/i18n.service';
 import { SettingsService } from './services/settings.service';
 import { UsageService } from './services/usage.service';
 import { NaraWordmarkComponent } from './components/nara-wordmark/nara-wordmark.component';
+import { SectorsHackathonComponent } from './components/sectors-hackathon/sectors-hackathon.component';
 import { TPipe } from './pipes/t.pipe';
 
 interface NavItem {
@@ -15,7 +16,7 @@ interface NavItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent, SectorsHackathonComponent],
   template: `
     <nav class="nav" [class.nav--open]="menuOpen()">
       <a routerLink="/dashboard" class="nav__brand" (click)="closeMenu()"><app-nara-wordmark /></a>
@@ -27,7 +28,13 @@ interface NavItem {
             class="nav__link" (click)="closeMenu()">{{ item.labelKey | t }}</a>
         }
         <div class="nav__lang">
-          <a routerLink="/usage" class="nav__credit" (click)="closeMenu()">{{ 'nav.credit' | t }}</a>
+          <a routerLink="/usage" class="nav__credit" (click)="closeMenu()">
+            @if (credit()) {
+              {{ 'nav.credit' | t }} {{ credit()!.remaining }} / {{ credit()!.budget }}
+            } @else {
+              {{ 'nav.credit' | t }}
+            }
+          </a>
           @for (lang of langs; track lang.code) {
             <button class="nav__lang-btn" [class.nav__lang-btn--active]="i18n.language() === lang.code"
               (click)="i18n.setLanguage(lang.code)">
@@ -71,11 +78,7 @@ interface NavItem {
       <p class="disclaimer__text">{{ 'disclaimer.text' | t }}</p>
       <div class="disclaimer__bottom">
         <p class="disclaimer__copy">&copy; 2026 {{ 'footer.copyright' | t }}</p>
-        @if (credit()) {
-          <a routerLink="/usage" class="disclaimer__sectors" [attr.title]="'footer.sectors' | t">
-            {{ 'footer.sectors' | t }} &middot; {{ credit()!.remaining }} / {{ credit()!.budget }}
-          </a>
-        }
+        <app-sectors-hackathon />
       </div>
     </footer>
   `,
@@ -202,22 +205,10 @@ interface NavItem {
     }
     .disclaimer__bottom {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: var(--space-md);
       margin-top: var(--space-xs);
-    }
-    .disclaimer__sectors {
-      font-family: var(--font-mono);
-      font-size: var(--text-2xs);
-      color: var(--color-dim);
-      text-decoration: none;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .disclaimer__sectors:hover {
-      color: var(--color-ink);
     }
     @media (max-width: 768px) {
       .nav { padding: var(--space-sm) var(--space-md); }

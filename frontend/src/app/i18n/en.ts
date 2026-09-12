@@ -6,7 +6,7 @@ export default {
   'nav.usage': 'Usage',
   'nav.menu': 'Open menu',
   'nav.close': 'Close menu',
-  'nav.credit': 'Credit',
+  'nav.credit': 'Credits',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -322,5 +322,6 @@ export default {
 
   // Footer
   'footer.copyright': 'masdevid (DepodTech)',
-  'footer.sectors': 'Sectors hackathon',
+  'footer.sectors': 'Sectors Hackathon',
+  'footer.sectors_track': 'Track 01: AI Agents & Assistants',
 } as Record<string, string>;

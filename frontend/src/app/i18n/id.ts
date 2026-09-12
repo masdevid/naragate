@@ -322,5 +322,6 @@ export default {
 
   // Footer
   'footer.copyright': 'masdevid (DepodTech)',
-  'footer.sectors': 'Hackathon Sectors',
+  'footer.sectors': 'Sectors Hackathon',
+  'footer.sectors_track': 'Track 01: AI Agents & Assistants',
 } as Record<string, string>;
