@@ -1,6 +1,8 @@
 # Naragate
 
-**AI evidence engine that detects financial claims in Indonesian market narratives — and now amplifies them with live policy intelligence.**
+**Financial fact-check engine for Indonesian market narratives — verify claims, detect policy impact, score the reality gap.**
+
+**Mesin pemeriksa fakta keuangan untuk narasi pasar Indonesia — verifikasi klaim, deteksi dampak kebijakan, skor celah realitas.**
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 [![Sectors Hackathon 2026 | Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
