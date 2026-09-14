@@ -39,6 +39,9 @@ export default {
   'history.title': 'Riwayat & Tren',
   'history.back': 'Kembali ke Dasbor',
   'history.empty': 'Belum ada analisis. Jalankan analisis untuk melihat riwayat dan tren.',
+  'history.filtering': 'Difilter ke {{ticker}}',
+  'history.filter_clear': 'Hapus filter',
+  'history.filter_empty': 'Belum ada analisis untuk {{ticker}}.',
 
   // Dashboard warnings
   'dashboard.warn_sectors': 'Kunci API Sectors belum diatur. Analisis tidak akan berfungsi tanpa kunci ini.',

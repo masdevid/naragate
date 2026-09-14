@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NarrativeService } from '../../services/narrative.service';
 import { ConfirmModalComponent } from '../../components/confirm-modal/confirm-modal.component';
@@ -22,15 +22,20 @@ import { TPipe } from '../../pipes/t.pipe';
       }
 
       <app-dashboard-recent
-        [claims]="recentClaims"
+        [claims]="filteredClaims"
         [selectedIds]="selectedIds"
+        [filterTicker]="selectedTicker"
         (viewClaim)="viewClaim($event)"
         (confirmDelete)="confirmDelete($event)"
         (confirmBulkDelete)="confirmBulkDelete()"
         (confirmDeleteAll)="confirmDeleteAll()"
-        (selectedChange)="selectedIds.set($event)"/>
+        (selectedChange)="selectedIds.set($event)"
+        (clearFilter)="selectedTicker.set(null)"/>
 
-      <app-dashboard-trend [summary]="trendSummary"/>
+      <app-dashboard-trend
+        [summary]="trendSummary"
+        [selectedTicker]="selectedTicker"
+        (tickerClick)="onTickerClick($event)"/>
 
       @if (pendingDelete) {
         <app-confirm-modal
@@ -107,6 +112,13 @@ export class HistoryComponent implements OnInit {
   recentClaims = signal<any[]>([]);
   trendSummary = signal<any>(null);
   selectedIds = signal<string[]>([]);
+  selectedTicker = signal<string | null>(null);
+  filteredClaims = computed(() => {
+    const claims = this.recentClaims();
+    const ticker = this.selectedTicker();
+    if (!ticker) return claims;
+    return claims.filter(c => (c.claim?.ticker || '') === ticker);
+  });
   pendingDelete: any = null;
   bulkDelete = false;
   deleteAll = false;
@@ -120,6 +132,10 @@ export class HistoryComponent implements OnInit {
 
   viewClaim(claimId: string) {
     this.router.navigate(['/results', claimId]);
+  }
+
+  onTickerClick(ticker: string) {
+    this.selectedTicker.set(this.selectedTicker() === ticker ? null : ticker);
   }
 
   confirmDelete(claim: any) {

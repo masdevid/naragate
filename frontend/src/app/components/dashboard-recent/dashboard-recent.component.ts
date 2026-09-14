@@ -30,6 +30,12 @@ import { TPipe } from '../../pipes/t.pipe';
               }
             </div>
           </div>
+          @if (filterTicker()) {
+            <div class="recent__filter">
+              <span class="recent__filter-label">{{ 'history.filtering' | t: { ticker: activeFilter() } }}</span>
+              <button class="recent__filter-clear" (click)="clearFilter.emit()">{{ 'history.filter_clear' | t }}</button>
+            </div>
+          }
           <div class="recent__list">
             @for (claim of claims(); track claim.claim_id) {
               <div class="recent__item" [class.recent__item--selected]="selectedIds().includes(claim.claim_id)">
@@ -54,6 +60,13 @@ import { TPipe } from '../../pipes/t.pipe';
               </div>
             }
           </div>
+        </div>
+      </section>
+    } @else if (filterTicker()) {
+      <section class="recent reveal" style="--i: 5">
+        <div class="recent__inner">
+          <h2 class="recent__title">{{ 'dashboard.recent_title' | t }}</h2>
+          <p class="recent__filter-empty">{{ 'history.filter_empty' | t: { ticker: activeFilter() } }}</p>
         </div>
       </section>
     }
@@ -120,6 +133,43 @@ import { TPipe } from '../../pipes/t.pipe';
     .recent__bulk-delete:hover {
       background: var(--color-danger);
       color: var(--color-paper);
+    }
+    .recent__filter {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      border-left: 2px solid var(--color-accent);
+      background: var(--color-paper-2);
+      margin-bottom: var(--space-sm);
+    }
+    .recent__filter-label {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-ink);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .recent__filter-clear {
+      background: none;
+      border: none;
+      color: var(--color-accent);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      padding: 0;
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .recent__filter-clear:hover { color: var(--color-ink); }
+    .recent__filter-empty {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--color-dim);
+      padding: var(--space-lg) 0;
+      border-top: 1px solid var(--color-paper-3);
     }
     .recent__list {
       display: flex;
@@ -191,12 +241,18 @@ import { TPipe } from '../../pipes/t.pipe';
 export class DashboardRecentComponent {
   @Input() claims: () => any[] = () => [];
   @Input() selectedIds: () => string[] = () => [];
+  @Input() filterTicker: () => string | null = () => null;
   @Output() viewClaim = new EventEmitter<string>();
   @Output() confirmDelete = new EventEmitter<any>();
   @Output() confirmBulkDelete = new EventEmitter<void>();
   @Output() confirmDeleteAll = new EventEmitter<void>();
+  @Output() clearFilter = new EventEmitter<void>();
 
   private i18n = inject(I18nService);
+
+  activeFilter(): string {
+    return this.filterTicker() || '';
+  }
 
   statusLabel(status: string): string {
     switch (status) {

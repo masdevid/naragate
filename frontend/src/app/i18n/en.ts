@@ -39,6 +39,9 @@ export default {
   'history.title': 'History & Trends',
   'history.back': 'Back to Dashboard',
   'history.empty': 'No analyses yet. Run an analysis to see history and trends.',
+  'history.filtering': 'Filtered to {{ticker}}',
+  'history.filter_clear': 'Clear filter',
+  'history.filter_empty': 'No analyses for {{ticker}} yet.',
 
   // Dashboard warnings
   'dashboard.warn_sectors': 'Sectors API key not set. Analysis will not work without this key.',

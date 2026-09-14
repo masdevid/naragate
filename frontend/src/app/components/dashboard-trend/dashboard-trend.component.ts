@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { I18nService } from '../../services/i18n.service';
 import { VerdictBadgeComponent } from '../verdict-badge/verdict-badge.component';
 import { TPipe } from '../../pipes/t.pipe';
@@ -43,10 +43,26 @@ import { TPipe } from '../../pipes/t.pipe';
           @if (tickers().length) {
             <div class="trend__tickers">
               @for (ticker of tickers(); track ticker) {
-                <div class="trend__ticker">
+                <div
+                  class="trend__ticker"
+                  [class.trend__ticker--active]="selectedTicker() === ticker"
+                  role="button"
+                  tabindex="0"
+                  (click)="tickerClick.emit(ticker)"
+                  (keydown.enter)="tickerClick.emit(ticker)"
+                  (keydown.space)="tickerClick.emit(ticker); $event.preventDefault()">
                   <div class="trend__ticker-head">
-                    <a class="trend__ticker-name" [href]="sectorsUrl(ticker)" target="_blank" rel="noopener">{{ ticker }}</a>
-                    <span class="trend__ticker-latest">{{ latestScore(ticker) }}</span>
+                    <span class="trend__ticker-name">{{ ticker }}</span>
+                    <span class="trend__ticker-actions">
+                      <span class="trend__ticker-latest">{{ latestScore(ticker) }}</span>
+                      <a
+                        class="trend__ticker-sectors"
+                        [href]="sectorsUrl(ticker)"
+                        target="_blank"
+                        rel="noopener"
+                        title="Open in Sectors"
+                        (click)="$event.stopPropagation()">&#8599;</a>
+                    </span>
                   </div>
                   <svg class="trend__spark" [attr.viewBox]="sparkViewBox" preserveAspectRatio="none">
                     @for (line of sparkLines(ticker); track line) {
@@ -173,6 +189,22 @@ import { TPipe } from '../../pipes/t.pipe';
       display: flex;
       flex-direction: column;
       gap: var(--space-sm);
+      cursor: pointer;
+      text-align: left;
+      background: none;
+      transition: border-color var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+    }
+    .trend__ticker:hover {
+      border-color: var(--color-accent);
+      box-shadow: inset 0 0 0 1px var(--color-accent);
+    }
+    .trend__ticker:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+    .trend__ticker--active {
+      border-color: var(--color-accent);
+      box-shadow: inset 0 0 0 1px var(--color-accent);
     }
     .trend__ticker-head {
       display: flex;
@@ -188,13 +220,27 @@ import { TPipe } from '../../pipes/t.pipe';
       text-decoration: none;
       transition: color var(--dur-short) var(--ease-out);
     }
-    .trend__ticker-name:hover {
+    .trend__ticker:hover .trend__ticker-name {
       color: var(--color-accent);
-      text-decoration: underline;
+    }
+    .trend__ticker-actions {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-sm);
     }
     .trend__ticker-latest {
       font-family: var(--font-mono);
       font-size: var(--text-sm);
+      color: var(--color-accent);
+    }
+    .trend__ticker-sectors {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-dim);
+      text-decoration: none;
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .trend__ticker-sectors:hover {
       color: var(--color-accent);
     }
     .trend__spark {
@@ -218,6 +264,8 @@ import { TPipe } from '../../pipes/t.pipe';
 })
 export class DashboardTrendComponent {
   @Input() summary: () => any = () => null;
+  @Input() selectedTicker: () => string | null = () => null;
+  @Output() tickerClick = new EventEmitter<string>();
 
   private i18n = inject(I18nService);
 
