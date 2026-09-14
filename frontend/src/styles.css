@@ -66,6 +66,10 @@
   --space-3xl: 6rem;
   --space-4xl: 9rem;
 
+  /* Shared form-control height so every button matches its sibling input. */
+  --ctl-h: 2.6rem;
+  --ctl-h-sm: 2.2rem;
+
   /* Motion */
   --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in:   cubic-bezier(0.7, 0, 0.84, 0);

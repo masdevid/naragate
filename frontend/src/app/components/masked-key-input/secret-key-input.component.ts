@@ -60,8 +60,8 @@ import { TPipe } from '../../pipes/t.pipe';
       color: var(--color-ink);
       font-family: var(--font-mono);
       font-size: var(--text-sm);
-      padding: var(--space-sm) var(--space-md);
-      min-height: 2.6rem;
+      height: var(--ctl-h);
+      padding: 0 var(--space-md);
       transition: border-color var(--dur-short) var(--ease-out);
     }
     .secret:focus-within { border-color: var(--color-accent); }
@@ -116,8 +116,8 @@ import { TPipe } from '../../pipes/t.pipe';
     }
     .secret__reveal:hover { color: var(--color-ink); }
     .secret__cancel:hover { color: var(--color-danger); }
-    .secret--edit { padding: var(--space-3xs) var(--space-md); }
-    .secret--edit input { padding: var(--space-sm) 0; }
+    .secret--edit { padding: 0 var(--space-md); }
+    .secret--edit input { padding: 0; }
   `],
 })
 export class SecretKeyInputComponent {

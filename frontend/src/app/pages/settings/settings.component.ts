@@ -268,7 +268,8 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
       margin-bottom: var(--space-lg);
     }
     .settings__connector-link {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
       background: none;
       border: 1px solid var(--color-paper-3);
       color: var(--color-muted);
@@ -276,7 +277,8 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
       font-size: var(--text-xs);
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      padding: var(--space-2xs) var(--space-sm);
+      height: var(--ctl-h);
+      padding: 0 var(--space-sm);
       cursor: pointer;
       margin-bottom: var(--space-lg);
       transition: all var(--dur-short) var(--ease-out);
@@ -316,12 +318,13 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
     }
     .settings__input {
       width: 100%;
+      height: var(--ctl-h);
       background: var(--color-paper-2);
       border: 1px solid var(--color-paper-3);
       color: var(--color-ink);
       font-family: var(--font-mono);
       font-size: var(--text-sm);
-      padding: var(--space-sm) var(--space-md);
+      padding: 0 var(--space-md);
       transition: border-color var(--dur-short) var(--ease-out);
     }
     .settings__input:focus {
@@ -338,12 +341,16 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
       gap: var(--space-xs);
     }
     .settings__model-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--ctl-h);
       background: var(--color-paper-2);
       border: 1px solid var(--color-paper-3);
       color: var(--color-muted);
       font-family: var(--font-mono);
       font-size: var(--text-xs);
-      padding: var(--space-2xs) var(--space-sm);
+      padding: 0 var(--space-sm);
       cursor: pointer;
       transition: all var(--dur-short) var(--ease-out);
       letter-spacing: 0.02em;
@@ -358,8 +365,7 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
       color: var(--color-paper);
     }
     .settings__model-btn--sm {
-      font-size: 0.6rem;
-      padding: var(--space-3xs) var(--space-xs);
+      height: var(--ctl-h-sm);
     }
 
     @media (max-width: 640px) {

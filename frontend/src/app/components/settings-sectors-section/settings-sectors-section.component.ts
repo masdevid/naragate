@@ -123,12 +123,13 @@ import { SecretKeyInputComponent } from '../masked-key-input/secret-key-input.co
     }
     .sect__input {
       width: 100%;
+      height: var(--ctl-h);
       background: var(--color-paper-2);
       border: 1px solid var(--color-paper-3);
       color: var(--color-ink);
       font-family: var(--font-mono);
       font-size: var(--text-sm);
-      padding: var(--space-sm) var(--space-md);
+      padding: 0 var(--space-md);
       transition: border-color var(--dur-short) var(--ease-out);
     }
     .sect__input:focus { outline: none; border-color: var(--color-accent); }
@@ -140,6 +141,10 @@ import { SecretKeyInputComponent } from '../masked-key-input/secret-key-input.co
     }
     .sect__input--flex { flex: 1; }
     .sect__validate-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--ctl-h);
       background: none;
       border: 1px solid var(--color-accent);
       color: var(--color-accent);
@@ -147,7 +152,7 @@ import { SecretKeyInputComponent } from '../masked-key-input/secret-key-input.co
       font-size: var(--text-xs);
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      padding: var(--space-2xs) var(--space-sm);
+      padding: 0 var(--space-sm);
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
@@ -234,14 +239,18 @@ import { SecretKeyInputComponent } from '../masked-key-input/secret-key-input.co
     }
     .sect__ips-input { flex: 1; }
     .sect__ip-add-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--ctl-h);
       background: none;
       border: 1px solid var(--color-accent);
       color: var(--color-accent);
       font-family: var(--font-mono);
-      font-size: var(--text-2xs);
+      font-size: var(--text-xs);
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      padding: var(--space-3xs) var(--space-xs);
+      padding: 0 var(--space-sm);
       cursor: pointer;
       white-space: nowrap;
       transition: background var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
