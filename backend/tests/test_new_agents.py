@@ -92,6 +92,34 @@ class TestCorporateActionsAgent:
         assert "stock split" in result.relevant_events
 
     @pytest.mark.asyncio
+    async def test_parses_real_sectors_response_shape(self, claim):
+        """The live API returns {"corporate_actions": {category: [...]}}."""
+        actions_data = {
+            "symbol": "BBCA.JK",
+            "corporate_actions": {
+                "dividend": [
+                    {"ex_date": "2024-01-15", "payment_date": "2024-01-30", "dividend_yield": 0.0174, "dividend_amount": 150}
+                ],
+                "stock_split": [{"date": "2024-02-01", "split_ratio": 2}],
+                "bonus": None,
+                "agm": [{"agm_date": "2024-03-01"}],
+            },
+        }
+        with patch("app.services.corporate_actions_agent.cache.get", AsyncMock(return_value=None)), \
+             patch("app.services.corporate_actions_agent.cache.merge", AsyncMock()), \
+             patch("app.services.corporate_actions_agent.sectors_client.get_corporate_actions", AsyncMock(return_value=actions_data)):
+            result = await CorporateActionsAgent().analyze(claim)
+
+        assert len(result.actions) == 3
+        assert result.actions[0]["type"] == "dividend"
+        assert result.actions[0]["date"] == "2024-01-15"
+        assert result.actions[1]["type"] == "stock split"
+        assert result.actions[1]["date"] == "2024-02-01"
+        assert result.actions[2]["type"] == "annual general meeting"
+        assert result.relevant_events == ["dividend", "stock split", "annual general meeting"]
+        assert "3" in result.summary
+
+    @pytest.mark.asyncio
     async def test_analyze_no_actions(self, claim):
         with patch("app.services.corporate_actions_agent.cache.get", AsyncMock(return_value=None)), \
              patch("app.services.corporate_actions_agent.cache.merge", AsyncMock()), \

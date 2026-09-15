@@ -191,3 +191,54 @@ class TestFilingsAgent:
             evidence = await agent.analyze(claim)
 
             assert len(evidence.filings) == 1
+
+    @pytest.mark.asyncio
+    async def test_parses_real_sectors_response_shape(self, claim):
+        """The live API returns {"results": [...]} with holder_name/
+        amount_transaction/timestamp/transaction_value fields."""
+        filings_data = {
+            "results": [
+                {
+                    "title": "Budi Santoso Buy Transaction",
+                    "timestamp": "2025-08-15T04:52:00",
+                    "holder_type": "insider",
+                    "holder_name": "Budi Santoso",
+                    "transaction_type": "buy",
+                    "amount_transaction": 4977,
+                    "price": 1000.0,
+                    "transaction_value": 4977000.0,
+                    "holding_before": 2483523,
+                    "holding_after": 2488500,
+                },
+                {
+                    "title": "Siti Rahayu Sell Transaction",
+                    "timestamp": "2025-08-10T09:30:00",
+                    "holder_type": "commissioner",
+                    "holder_name": "Siti Rahayu",
+                    "transaction_type": "sell",
+                    "amount_transaction": 25000,
+                    "price": 9400.0,
+                    "transaction_value": 235_000_000,
+                },
+            ]
+        }
+
+        with patch("app.services.filings_agent.cache") as mock_cache, \
+             patch("app.services.filings_agent.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_filings = AsyncMock(return_value=filings_data)
+
+            agent = FilingsAgent()
+            evidence = await agent.analyze(claim)
+
+            assert len(evidence.filings) == 2
+            assert evidence.filings[0]["insider_name"] == "Budi Santoso"
+            assert evidence.filings[0]["insider_title"] == "insider"
+            assert evidence.filings[0]["date"] == "2025-08-15T04:52:00"
+            assert evidence.filings[0]["transaction_type"] == "buy"
+            assert evidence.filings[0]["shares"] == 4977
+            assert evidence.filings[0]["price"] == 1000.0
+            assert evidence.filings[0]["total_value"] == 4977000.0
+            assert evidence.filings[1]["transaction_type"] == "sell"
+            assert evidence.recent_bias == "net_selling"

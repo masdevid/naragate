@@ -52,6 +52,20 @@ class TestRunSkeptic:
             assert "Skeptic analysis failed" in result.ambiguity_points
 
     @pytest.mark.asyncio
+    async def test_handles_empty_llm_output_as_failure(self, claim, evidence):
+        """A stream that returns nothing usable must not yield a silently empty
+        skeptic section (the bug behind the latest claim's blank skeptic)."""
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_llm, \
+             patch("app.core.llm_client.extract_json", return_value=None):
+            mock_llm.return_value = ""
+            result = await run_skeptic(claim, evidence)
+
+            assert isinstance(result, SkepticOutput)
+            assert result.skepticism_score == 50.0
+            assert "Skeptic analysis failed" in result.ambiguity_points
+            assert "Unable to run skeptic analysis" in result.missing_evidence
+
+    @pytest.mark.asyncio
     async def test_strips_markdown_code_block(self, claim, evidence):
         llm_response = '```json\n{"counter_arguments": [], "ambiguity_points": [], "missing_evidence": [], "skepticism_score": 60}\n```'
 

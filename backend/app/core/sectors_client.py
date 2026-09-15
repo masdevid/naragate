@@ -122,8 +122,17 @@ class SectorsClient:
     async def get_corporate_actions(self, ticker: str) -> dict:
         return await self._get(f"/v2/company/corporate-actions/{ticker}/")
 
-    async def get_filings(self, ticker: str, filing_type: str = "insider_trade") -> dict:
-        return await self._get("/v2/filings/", params={"symbol": ticker, "type": filing_type})
+    async def get_filings(self, ticker: str, filing_type: str | None = None) -> dict:
+        """Insider-trade filings for a ticker.
+
+        The Sectors API does not accept a `type` query param (400 otherwise);
+        it only allows transaction_type in {buy, sell, others}. The default
+        call asks for all filings for the symbol.
+        """
+        params = {"symbol": ticker}
+        if filing_type and filing_type in ("buy", "sell", "others"):
+            params["transaction_type"] = filing_type
+        return await self._get("/v2/filings/", params=params)
 
 
 sectors_client = SectorsClient()

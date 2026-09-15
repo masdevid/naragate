@@ -60,13 +60,20 @@ async def run_skeptic(
             response_format={"type": "json_object"},
             on_token=on_token,
         )
-
         result = llm_client.extract_json(raw) or {}
     except Exception:
+        result = {}
+
+    # A response that contains none of the expected fields means the model
+    # returned nothing usable (empty stream, prose, etc.). Surface that as a
+    # visible failure instead of a silently empty skeptic section.
+    if not any(k in result for k in ("counter_arguments", "ambiguity_points", "missing_evidence", "skepticism_score")):
         result = {
             "counter_arguments": [],
             "ambiguity_points": ["Skeptic analysis failed"],
+            "ambiguity_points_en": ["Skeptic analysis failed"],
             "missing_evidence": ["Unable to run skeptic analysis"],
+            "missing_evidence_en": ["Unable to run skeptic analysis"],
             "skepticism_score": 50.0,
         }
 

@@ -11,7 +11,9 @@ class FilingsAgent:
         ticker = claim.ticker
 
         cached = await cache.get(ticker)
-        if cached and "filings" in cached:
+        if cached and "filings" in cached and cached["filings"] != {}:
+            # A bare {} means the now-fixed invalid-param request (400) got cached
+            # once and would otherwise shadow real data forever. Self-heal.
             filings_data = cached["filings"]
             cache_hit = True
             record_sectors_cache_hit()
@@ -25,7 +27,13 @@ class FilingsAgent:
 
         filings = []
         if isinstance(filings_data, dict):
-            items = filings_data.get("data") or filings_data.get("filings") or filings_data.get("items") or []
+            items = (
+                filings_data.get("results")
+                or filings_data.get("data")
+                or filings_data.get("filings")
+                or filings_data.get("items")
+                or []
+            )
         elif isinstance(filings_data, list):
             items = filings_data
         else:
@@ -34,14 +42,21 @@ class FilingsAgent:
         if isinstance(items, list):
             for item in items[:10]:
                 if isinstance(item, dict):
+                    tx_raw = (str(item.get("transaction_type") or item.get("type") or "")).lower()
+                    if "buy" in tx_raw:
+                        tx = "buy"
+                    elif "sell" in tx_raw:
+                        tx = "sell"
+                    else:
+                        tx = tx_raw or "others"
                     filings.append({
-                        "date": item.get("date") or item.get("transaction_date") or "",
-                        "insider_name": item.get("insider_name") or item.get("name") or "",
-                        "insider_title": item.get("insider_title") or item.get("title") or item.get("position") or "",
-                        "transaction_type": item.get("transaction_type") or item.get("type") or "",
-                        "shares": item.get("shares") or item.get("volume") or 0,
+                        "date": item.get("timestamp") or item.get("date") or item.get("transaction_date") or "",
+                        "insider_name": item.get("holder_name") or item.get("insider_name") or item.get("name") or "",
+                        "insider_title": item.get("holder_type") or item.get("insider_title") or item.get("title") or item.get("position") or "",
+                        "transaction_type": tx,
+                        "shares": item.get("amount_transaction") or item.get("shares") or item.get("volume") or 0,
                         "price": item.get("price") or item.get("avg_price") or 0,
-                        "total_value": item.get("total_value") or item.get("value") or 0,
+                        "total_value": item.get("transaction_value") or item.get("total_value") or item.get("value") or 0,
                     })
 
         total_buy_shares = sum(f["shares"] for f in filings if "buy" in (f.get("transaction_type") or "").lower())

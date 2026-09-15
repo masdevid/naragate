@@ -28,7 +28,10 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
   imports: [FormsModule, SectionHelpComponent, TPipe],
   template: `
     <div class="chat">
-      <p class="chat__label">{{ 'chat.title' | t }}</p>
+      <div class="chat__head">
+        <span class="chat__badge">{{ 'chat.title' | t }}</span>
+        <span class="chat__rule"></span>
+      </div>
       <app-section-help helpKey="section_help.chat"/>
       <div class="chat__log">
         @for (msg of messages(); track $index) {
@@ -57,14 +60,26 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
   `,
   styles: [`
     :host { display: block; }
-    .chat { border-top: 1px solid var(--color-rule); padding: var(--space-lg) 0; display: flex; flex-direction: column; gap: var(--space-md); }
-    .chat__label {
+    .chat {
+      margin-top: var(--space-2xl);
+      padding: var(--space-lg);
+      background: var(--color-paper-2);
+      border: 1px solid var(--color-paper-3);
+      border-left: 3px solid var(--color-accent);
+      display: flex; flex-direction: column; gap: var(--space-md);
+    }
+    .chat__head { display: flex; align-items: center; gap: var(--space-sm); }
+    .chat__badge {
       font-family: var(--font-mono);
       font-size: var(--text-xs);
-      color: var(--color-dim);
+      font-weight: 600;
+      color: var(--color-accent);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.12em;
+      border: 1px solid var(--color-accent);
+      padding: var(--space-3xs) var(--space-sm);
     }
+    .chat__rule { flex: 1; height: 1px; background: var(--color-paper-3); }
     .chat__log { display: flex; flex-direction: column; gap: var(--space-sm); max-height: 20rem; overflow-y: auto; }
     .chat__msg { max-width: 85%; padding: var(--space-sm) var(--space-md); border: 1px solid var(--color-rule); }
     .chat__msg--user { align-self: flex-end; border-color: var(--color-accent); }

@@ -17,24 +17,24 @@ class TestGetFilings:
     @pytest.mark.asyncio
     async def test_calls_correct_endpoint(self, client):
         with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = {"data": []}
+            mock_get.return_value = {"results": []}
             await client.get_filings("BBCA")
             mock_get.assert_called_once_with(
-                "/v2/filings/", params={"symbol": "BBCA", "type": "insider_trade"}
+                "/v2/filings/", params={"symbol": "BBCA"}
             )
 
     @pytest.mark.asyncio
     async def test_returns_filing_data(self, client):
         sample_response = {
-            "data": [
+            "results": [
                 {
-                    "date": "2025-08-15",
-                    "insider_name": "Budi Santoso",
-                    "insider_title": "Direktur",
+                    "timestamp": "2025-08-15T00:00:00",
+                    "holder_name": "Budi Santoso",
+                    "holder_type": "insider",
                     "transaction_type": "sell",
-                    "shares": 50000,
+                    "amount_transaction": 50000,
                     "price": 9500,
-                    "total_value": 475_000_000,
+                    "transaction_value": 475_000_000,
                 }
             ]
         }
@@ -42,31 +42,32 @@ class TestGetFilings:
             mock_get.return_value = sample_response
             result = await client.get_filings("BBCA")
             assert result == sample_response
-            assert len(result["data"]) == 1
-            assert result["data"][0]["insider_name"] == "Budi Santoso"
+            assert len(result["results"]) == 1
+            assert result["results"][0]["holder_name"] == "Budi Santoso"
 
     @pytest.mark.asyncio
-    async def test_default_filing_type_is_insider_trade(self, client):
+    async def test_does_not_send_unsupported_type_param(self, client):
         with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = {"data": []}
-            await client.get_filings("BBCA")
+            mock_get.return_value = {"results": []}
+            await client.get_filings("BBCA", filing_type="insider_trade")
             call_params = mock_get.call_args[1]["params"]
-            assert call_params["type"] == "insider_trade"
+            assert "type" not in call_params
+            assert call_params["symbol"] == "BBCA"
 
     @pytest.mark.asyncio
-    async def test_custom_filing_type(self, client):
+    async def test_translates_transaction_type_filter(self, client):
         with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = {"data": []}
-            await client.get_filings("BBCA", filing_type="annual_report")
+            mock_get.return_value = {"results": []}
+            await client.get_filings("BBCA", filing_type="buy")
             call_params = mock_get.call_args[1]["params"]
-            assert call_params["type"] == "annual_report"
+            assert call_params["transaction_type"] == "buy"
 
     @pytest.mark.asyncio
     async def test_handles_empty_response(self, client):
         with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
-            mock_get.return_value = {"data": []}
+            mock_get.return_value = {"results": []}
             result = await client.get_filings("ZZZZ")
-            assert result == {"data": []}
+            assert result == {"results": []}
 
     @pytest.mark.asyncio
     async def test_propagates_http_error(self, client):

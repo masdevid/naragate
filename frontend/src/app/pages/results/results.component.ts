@@ -92,7 +92,7 @@ import { TPipe } from '../../pipes/t.pipe';
             <app-results-radar [dimensions]="dimensions"/>
           }
 
-          @if (claimData().status === 'completed') {
+          @if (claimData().status === 'completed' && claimData().claim?.is_policy) {
             <app-results-policy/>
           }
 
