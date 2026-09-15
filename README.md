@@ -148,9 +148,17 @@ flowchart LR
 
 The LLM-driven agents (Claim Parser, Skeptic, News, Chat) run through the **Pi Coding Agent** harness (`pi-agent` service). Each agent's `skills/*` definition is loaded into the Pi CLI as its system prompt, and results stream back to the backend as OpenAI-compatible SSE. The deterministic data agents (Valuation, Fundamental, Market, Judge, Score) run in the backend in Python. When `PI_AGENT_URL` is unset (local dev, tests), the backend calls the LLM endpoint directly.
 
-## Installation (Skills & Agents)
+## Installation (Skills, Agents & MCP)
 
-Naragate ships two installable packages alongside the app: **skills** (`skills/`) and an **agents template** (`agents/`). Install the skills first, then generate the agents for your harness.
+Naragate ships three installable packages alongside the app, so the **same experience works on the custom web UI and on any non-web agent surface**:
+
+| Package | Path | Required (non-web)? | Role |
+|---------|------|---------------------|------|
+| **MCP server** | `mcp/` | **Yes** | Ships the tools (analyze, history, trend, pre-check, usage). One server works on every MCP harness |
+| **Skills** | `skills/` | **Yes** | Domain instructions: how to parse, challenge and score a claim |
+| **Agents** | `agents/` | No | Optional orchestration for harnesses with subagents |
+
+Skills alone can't fetch data (they declare tools but don't ship them) and agents+skills still have no data — the **MCP bundle is the portable data layer**. It is a thin, credit-safe client over the Naragate backend, so non-web runs share the web UI's evidence cache and credit accounting (0 extra Sectors calls on a warm cache).
 
 ### 1. Install skills
 
@@ -168,6 +176,20 @@ python agents/install.py --all                            # every harness
 ```
 
 Supported harnesses: **Claude Code, OpenCode, Codex, Pi, Deep Agents**. Each agent loads its skill at runtime — the agent files never duplicate skill content.
+
+### 3. Install the MCP server (any non-web surface)
+
+```bash
+pip install -e mcp            # from a checkout
+uvx naragate-mcp              # or run the published package directly
+```
+
+```bash
+export NARAGATE_BACKEND_URL="http://127.0.0.1:5678"
+claude mcp add naragate -- uvx naragate-mcp     # Claude Code
+```
+
+Works with **Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex** and any MCP-capable harness — config snippets per harness are in [`mcp/README.md`](mcp/README.md). Tools: `analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, plus `naragate://` resources. The same 12 curated templates are available via `list_templates`, so a non-web user gets the same entry points as the dashboard tiles.
 
 ## Quick Start (no coding required)
 

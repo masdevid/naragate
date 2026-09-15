@@ -1,0 +1,28 @@
+[project]
+name = "naragate-mcp"
+version = "0.1.0"
+description = "MCP server exposing the Naragate reality-gap evidence engine to any MCP-capable agent (desktop, CLI, IDE)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "mcp>=1.2,<2",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+naragate-mcp = "naragate_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/masdevid/naragate"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["naragate_mcp*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
