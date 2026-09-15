@@ -169,12 +169,26 @@ credit-safety guarantee. No live backend or Sectors access required.
 
 ## Publishing
 
-Releases publish automatically via [`.github/workflows/publish-mcp.yml`](https://github.com/masdevid/naragate/blob/master/.github/workflows/publish-mcp.yml)
-when a GitHub release is published (using the `PYPI_TOKEN` repository secret), or locally:
+CI publishes via [`.github/workflows/publish-mcp.yml`](https://github.com/masdevid/naragate/blob/master/.github/workflows/publish-mcp.yml)
+when a GitHub release is published (or `gh workflow run publish-mcp.yml`). It authenticates with
+**PyPI Trusted Publishing (OIDC)** — no API token secret. One-time setup on PyPI
+(project → *Publishing* → *Add a new publisher*):
+
+| Field | Value |
+|---|---|
+| Owner | `masdevid` |
+| Repository | `naragate` |
+| Workflow name | `publish-mcp.yml` |
+| Environment name | `pypi` |
+
+→ https://pypi.org/manage/project/naragate-mcp/settings/publishing/
+
+For local/manual publishing, `publish.sh` uses an API token instead:
 
 ```bash
 mcp/publish.sh              # PyPI
 mcp/publish.sh testpypi     # TestPyPI
+mcp/publish.sh check        # dry run: build + twine check (no token, no upload)
 ```
 
 `publish.sh` reads `PYPI_TOKEN` from the environment or the repo-root `.env`, builds with
