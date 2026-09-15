@@ -12,7 +12,8 @@ import { Component } from '@angular/core';
 
       <div class="pane left">
         <div class="win">
-          <img class="shot" src="assets/result-screenshot.png"
+          <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">naragate.ilkomers.com</span></div>
+          <img class="shot" src="assets/result-app.png"
             alt="Halaman hasil Naragate: klaim &quot;Saham UNVR turun 15% dalam seminggu&quot;, Reality Gap Score 58.76, verdict Campuran">
         </div>
         <div class="pane-label">Web UI &mdash; hasil verifikasi langsung</div>
@@ -22,14 +23,11 @@ import { Component } from '@angular/core';
         <div class="win">
           <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">repository</span></div>
           <div class="body">
-            <img class="body__cover" src="assets/result-screenshot.png" alt="" aria-hidden="true">
-            <div class="body__content">
             <div class="repo-path">github.com/<b>masdevid/naragate</b></div>
             <div class="bundle-item bi1"><span class="ic">&#128268;</span><span class="tx"><b>mcp/</b><span>MCP server &mdash; 19 tools siap pakai</span></span></div>
             <div class="bundle-item bi2"><span class="ic">&#128218;</span><span class="tx"><b>skills/</b><span>Skills package untuk agent apa pun</span></span></div>
             <div class="bundle-item bi3"><span class="ic">&#129302;</span><span class="tx"><b>agents/</b><span>Agent definitions siap deploy</span></span></div>
             <div class="repo-note">Satu <b>clone</b>, tiga cara pakai.</div>
-            </div>
           </div>
         </div>
         <div class="pane-label">Bundle MCP &middot; Skills &middot; Agents &mdash; satu repository</div>
@@ -60,22 +58,20 @@ import { Component } from '@angular/core';
     .pane.right { right: 88px; animation-delay: 3.0s; }
     @keyframes suFadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
-    .win { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-    .win .bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-deep); border-bottom: 1px solid var(--line); }
+    /* both panes share the same window frame */
+    .win {
+      background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px;
+      overflow: hidden; height: 372px; display: flex; flex-direction: column;
+    }
+    .win .bar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-deep); border-bottom: 1px solid var(--line); }
     .win .bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
     .win .bar .url { margin-left: 10px; font-size: 12px; color: var(--text-muted); }
 
-    /* Real product screenshot (the image already contains its own browser chrome) */
-    .win .shot { display: block; width: 100%; }
+    /* web UI body is the screenshot, filling the frame */
+    .win .shot { display: block; width: 100%; flex: 1; min-height: 0; object-fit: cover; object-position: top center; }
 
-    /* repository window body: screenshot as the cover background */
-    .body { position: relative; padding: 20px; overflow: hidden; }
-    .body__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-    .body::after {
-      content: ""; position: absolute; inset: 0; z-index: 1;
-      background: linear-gradient(180deg, rgba(20,26,38,.88), rgba(11,14,23,.94));
-    }
-    .body__content { position: relative; z-index: 2; }
+    /* repository window body: plain panel with the bundle list */
+    .body { flex: 1; min-height: 0; overflow: hidden; padding: 20px; }
     .repo-path { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
     .repo-path b { color: var(--text-primary); font-weight: 600; }
     .bundle-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--bg-deep); border: 1px solid var(--line); margin-bottom: 10px; opacity: 0; transform: translateX(10px); animation: suItemIn .4s ease-out forwards; }
