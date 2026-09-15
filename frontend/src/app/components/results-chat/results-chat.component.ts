@@ -26,9 +26,11 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
   standalone: true,
   imports: [FormsModule, TPipe],
   template: `
-    <button (click)="toggle()" class="chat__fab" [attr.aria-expanded]="open">
-      <span class="chat__fab-label">{{ (open ? 'chat.close' : 'chat.open') | t }}</span>
-    </button>
+    @if (!open) {
+      <button (click)="toggle()" class="chat__fab" [attr.aria-expanded]="open">
+        <span class="chat__fab-label">{{ 'chat.open' | t }}</span>
+      </button>
+    }
 
     @if (open) {
       <div class="chat__scrim" (click)="close()"></div>
