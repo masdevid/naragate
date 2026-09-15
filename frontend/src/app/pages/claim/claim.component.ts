@@ -5,12 +5,13 @@ import { NarrativeService } from '../../services/narrative.service';
 import { I18nService } from '../../services/i18n.service';
 import { FormatService } from '../../services/format.service';
 import { AgentCircuitComponent } from '../../components/agent-circuit/agent-circuit.component';
+import { TypingTextComponent } from '../../components/typing-text/typing-text.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-claim',
   standalone: true,
-  imports: [AgentCircuitComponent, TPipe],
+  imports: [AgentCircuitComponent, TypingTextComponent, TPipe],
   template: `
     <div class="claim">
       <div class="claim__inner">
@@ -44,7 +45,7 @@ import { TPipe } from '../../pipes/t.pipe';
         @if (thinking()) {
           <div class="claim__thinking">
             <h2 class="claim__thinking-title">{{ 'claim.thinking' | t }} &mdash; {{ thinking()?.agent }}</h2>
-            <pre class="claim__thinking-text">{{ thinking()?.text }}</pre>
+            <app-typing-text [text]="thinkingText()"/>
           </div>
         }
 
@@ -128,13 +129,6 @@ import { TPipe } from '../../pipes/t.pipe';
     .claim__thinking-title {
       font-family: var(--font-display); font-size: var(--text-md);
       text-transform: uppercase; margin-bottom: var(--space-md);
-    }
-    .claim__thinking-text {
-      font-family: var(--font-mono); font-size: var(--text-xs);
-      color: var(--color-muted); background: var(--color-paper-2);
-      padding: var(--space-lg); overflow-x: auto; line-height: 1.6;
-      white-space: pre-wrap; word-break: break-word;
-      max-height: 16rem; overflow-y: auto;
     }
     .claim__error {
       border-top: 1px solid var(--color-danger);
@@ -300,6 +294,17 @@ export class ClaimComponent implements OnInit, OnDestroy {
     this.thinking.set({ agent, text: next });
   }
 
+  // Human-readable line for the thinking panel (the raw stream is JSON).
+  private static readonly THINKING_KEYS: Record<string, string> = {
+    claim_parser: 'claim.thinking.claim_parser',
+    skeptic: 'claim.thinking.skeptic',
+  };
+
+  thinkingText(): string {
+    const agent = this.thinking()?.agent || '';
+    return this.i18n.t(ClaimComponent.THINKING_KEYS[agent] || 'claim.thinking.generic');
+  }
+
   private applyStage(eventType: string): void {
     const stage = ClaimComponent.STAGE_BY_EVENT[eventType];
     if (!stage) return;
@@ -316,14 +321,18 @@ export class ClaimComponent implements OnInit, OnDestroy {
   }
 
   private navigateToResults() {
-    // When the pipeline finishes in under a second, hold the completed
-    // agent-flow animation on screen a little longer so it doesn't flash by.
+    // Hold the completed circuit on screen briefly so the finished stage reads,
+    // and keep sub-second runs from flashing by (minimum visible time).
     const elapsed = Date.now() - this.pipelineStart;
-    const extraDelay = Math.max(0, 1000 - elapsed);
+    const minVisible = Math.max(0, 1000 - elapsed);
+    const holdAfterComplete = 1500;
     // Replace /claim?narrative=… in history so the browser back button does not
     // re-mount it and re-run the pipeline; back now lands on the page that
     // launched the analysis (dashboard) instead.
-    setTimeout(() => this.router.navigate(['/results', this.claimId()], { replaceUrl: true }), 1000 + extraDelay);
+    setTimeout(
+      () => this.router.navigate(['/results', this.claimId()], { replaceUrl: true }),
+      minVisible + holdAfterComplete,
+    );
   }
 
   fmtNumber(value: number | null | undefined, decimals = 0): string {
