@@ -23,6 +23,14 @@ import { TPipe } from '../../pipes/t.pipe';
         <input class="login__input" type="password" name="password" autocomplete="current-password"
           [(ngModel)]="password" (keyup.enter)="submit()">
 
+        <label class="login__label">
+          {{ 'login.api_key' | t }} <span class="login__optional">({{ 'login.optional' | t }})</span>
+        </label>
+        <input class="login__input" type="text" name="apiKey" autocomplete="off"
+          [(ngModel)]="apiKey" (keyup.enter)="submit()"
+          [placeholder]="'settings.sectors_key_placeholder' | t">
+        <p class="login__hint">{{ 'login.api_key_hint' | t }}</p>
+
         @if (error()) {
           <p class="login__error">{{ error() }}</p>
         }
@@ -48,6 +56,8 @@ import { TPipe } from '../../pipes/t.pipe';
       background: var(--color-paper-3); border: 1px solid var(--color-rule);
       color: var(--color-ink); font-family: var(--font-mono); font-size: var(--text-sm);
     }
+    .login__optional { color: var(--color-dim); text-transform: none; letter-spacing: 0; }
+    .login__hint { font-size: var(--text-xs); color: var(--color-dim); margin: calc(-1 * var(--space-2xs)) 0 var(--space-md); }
     .login__error { font-size: var(--text-sm); color: var(--color-danger); margin-bottom: var(--space-md); }
     .login__btn {
       width: 100%; padding: var(--space-md); border: none; background: var(--color-accent);
@@ -64,6 +74,7 @@ export class LoginComponent {
 
   email = '';
   password = '';
+  apiKey = '';
   loading = signal(false);
   error = signal('');
 
@@ -74,7 +85,7 @@ export class LoginComponent {
     }
     this.error.set('');
     this.loading.set(true);
-    this.auth.login(this.email.trim(), this.password).subscribe({
+    this.auth.login(this.email.trim(), this.password, this.apiKey).subscribe({
       next: () => {
         this.loading.set(false);
         this.router.navigate(['/dashboard']);

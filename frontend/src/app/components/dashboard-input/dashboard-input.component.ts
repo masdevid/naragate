@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NarrativeService } from '../../services/narrative.service';
+import { sanitizeNarrative } from '../../utils/sanitize';
 import { TPipe } from '../../pipes/t.pipe';
 import { DashboardExamplesComponent } from '../dashboard-examples/dashboard-examples.component';
 
@@ -251,8 +252,10 @@ type ScanMode = 'single' | 'bulk';
 export class DashboardInputComponent {
   text = '';
   @Input() analyzing = false;
+  @Input() authenticated = false;
 
   @Output() analyze = new EventEmitter<string>();
+  @Output() requireLogin = new EventEmitter<void>();
   @Output() complete = new EventEmitter<void>();
 
   mode = signal<ScanMode>('single');
@@ -272,7 +275,7 @@ export class DashboardInputComponent {
   lines(): string[] {
     return this.text
       .split('\n')
-      .map(l => l.trim())
+      .map(l => sanitizeNarrative(l))
       .filter(l => l.length > 0);
   }
 
@@ -288,6 +291,11 @@ export class DashboardInputComponent {
   start() {
     const narratives = this.lines();
     if (!narratives.length || this.running()) return;
+    if (!this.authenticated) {
+      // Bulk analysis also requires a session.
+      this.requireLogin.emit();
+      return;
+    }
 
     this.running.set(true);
     this.doneCount.set(0);

@@ -78,6 +78,27 @@ async def test_session_email_binds_sectors_key(settings_file, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_login_binds_optional_api_key(settings_file, monkeypatch):
+    _fake_login(monkeypatch)
+    async with _client() as client:
+        r = await client.post("/api/v1/auth/login", json={
+            "email": "a@example.com", "password": "pw", "api_key": "key_from_login",
+        })
+    assert r.status_code == 200
+    data = json.loads(settings_file.read_text())
+    assert data["sectors_keys_by_email"]["a@example.com"] == "key_from_login"
+
+
+@pytest.mark.asyncio
+async def test_login_without_api_key_leaves_it_unbound(settings_file, monkeypatch):
+    _fake_login(monkeypatch)
+    async with _client() as client:
+        await client.post("/api/v1/auth/login", json={"email": "a@example.com", "password": "pw"})
+    data = json.loads(settings_file.read_text())
+    assert "a@example.com" not in (data.get("sectors_keys_by_email") or {})
+
+
+@pytest.mark.asyncio
 async def test_login_persists_tokens_for_account_usage(settings_file, monkeypatch):
     _fake_login(monkeypatch)
     async with _client() as client:

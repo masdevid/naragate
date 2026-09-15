@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from app.core.identity import email_from_request, set_current_email
@@ -11,11 +11,12 @@ router = APIRouter()
 
 
 class NarrativeInput(BaseModel):
-    narrative: str
+    # Length caps are defence-in-depth; narratives are plain text, never HTML.
+    narrative: str = Field(..., max_length=4000)
 
 
 class BulkNarrativeInput(BaseModel):
-    narratives: list[str]
+    narratives: list[str] = Field(..., max_length=50)
 
 
 def _guard(request: Request):

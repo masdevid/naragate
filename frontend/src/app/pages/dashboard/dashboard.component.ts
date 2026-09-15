@@ -6,6 +6,7 @@ import { I18nService } from '../../services/i18n.service';
 import { DashboardWarningsComponent } from '../../components/dashboard-warnings/dashboard-warnings.component';
 import { DashboardHeroComponent } from '../../components/dashboard-hero/dashboard-hero.component';
 import { DashboardInputComponent } from '../../components/dashboard-input/dashboard-input.component';
+import { sanitizeNarrative } from '../../utils/sanitize';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
@@ -40,7 +41,9 @@ import { TPipe } from '../../pipes/t.pipe';
 
     <app-dashboard-input
       [analyzing]="analyzing()"
+      [authenticated]="authenticated()"
       (analyze)="startAnalysis($event)"
+      (requireLogin)="goLogin()"
       (complete)="onBulkComplete()"/>
 
     <a routerLink="/history" class="dashboard__history">{{ 'dashboard.view_history' | t }}</a>
@@ -154,14 +157,19 @@ export class DashboardComponent implements OnInit {
   }
 
   startAnalysis(narrative: string) {
-    if (!narrative.trim() || this.analyzing()) return;
+    const clean = sanitizeNarrative(narrative);
+    if (!clean || this.analyzing()) return;
     if (!this.auth.isAuthenticated()) {
       // Landed without a session — send them to log in first.
       this.router.navigate(['/login']);
       return;
     }
     this.analyzing.set(true);
-    this.router.navigate(['/claim'], { queryParams: { narrative } });
+    this.router.navigate(['/claim'], { queryParams: { narrative: clean } });
+  }
+
+  goLogin() {
+    this.router.navigate(['/login']);
   }
 
   onBulkComplete() {

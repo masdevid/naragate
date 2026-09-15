@@ -18,6 +18,8 @@ router = APIRouter()
 class LoginRequest(BaseModel):
     email: str
     password: str
+    # Optional: bind the Sectors API key now, or leave it to Settings later.
+    api_key: str | None = None
 
 
 class AuthStatus(BaseModel):
@@ -55,6 +57,11 @@ async def login(request: Request, req: LoginRequest) -> AuthStatus:
     data = sectors_config._load_runtime()
     data["sectors_key_owner_email"] = email
     sectors_config._save_runtime(data)
+
+    # Optional API key at login; anything masked/blank is ignored (set later).
+    api_key = (req.api_key or "").strip()
+    if api_key and "..." not in api_key and "••••" not in api_key:
+        sectors_config.bind_key_to_email(email, api_key)
 
     return AuthStatus(
         authenticated=True,

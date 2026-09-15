@@ -37,8 +37,10 @@ export class AuthService {
     });
   }
 
-  login(email: string, password: string): Observable<AuthUser> {
-    return this.request('POST', '/login', { email, password });
+  login(email: string, password: string, apiKey?: string): Observable<AuthUser> {
+    const body: Record<string, string> = { email, password };
+    if (apiKey && apiKey.trim()) body['api_key'] = apiKey.trim();
+    return this.request('POST', '/login', body);
   }
 
   logout(): Observable<AuthUser> {

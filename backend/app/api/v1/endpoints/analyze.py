@@ -7,7 +7,7 @@ the exact web-UI pipeline, evidence cache and credit accounting.
 """
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.setup import missing_setup_items
 from app.services.claims_store import claims_store
@@ -17,7 +17,8 @@ router = APIRouter()
 
 
 class AnalyzeInput(BaseModel):
-    narrative: str
+    # Cap length defensively; narrative is treated as plain text, never HTML.
+    narrative: str = Field(..., max_length=4000)
 
 
 @router.post("")
