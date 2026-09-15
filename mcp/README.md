@@ -167,3 +167,10 @@ python -m pytest -q
 
 Covers the REST client (mock transport), the tool surface, compact-report shaping, and the
 credit-safety guarantee. No live backend or Sectors access required.
+
+## Related
+
+- [`../README.md`](../README.md) — project overview and the "Use Naragate from any MCP agent" section
+- [`../skills/README.md`](../skills/README.md) — the 13 skills whose `tools.yaml` this server satisfies
+- [`../agents/README.md`](../agents/README.md) — optional subagent topology for harnesses that support it
+- `tests/test_parity.py` — enforces that every `skills/*/tools.yaml` tool is exposed here

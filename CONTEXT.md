@@ -34,6 +34,10 @@ The domain of an evidence engine that detects financial claims in Indonesian mar
 
 **Harness**: The infrastructure layer that manages agent lifecycle, message routing, state management (evidence graph updates), and the SSE streaming layer. _Avoid_: server, backend, runtime.
 
+**MCP Server**: The portable tool layer (`mcp/`) that exposes the evidence engine — high-level operations (analyze, history, trend, pre-check, usage) and low-level evidence primitives — to any MCP-capable agent surface (Claude Code, Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex). It is a thin, credit-safe client over the backend and never calls Sectors directly. _Avoid_: gateway, proxy, bridge, plugin.
+
+**Agent Surface**: Any client the engine is driven from — the custom web UI, the MCP server, or the Pi agent pipeline. Every surface shares one backend pipeline, Evidence Graph cache, and credit ledger. _Avoid_: client, frontend, interface.
+
 **Evidence Dimension**: A specific gap measured for the Reality Gap Score — *valuation gap*, *earnings gap*, *market momentum gap*, *peer relative gap*, or *evidence confidence*. Only dimensions relevant to the claim category are computed. _Avoid_: metric, factor, indicator.
 
 **Credit**: A unit of Sectors API usage. The project operates within a 1,600-credit budget (1,000 hackathon + 600 onboarding). Each API call consumes credits; caching is mandatory to stay within budget. _Avoid_: token, point, quota.
@@ -49,3 +53,4 @@ The domain of an evidence engine that detects financial claims in Indonesian mar
 - All Sectors API calls must be routed through the Evidence Graph cache first. Direct API calls without cache-check are forbidden.
 - The system supports any OpenAI-compatible LLM provider — users are not locked to Ollama.
 - Settings are persisted in SQLite and editable via the web UI at runtime (no restart required).
+- All agent surfaces (web UI, MCP server, Pi pipeline) must obtain evidence through the same backend pipeline and Evidence Graph cache. No surface may call Sectors directly; the MCP server in particular is a thin client over the backend.

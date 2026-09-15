@@ -48,6 +48,15 @@ npx skills add /path/to/naragate -a claude-code
 
 Each skill outputs structured JSON. The `renderer` skill converts any agent's JSON output into narrative prose for non-UI consumers.
 
+## Tools & harnesses
+
+Each skill declares the tools it needs in `skills/<name>/tools.yaml` — Sectors v2 fetches (`sectors_company_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_corporate_actions`, `sectors_filings`), Evidence Graph cache access (`evidence_cache_get` / `evidence_cache_merge`), and `llm_complete`. The harness supplies the implementations:
+
+- **Naragate web backend / Pi pipeline** — the FastAPI services implement them directly.
+- **Any MCP-capable agent** — the `naragate-mcp` server ([`mcp/`](../mcp/README.md)) exposes **every** declared tool, so the same skills run on Claude Code, Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode and Codex. A parity test asserts every `tools.yaml` tool exists on the MCP server.
+
+Credit discipline: check `evidence_cache_get` first, call the matching `sectors_*` tool on a miss, then `evidence_cache_merge` the result — or call the high-level `analyze_narrative` tool, which runs the full cached pipeline in one step.
+
 ## Follow-up Q&A after an analysis
 
 After a completed analysis, non-web users can keep asking questions about it:

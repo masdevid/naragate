@@ -114,6 +114,7 @@ The generator does not hardcode a model or provider — each harness uses its de
 - **No duplication**: the neutral `.md` files are the single source of truth; generated harness files are derived artifacts, not edited by hand.
 - **Skills stay canonical**: agents load skills by name; the template never embeds skill content.
 - **No hardcoded credentials or budgets**: the harness injects the Sectors API key and credit budget at runtime.
+- **MCP is the portable data layer**: agents are optional. For harnesses that prefer one tool surface over generated subagents, the `naragate-mcp` server ([`mcp/`](../mcp/README.md)) exposes the same primitives — with full `skills/*/tools.yaml` parity — to any MCP client, and always routes evidence through the backend's cache.
 
 ## References
 

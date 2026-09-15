@@ -5,6 +5,7 @@
 **Mesin pemeriksa fakta keuangan untuk narasi pasar Indonesia — verifikasi klaim, deteksi dampak kebijakan, skor celah realitas.**
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+[![Release](https://img.shields.io/github/v/release/masdevid/naragate)](https://github.com/masdevid/naragate/releases)
 [![Sectors Hackathon 2026 | Track 1](assets/sectors-hackathon-2026-badge.svg)](https://hackathon.sectors.app)
 
 *Initial project created: September 4, 2026. Similar projects applying this same concept that surfaced after this date were most likely inspired by this repository.*
@@ -29,7 +30,14 @@ Naragate is an **AI-powered financial fact-check engine** that takes any Indones
 
 ## 🚀 Features
 
-### Policy-Narrative Amplifier *(New)*
+### Any Agent Surface — MCP + Skills *(New)*
+
+- **One engine, every surface** — the same reality-gap engine runs in the web UI, over **MCP** (Claude Code, Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex, any MCP harness), and through the Pi agent pipeline
+- **Full tool parity** — **19 MCP tools**: 9 high-level (`analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, `get_reality_gap`) plus every primitive declared by the skills (`sectors_company_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_filings`, `evidence_cache_get/merge`, `llm_complete`, …), with `naragate://` resources. A test enforces that parity
+- **Installable skills package** — 13 harness-agnostic skills; an optional agent template wires them into Claude Code, OpenCode, Codex, Pi, and Deep Agents
+- **Credit-safe by construction** — the MCP server is a thin client over the backend and never calls Sectors directly, so a non-web run shares the web UI's Evidence Graph cache and credit accounting (**0 extra Sectors calls on a warm cache**)
+
+### Policy-Narrative Amplifier
 
 - **Policy Pre-Check** — validates the policy→price signal hypothesis with a 12-month price-volatility analysis on candidate names, **scoped to the claim's own sector** (a coal claim never shows oil-gas names); cached-only by default, so opening a results page costs 0 API calls
 - **Anchored Sector Resolver** — deterministic, auditable mapping from Indonesian policy vocabulary to sector members — no LLM, no guesswork. A policy keyword wins even when the narrative names a member ticker (e.g. *"HBA … ADRO"* → coal, *"… bijih nikel … INCO"* → nickel)
@@ -53,7 +61,7 @@ Naragate is an **AI-powered financial fact-check engine** that takes any Indones
 
 ### Usage & Credit Dashboard
 
-- Real-time Sects API budget tracking (total, cached, remaining)
+- Real-time Sectors API budget tracking (total, cached, remaining)
 - LLM token consumption and estimated cost
 - Daily breakdown of API calls, tokens, and pipeline stats
 
@@ -113,8 +121,11 @@ Naragate analyzes any Indonesian market narrative in real-time and produces a **
 
 ```mermaid
 flowchart LR
-  User[Retail investor] --> App[Naragate app]
+  User[Retail investor] --> App[Naragate web UI]
+  CLI[Claude Code · Claude Desktop · Cursor · opencode · Codex] --> MCP[MCP server]
+  Pi[Pi agent pipeline] --> Analysis
   App --> Analysis[AI analysis]
+  MCP --> Analysis
   Analysis --> Result[Evidence and Reality Gap Score]
   Analysis --> Data[Financial data]
   Data --> Sectors[Sectors v2]
@@ -127,6 +138,8 @@ flowchart LR
 
   subgraph Naragate[Naragate]
     App
+    MCP
+    Pi
     Analysis
     Result
     Cache
@@ -147,6 +160,10 @@ flowchart LR
 ### Pi Coding Agent Harness
 
 The LLM-driven agents (Claim Parser, Skeptic, News, Chat) run through the **Pi Coding Agent** harness (`pi-agent` service). Each agent's `skills/*` definition is loaded into the Pi CLI as its system prompt, and results stream back to the backend as OpenAI-compatible SSE. The deterministic data agents (Valuation, Fundamental, Market, Judge, Score) run in the backend in Python. When `PI_AGENT_URL` is unset (local dev, tests), the backend calls the LLM endpoint directly.
+
+### MCP Surface
+
+The **MCP server** (`mcp/`) is a second, harness-agnostic orchestration path. It is a thin, credit-safe client over the backend that exposes 19 tools and 4 `naragate://` resources to any MCP-capable agent (Claude Code/Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex). High-level tools run the whole pipeline (`analyze_narrative`); low-level tools mirror every `skills/*/tools.yaml` primitive so a harness can compose per-agent. Either way, all evidence flows through the backend's Evidence Graph cache — the MCP layer never calls Sectors directly. See [Use Naragate from any MCP agent](#use-naragate-from-any-mcp-agent).
 
 ## Installation (Skills, Agents & MCP)
 
@@ -184,12 +201,80 @@ pip install -e mcp            # from a checkout
 uvx naragate-mcp              # or run the published package directly
 ```
 
-```bash
-export NARAGATE_BACKEND_URL="http://127.0.0.1:5678"
-claude mcp add naragate -- uvx naragate-mcp     # Claude Code
+Works with any MCP-capable harness — see [Use Naragate from any MCP agent](#use-naragate-from-any-mcp-agent) below for the tool list and per-harness config.
+
+---
+
+## Use Naragate from any MCP agent
+
+The competition track is **AI Agents & Assistants**, so Naragate is not just a web app. The **MCP server** exposes the whole engine to any agent surface — desktop, CLI, or IDE — with the **same experience** as the web UI.
+
+```
+                          ┌─ Custom web UI (Angular)
+Naragate backend  ◄───────┼─ MCP server  ──► Claude Code · Claude Desktop · Cursor ·
+(FastAPI · SQLite · Redis) │                  Windsurf · Zed · VS Code · opencode · Codex
+                          └─ Pi agent pipeline (skills harness)
 ```
 
-Works with **Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex** and any MCP-capable harness — config snippets per harness are in [`mcp/README.md`](mcp/README.md). **19 tools** are exposed: 9 high-level (`analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, …) plus **full `tools.yaml` parity** — every primitive declared by the skills (`sectors_company_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_filings`, `evidence_cache_get/merge`, `llm_complete`, …) — with `naragate://` resources. A test enforces that parity. The same 12 curated templates are available via `list_templates`, so a non-web user gets the same entry points as the dashboard tiles.
+Every surface goes through the **same backend pipeline, Evidence Graph cache, and credit accounting**. The MCP server is a thin REST client — it never calls Sectors directly, so a warm re-run costs **0 additional Sectors credits**, exactly like the web UI.
+
+### Install & run
+
+```bash
+pip install -e mcp                              # from a checkout
+# or: uvx naragate-mcp / pipx install naragate-mcp
+export NARAGATE_BACKEND_URL="http://127.0.0.1:5678"
+naragate-mcp                                    # stdio transport
+```
+
+### Tools (19) — full skills parity
+
+**High-level (credit-safe):** `analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `get_reality_gap`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`.
+
+**Low-level (every primitive declared in `skills/*/tools.yaml`):** `sectors_company_report`, `sectors_subsector_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_corporate_actions`, `sectors_filings`, `evidence_cache_get`, `evidence_cache_merge`, `llm_complete`.
+
+A test (`mcp/tests/test_parity.py`) asserts that **every tool declared by any skill exists on the server**, so parity can't drift. The same 12 curated templates are available via `list_templates` / `analyze_template`, so a non-web user gets the same entry points as the dashboard tiles.
+
+### Resources
+
+`naragate://templates` · `naragate://usage` · `naragate://history` · `naragate://claim/{claim_id}`
+
+### Harness configuration
+
+```bash
+# Claude Code
+claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx naragate-mcp
+```
+
+```jsonc
+// Claude Desktop · Cursor · Windsurf · Zed · VS Code · opencode
+{
+  "mcpServers": {
+    "naragate": {
+      "command": "uvx",
+      "args": ["naragate-mcp"],
+      "env": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678" }
+    }
+  }
+}
+```
+
+```toml
+# Codex (~/.codex/config.toml)
+[mcp_servers.naragate]
+command = "uvx"
+args = ["naragate-mcp"]
+env = { NARAGATE_BACKEND_URL = "http://127.0.0.1:5678" }
+```
+
+Per-harness details (opencode `mcp` block, Cursor path, etc.) live in [`mcp/README.md`](mcp/README.md).
+
+### Example prompts
+
+- *"Use naragate to verify: PE BBCA mahal di 25x."*
+- *"List the naragate templates and run the nickel policy one."*
+- *"Show my last 10 naragate analyses and the trend summary."*
+- *"What's my Sectors credit usage?"*
 
 ## Quick Start (no coding required)
 
@@ -285,7 +370,15 @@ npx playwright test e2e/history/history-page.spec.ts  # live /history coherence
 docker exec naragate-backend-1 python -m pytest -q
 ```
 
-Test docs: `frontend/e2e/templates/claim-templates.md`, `frontend/e2e/history/history.md`.
+### MCP server (pytest)
+
+```bash
+cd mcp && python -m pytest -q
+```
+
+Covers the REST client (mock transport), the 19-tool surface, compact-report shaping, the **credit-safety guarantee** (the MCP layer never references Sectors), and a **parity test** asserting every `skills/*/tools.yaml` tool is exposed.
+
+Test docs: `frontend/e2e/templates/claim-templates.md`, `frontend/e2e/history/history.md`, `mcp/README.md`.
 
 ## Tech Stack
 
@@ -293,6 +386,7 @@ Test docs: `frontend/e2e/templates/claim-templates.md`, `frontend/e2e/history/hi
 |-------|------------|
 | Frontend | Angular 22, Tailwind CSS |
 | Backend | FastAPI, Python 3.12 |
+| Agent surfaces | MCP server (`mcp/`, 19 tools + resources), Pi Coding Agent harness |
 | Orchestration | Multi-agent pipeline (6 stages) via Pi Coding Agent harness |
 | Persistence | SQLite (claims), Redis (cache) |
 | LLM | Any OpenAI-compatible provider (Ollama, OpenAI, OpenRouter, Groq, Together) |
@@ -301,11 +395,12 @@ Test docs: `frontend/e2e/templates/claim-templates.md`, `frontend/e2e/history/hi
 
 ## Innovation Highlights
 
-1. **Policy-Narrative Amplifier** — First system to detect Indonesian energy policy events and dynamically re-score financial claims based on policy-risk signals. Validated via 12-month price-signal pre-check with zero-credit warm re-runs.
-2. **Credit-Budget Discipline** — Engineered around strict Sectors API credit limits (1,600 credit budget). Fixed-grid caching delivers 0-credit warm re-runs. All Sectors calls route through the Evidence Graph cache first. Live usage dashboard shows exactly where every credit goes.
-3. **Multi-LLM Provider Support** — Connect to 6+ providers from one unified connector with live endpoint validation and auto-discovered models. No vendor lock-in.
-4. **Bilingual Interface** — Full Indonesian/English UI toggle for the target market.
-5. **Anti-Dilution Architecture** — Policy dimensions are gated by claim category (never on valuation), ensuring score integrity is preserved at every layer.
+1. **One engine, every agent surface** — the same pipeline powers the web UI, the **MCP server** for any MCP harness (Claude Code/Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex), and the Pi pipeline, with full tool parity enforced by tests.
+2. **Policy-Narrative Amplifier** — First system to detect Indonesian energy policy events and dynamically re-score financial claims based on policy-risk signals. Validated via 12-month price-signal pre-check with zero-credit warm re-runs.
+3. **Credit-Budget Discipline** — Engineered around strict Sectors API credit limits (1,600 credit budget). Fixed-grid caching delivers 0-credit warm re-runs. All Sectors calls route through the Evidence Graph cache first. Live usage dashboard shows exactly where every credit goes.
+4. **Multi-LLM Provider Support** — Connect to 6+ providers from one unified connector with live endpoint validation and auto-discovered models. No vendor lock-in.
+5. **Bilingual Interface** — Full Indonesian/English UI toggle for the target market.
+6. **Anti-Dilution Architecture** — Policy dimensions are gated by claim category (never on valuation), ensuring score integrity is preserved at every layer.
 
 ## Data Usage
 
