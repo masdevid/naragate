@@ -220,6 +220,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
   ]);
 
   ngOnInit() {
+    window.scrollTo({ top: 0 });
     this.sub = this.route.queryParams.subscribe(params => {
       this.narrative.set(params['narrative'] || '');
       if (this.narrative()) this.startPipeline();

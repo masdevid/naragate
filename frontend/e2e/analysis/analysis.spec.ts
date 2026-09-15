@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { DashboardPage, ClaimPage, ResultsPage } from './analysis-page';
 import { successStream, clarificationStream, claimState } from '../api-mocks';
 
@@ -24,7 +24,10 @@ test.describe('Analysis edge cases', () => {
       }));
 
       await dashboard.goto();
+      // Scrolling down then analyzing must land the claim page at the top.
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await dashboard.analyze('Saham perbankan mahal');
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 
       await claim.expectClarificationShown();
     });
