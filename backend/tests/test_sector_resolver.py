@@ -61,6 +61,12 @@ class TestSectorResolver:
         assert r.sector == "utilities"
         assert r.members == []
 
+    def test_nickel_keyword_resolves(self):
+        r = resolve_sector_from_narrative("Larangan ekspor bijih nikel diperketat")
+        assert r is not None
+        assert r.sector == "nickel"
+        assert set(r.members) == {"INCO", "NCKL"}
+
     def test_all_keywords_are_lowercase(self):
         for kw in ALL_POLICY_KEYWORDS:
             assert kw == kw.lower(), f"Keyword {kw!r} must be lowercase"
@@ -87,6 +93,35 @@ class TestExtractClaimPolicyIntegration:
             claim = await extract_claim("BBCA labanya jeblok")
         assert claim.ticker == "BBCA"
         assert claim.ticker_valid is True
+        assert claim.is_policy is False
+        assert claim.sector is None
+
+    @pytest.mark.asyncio
+    async def test_policy_keyword_wins_when_member_ticker_named(self):
+        llm_response = '{"ticker": "ADRO", "category": "market", "assertion": "HBA naik", "direction": "above", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = llm_response
+            claim = await extract_claim("HBA batu bara ditetapkan naik untuk Q3 - untung ADRO ikut naik.")
+        assert claim.is_policy is True
+        assert claim.sector == "coal"
+        assert claim.ticker == "ADRO"
+
+    @pytest.mark.asyncio
+    async def test_nickel_policy_narrative_sets_is_policy(self):
+        llm_response = '{"ticker": "INCO", "category": "market", "assertion": "hilirisasi", "direction": "above", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = llm_response
+            claim = await extract_claim("Larangan ekspor bijih nikel diperketat - INCO untung dari hilirisasi.")
+        assert claim.is_policy is True
+        assert claim.sector == "nickel"
+        assert claim.sector_members == ["INCO", "NCKL"]
+
+    @pytest.mark.asyncio
+    async def test_policy_keyword_ignored_for_non_member_ticker(self):
+        llm_response = '{"ticker": "BBCA", "category": "market", "assertion": "kebijakan", "direction": "above", "confidence": 0.8}'
+        with patch("app.core.llm_client.stream_chat", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = llm_response
+            claim = await extract_claim("BBCA diuntungkan kebijakan batu bara")
         assert claim.is_policy is False
         assert claim.sector is None
 

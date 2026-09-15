@@ -180,10 +180,14 @@ async def extract_claim(
     ticker_valid = ticker in CURATED_TICKERS
     valid_format = bool(re.match(r"^[A-Z]{4}$", ticker or ""))
 
-    if ticker_valid or valid_format:
+    # Policy detection is independent of whether the narrative names a ticker: a
+    # policy keyword wins when the narrative has no ticker, or names a ticker
+    # that is a member of the resolved sector (e.g. "HBA ... ADRO" -> coal).
+    # A named ticker outside that sector keeps the single-ticker path so an
+    # unrelated symbol is never misrouted into sector analysis.
+    sector_resolved = resolve_sector_from_narrative(narrative)
+    if sector_resolved and (valid_format or ticker_valid) and ticker not in sector_resolved.members:
         sector_resolved = None
-    else:
-        sector_resolved = resolve_sector_from_narrative(narrative)
 
     # A ticker recovered from the narrative overrides any spurious LLM
     # `needs_clarification` — templates that name a symbol must never be

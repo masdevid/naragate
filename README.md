@@ -31,8 +31,8 @@ Naragate is an **AI-powered financial fact-check engine** that takes any Indones
 
 ### Policy-Narrative Amplifier *(New)*
 
-- **Policy Pre-Check** — validates the policy→price signal hypothesis with a 12-month price-volatility analysis on candidate energy names (zero-credit on warm re-runs)
-- **Anchored Sector Resolver** — deterministic, auditable mapping from Indonesian policy vocabulary to sector members — no LLM, no guesswork
+- **Policy Pre-Check** — validates the policy→price signal hypothesis with a 12-month price-volatility analysis on candidate names, **scoped to the claim's own sector** (a coal claim never shows oil-gas names); cached-only by default, so opening a results page costs 0 API calls
+- **Anchored Sector Resolver** — deterministic, auditable mapping from Indonesian policy vocabulary to sector members — no LLM, no guesswork. A policy keyword wins even when the narrative names a member ticker (e.g. *"HBA … ADRO"* → coal, *"… bijih nikel … INCO"* → nickel)
 - **Sector-Scoped Evidence Graph** — policy evidence gathered once per sector and shared across all member claims — zero extra API credits
 - **Policy-Event Labeling** — auto-labels news headlines with date, actor, and policy keyword from existing corpus (no new data sources)
 - **Policy-Narrative Gap Score** — a new scoring dimension that measures sector price reactions strictly after labeled policy events, with timing discipline
@@ -241,6 +241,29 @@ Keys and models set in the web UI take precedence over `.env`. You can leave `.e
 | Port already in use | Set different ports in `.env` (`FRONTEND_PORT`, `BACKEND_PORT`), then run `start.sh` again. |
 | "No API key configured" in Settings | Paste your Sectors key in the setup wizard or Settings page and click **Validate**. |
 | Model list is empty | Make sure Ollama is running and you have pulled a model (`ollama pull gemma3:12b`). |
+
+## Testing
+
+### Frontend (Playwright)
+
+```bash
+cd frontend
+npx playwright test                                   # mocked suites + read-only history
+npx playwright test e2e/templates                     # 13 tests: every dashboard template
+npx playwright test e2e/history/history-page.spec.ts  # live /history coherence
+```
+
+- **Claim templates** (`frontend/e2e/templates/`) — drives all 12 dashboard templates through the pipeline (SSE mocked) and asserts the results page: verdict badge, score gauge, active legend band, evidence sections, skeptic panel, policy section, and the ticker guardrail. Verdict↔band coherence and section-intent are checked; **0 Sectors/LLM credits**.
+- **History** (`frontend/e2e/history/history-page.spec.ts`) — verifies the live `/history` list, trend summary and detail pages are coherent with the claims the backend actually stores (read-only, **0 credits**).
+- **Real generation (opt-in)** — `RUN_REAL_PIPELINE=1 npx playwright test e2e/history -g "generate:"` drives all 12 templates through the real LLM + Sectors pipeline so genuine completed claims appear on the production history page. Skipped by default; compare `/api/v1/usage` before/after to see the credit cost.
+
+### Backend (pytest)
+
+```bash
+docker exec naragate-backend-1 python -m pytest -q
+```
+
+Test docs: `frontend/e2e/templates/claim-templates.md`, `frontend/e2e/history/history.md`.
 
 ## Tech Stack
 

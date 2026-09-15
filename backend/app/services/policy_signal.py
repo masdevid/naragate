@@ -272,12 +272,27 @@ async def run_precheck(
     policy_events: list[PolicyEvent] | None = None,
     window_days: int = POLICY_WINDOW_DAYS,
     cached_only: bool = False,
+    sector: str | None = None,
 ) -> PrecheckReport:
-    events = list(policy_events or ENERGY_POLICY_EVENTS)
-    policy_dates = [e["date"] for e in events]
+    events = list(policy_events if policy_events is not None else ENERGY_POLICY_EVENTS)
+    candidates = CANDIDATE_ENERGY_NAMES
+    if sector:
+        # Scope the report to the claim's own sector so a coal/nickel result never
+        # shows oil-gas names, and vice versa.
+        events = [e for e in events if e.get("subsector") == sector]
+        candidates = [c for c in candidates if c["subsector"] == sector]
+        if not candidates:
+            return PrecheckReport(
+                verdict="N/A",
+                rationale=f"No T1 pre-check candidates are tracked for sector '{sector}'.",
+                window_days=window_days,
+                policy_events=events,
+                results=[],
+            )
     results: list[NameResult] = []
+    policy_dates = [e["date"] for e in events]
 
-    for candidate in CANDIDATE_ENERGY_NAMES:
+    for candidate in candidates:
         try:
             tx, cache_hit = await fetch_daily_transaction(candidate["ticker"], cached_only=cached_only)
             results.append(classify_signal_for_name(

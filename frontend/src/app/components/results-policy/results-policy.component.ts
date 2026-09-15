@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { NarrativeService } from '../../services/narrative.service';
 import { SectionHelpComponent } from '../section-help/section-help.component';
 import { TPipe } from '../../pipes/t.pipe';
@@ -110,10 +110,13 @@ import { TPipe } from '../../pipes/t.pipe';
 export class ResultsPolicyComponent implements OnInit {
   private narrativeService = inject(NarrativeService);
 
+  /** The claim's resolved sector — scopes the pre-check to this claim. */
+  @Input() sector: () => string | null = () => null;
+
   precheck = signal<any | null>(null);
 
   ngOnInit() {
-    this.narrativeService.getPrecheck().subscribe({
+    this.narrativeService.getPrecheck(this.sector()).subscribe({
       next: (data) => this.precheck.set(data),
       error: () => this.precheck.set(null), // hidden when the pre-check is unavailable
     });

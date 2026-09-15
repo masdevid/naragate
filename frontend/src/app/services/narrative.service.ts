@@ -138,9 +138,10 @@ export class NarrativeService {
     });
   }
 
-  getPrecheck(): Observable<any> {
+  getPrecheck(sector?: string | null): Observable<any> {
+    const query = sector ? `?sector=${encodeURIComponent(sector)}` : '';
     return new Observable(observer => {
-      fetch(`${this.apiUrl}/api/v1/precheck/`)
+      fetch(`${this.apiUrl}/api/v1/precheck/${query}`)
         .then(r => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json();

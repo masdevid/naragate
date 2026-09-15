@@ -8,7 +8,7 @@ The skills live in this repo under `skills/`. Install from the repo root (the CL
 
 ```bash
 # From a local checkout
-npx skills add /path/to/market-narrative-gap
+npx skills add /path/to/naragate
 
 # Or from the GitHub repo
 npx skills add masdevid/naragate
@@ -17,13 +17,13 @@ npx skills add masdevid/naragate
 Install a single skill:
 
 ```bash
-npx skills add /path/to/market-narrative-gap --skill claim-parser
+npx skills add /path/to/naragate --skill claim-parser
 ```
 
 Install to a specific agent:
 
 ```bash
-npx skills add /path/to/market-narrative-gap -a claude-code
+npx skills add /path/to/naragate -a claude-code
 ```
 
 ## Skills
@@ -91,6 +91,8 @@ flowchart TD
 4. `skeptic-agent` → challenge the claim
 5. `evidence-judge` → aggregate evidence
 6. `score-generator` → compute Reality Gap score
+
+**Policy claims** (ticker-less, or naming a member of a known policy sector — e.g. *"HBA … ADRO"* → coal, *"… bijih nikel … INCO"* → nickel, *"subsidi BBM"* → oil-gas) resolve to a sector via the anchored resolver and take the sector-scoped evidence + policy-event path instead of single-ticker evidence. A policy keyword wins even when the narrative names a member ticker; a narrative naming an unrelated ticker keeps the single-ticker path.
 
 ## Configuration
 

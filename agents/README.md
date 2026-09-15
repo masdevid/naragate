@@ -35,6 +35,8 @@ Support agents:
 
 These agents are available outside the main pipeline for secondary tasks.
 
+> **Policy claims.** The `claim-parser` may emit `is_policy: true` with a `sector` + `sector_members` instead of a single `ticker` (e.g. *"subsidi BBM"*, *"HBA … ADRO"*, *"larangan ekspor bijih nikel … INCO"*). A policy keyword wins even when the narrative names a member ticker. These claims bypass the valuation/fundamental/market evidence agents and instead gather **sector-scoped evidence plus policy-event labeling** deterministically in the backend; the same `skeptic-agent` → `evidence-judge` → `score-generator` stages follow.
+
 After a completed analysis, the `chat` agent runs the follow-up loop: it offers follow-up templates
 (via the `follow-up` skill) as a numbered list, lets the user either pick one or type their own question,
 answers it grounded solely in the analysis evidence, and allows a few more rounds (cap ~3). In UI surfaces

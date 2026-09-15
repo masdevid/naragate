@@ -31,6 +31,8 @@ _POLICY_SECTOR_MAP: list[tuple[str, str, list[str]]] = [
     ("harga bbm", "oil-gas", ["PGAS", "MEDC"]),
     ("batu bara", "coal", ["ADRO", "ITMG", "PTBA"]),
     ("hba", "coal", ["ADRO", "ITMG", "PTBA"]),
+    ("bijih nikel", "nickel", ["INCO", "NCKL"]),
+    ("nikel", "nickel", ["INCO", "NCKL"]),
     ("bbm", "oil-gas", ["PGAS", "MEDC"]),
     ("pertamina", "oil-gas", ["PGAS", "MEDC"]),
     ("minyak", "oil-gas", ["MEDC"]),

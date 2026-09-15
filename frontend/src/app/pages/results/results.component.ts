@@ -95,7 +95,7 @@ import { buildVerdictNarrative } from '../../utils/verdict-narrative';
           }
 
           @if (claimData().status === 'completed' && claimData().claim?.is_policy) {
-            <app-results-policy/>
+            <app-results-policy [sector]="policySector"/>
           }
 
           @if (claimData().evidence) {
@@ -316,6 +316,7 @@ export class ResultsComponent implements OnInit {
   };
 
   scoreValue = () => this.claimData()?.score?.reality_gap_score ?? 0;
+  policySector = () => this.claimData()?.claim?.sector ?? null;
   verdictValue = () => this.claimData()?.score?.verdict ?? '';
   dimensions = () => this.claimData()?.score?.dimensions ?? {};
   valuation = () => this.claimData()?.evidence?.valuation ?? null;

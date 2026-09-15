@@ -126,3 +126,31 @@ async def test_refresh_fetches_missing_epochs_and_recovers():
     assert chunk_writes["n"] == 25
     assert merges["n"] == 5
     assert len(resp.json()["results"]) == 5
+
+
+@pytest.mark.asyncio
+async def test_sector_scoping_reports_only_that_sectors_names():
+    """A claim-scoped pre-check must never show another sector's names."""
+    env = _warm_env()
+    calls = {"n": 0}
+
+    async def no_fetch(*_a, **_k):
+        calls["n"] += 1
+        return []
+
+    with patch("app.services.policy_signal.cache.get", AsyncMock(side_effect=lambda t: env.get(t))), \
+         patch("app.services.policy_signal.sectors_client.get_daily_transaction", no_fetch):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            coal = (await client.get("/api/v1/precheck/?sector=coal")).json()
+            nickel = (await client.get("/api/v1/precheck/?sector=nickel")).json()
+
+    assert calls["n"] == 0
+    assert coal["sector"] == "coal"
+    assert {r["ticker"] for r in coal["results"]} == {"ADRO", "ITMG", "PTBA"}
+    assert all(r["subsector"] == "coal" for r in coal["results"])
+    assert all(e["subsector"] == "coal" for e in coal["policy_events"])
+
+    assert nickel["sector"] == "nickel"
+    assert nickel["results"] == []
+    assert nickel["verdict"] == "N/A"

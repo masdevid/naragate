@@ -16,9 +16,9 @@ router = APIRouter()
 
 
 @router.get("/")
-async def get_precheck(refresh: bool = False):
+async def get_precheck(refresh: bool = False, sector: str | None = None):
     try:
-        report = await run_precheck(cached_only=not refresh)
+        report = await run_precheck(cached_only=not refresh, sector=sector)
     except PrecheckCacheCold as exc:
         raise HTTPException(
             status_code=503,
@@ -34,5 +34,6 @@ async def get_precheck(refresh: bool = False):
             detail={"code": "precheck_unavailable", "error": str(exc)},
         )
     payload = asdict(report)
+    payload["sector"] = sector
     payload["beacon_list"] = report.beacon_list
     return payload
