@@ -34,6 +34,10 @@ It answers one question: **does this narrative actually match reality?**
 
 **Policy narratives included** — ticker-less statements like *"subsidi BBM naik"* or *"HBA turun"* resolve to a sector, get dated policy-event labels, and contribute a **policy-gap dimension** instead of falling through the cracks.
 
+![Naragate agentic pipeline](naragate-workflow.gif)
+
+*How the agentic pipeline verifies a claim — the same six-stage pipeline runs on every surface.*
+
 ---
 
 ## 🚀 Features
