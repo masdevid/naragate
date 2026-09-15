@@ -29,6 +29,7 @@ export default {
   'dashboard.analyze_btn': 'Analyze This Narrative',
   'dashboard.analyzing': 'Analyzing...',
   'dashboard.recent_title': 'Previous Analyses',
+  'dashboard.login_notice': 'Log in with your Sectors account to run analyses.',
   'dashboard.view_history': 'View History & Trends',
   'dashboard.select_all': 'Select all',
   'dashboard.delete_all': 'Delete all',

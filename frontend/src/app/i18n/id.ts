@@ -29,6 +29,7 @@ export default {
   'dashboard.analyze_btn': 'Analisis Narasi Ini',
   'dashboard.analyzing': 'Menganalisis...',
   'dashboard.recent_title': 'Analisis Sebelumnya',
+  'dashboard.login_notice': 'Masuk dengan akun Sectors Anda untuk menjalankan analisis.',
   'dashboard.view_history': 'Lihat Riwayat & Tren',
   'dashboard.select_all': 'Pilih semua',
   'dashboard.delete_all': 'Hapus semua',

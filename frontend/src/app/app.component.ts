@@ -8,6 +8,7 @@ import { AuthService } from './services/auth.service';
 import { NaraWordmarkComponent } from './components/nara-wordmark/nara-wordmark.component';
 import { SectorsHackathonComponent } from './components/sectors-hackathon/sectors-hackathon.component';
 import { ScrollTopComponent } from './components/scroll-top/scroll-top.component';
+import { NavAccountMenuComponent } from './components/nav-account-menu/nav-account-menu.component';
 import { TPipe } from './pipes/t.pipe';
 
 interface NavItem {
@@ -18,7 +19,7 @@ interface NavItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent, SectorsHackathonComponent, ScrollTopComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent, SectorsHackathonComponent, ScrollTopComponent, NavAccountMenuComponent],
   template: `
     @if (!isLoginPage()) {
     <nav class="nav" [class.nav--open]="menuOpen()">
@@ -49,11 +50,11 @@ interface NavItem {
               {{ lang.code | uppercase }}
             </button>
           }
-          @if (user()?.email) {
-            <span [title]="user()!.email!"
-              style="font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-muted); max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ user()!.email }}</span>
+          @if (user()?.authenticated) {
+            <app-nav-account-menu [email]="user()!.email || ''" (logout)="logout()"/>
+          } @else {
+            <a routerLink="/login" class="nav__lang-btn">{{ 'login.submit' | t }}</a>
           }
-          <button class="nav__lang-btn" (click)="logout()">{{ 'nav.logout' | t }}</button>
         </div>
       </div>
 

@@ -43,8 +43,9 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/history/history.component').then(m => m.HistoryComponent),
   },
   {
+    // Landing page: viewable without login, but analysis is gated (the page
+    // shows a "log in first" notice and redirects on use).
     path: 'dashboard',
-    canActivate: [authGuard],
     loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
 ];

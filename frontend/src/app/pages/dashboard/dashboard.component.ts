@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SettingsService, RuntimeSettings } from '../../services/settings.service';
+import { AuthService } from '../../services/auth.service';
 import { I18nService } from '../../services/i18n.service';
 import { DashboardWarningsComponent } from '../../components/dashboard-warnings/dashboard-warnings.component';
 import { DashboardHeroComponent } from '../../components/dashboard-hero/dashboard-hero.component';
@@ -18,6 +19,13 @@ import { TPipe } from '../../pipes/t.pipe';
     TPipe,
   ],
   template: `
+    @if (!authenticated()) {
+      <div class="dashboard__notice">
+        <span class="dashboard__notice-text">{{ 'dashboard.login_notice' | t }}</span>
+        <a routerLink="/login" class="dashboard__notice-btn">{{ 'login.submit' | t }}</a>
+      </div>
+    }
+
     <app-dashboard-warnings
       [setupComplete]="setupComplete()"
       [showDetailWarnings]="setupComplete()"
@@ -59,6 +67,34 @@ import { TPipe } from '../../pipes/t.pipe';
       border-top: 1px solid var(--color-rule);
     }
     .dashboard__history:hover { text-decoration: underline; }
+    .dashboard__notice {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      max-width: 52rem;
+      margin: var(--space-lg) auto 0;
+      padding: var(--space-sm) var(--space-md);
+      background: var(--color-paper-2);
+      border: 1px solid var(--color-warning);
+    }
+    .dashboard__notice-text {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-muted);
+    }
+    .dashboard__notice-btn {
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-accent);
+      text-decoration: none;
+      border: 1px solid var(--color-accent);
+      padding: var(--space-2xs) var(--space-sm);
+    }
+    .dashboard__notice-btn:hover { background: var(--color-accent); color: var(--color-paper); }
     .footer {
       padding: var(--space-xl) var(--space-lg);
       border-top: 1px solid var(--color-rule);
@@ -85,7 +121,10 @@ export class DashboardComponent implements OnInit {
 
   private router = inject(Router);
   private settingsService = inject(SettingsService);
+  private auth = inject(AuthService);
   private i18n = inject(I18nService);
+
+  authenticated = this.auth.isAuthenticated;
 
   constructor() {
     effect(() => {
@@ -115,10 +154,14 @@ export class DashboardComponent implements OnInit {
   }
 
   startAnalysis(narrative: string) {
-    if (narrative.trim() && !this.analyzing()) {
-      this.analyzing.set(true);
-      this.router.navigate(['/claim'], { queryParams: { narrative } });
+    if (!narrative.trim() || this.analyzing()) return;
+    if (!this.auth.isAuthenticated()) {
+      // Landed without a session — send them to log in first.
+      this.router.navigate(['/login']);
+      return;
     }
+    this.analyzing.set(true);
+    this.router.navigate(['/claim'], { queryParams: { narrative } });
   }
 
   onBulkComplete() {
