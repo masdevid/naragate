@@ -78,3 +78,57 @@ class NaragateClient:
 
     def get_usage(self) -> dict[str, Any]:
         return self._request("GET", "/api/v1/usage")
+
+    # ---- low-level agent tools (parity with skills/*/tools.yaml) ----
+
+    def sectors_company_report(self, ticker: str, sections: list[str] | None = None) -> dict[str, Any]:
+        params = {"ticker": ticker, "sections": ",".join(sections)} if sections else {"ticker": ticker}
+        return self._request("GET", "/api/v1/tools/sectors/company-report", params=params)
+
+    def sectors_subsector_report(self, sub_sector: str, sections: list[str] | None = None) -> dict[str, Any]:
+        params = {"sub_sector": sub_sector}
+        if sections:
+            params["sections"] = ",".join(sections)
+        return self._request("GET", "/api/v1/tools/sectors/subsector-report", params=params)
+
+    def sectors_quarterly_financials(self, ticker: str, n_quarters: int = 8) -> list[dict[str, Any]]:
+        return self._request("GET", "/api/v1/tools/sectors/quarterly-financials",
+                             params={"ticker": ticker, "n_quarters": n_quarters})
+
+    def sectors_daily_transaction(self, ticker: str, start: str | None = None, end: str | None = None) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {"ticker": ticker}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return self._request("GET", "/api/v1/tools/sectors/daily-transaction", params=params)
+
+    def sectors_news(self, ticker: str, limit: int = 20) -> dict[str, Any]:
+        return self._request("GET", "/api/v1/tools/sectors/news", params={"ticker": ticker, "limit": limit})
+
+    def sectors_corporate_actions(self, ticker: str) -> dict[str, Any]:
+        return self._request("GET", "/api/v1/tools/sectors/corporate-actions", params={"ticker": ticker})
+
+    def sectors_filings(self, ticker: str, filing_type: str | None = None) -> dict[str, Any]:
+        params: dict[str, Any] = {"ticker": ticker}
+        if filing_type:
+            params["filing_type"] = filing_type
+        return self._request("GET", "/api/v1/tools/sectors/filings", params=params)
+
+    def evidence_cache_get(self, ticker: str) -> dict[str, Any]:
+        return self._request("GET", "/api/v1/tools/evidence-cache", params={"ticker": ticker})
+
+    def evidence_cache_merge(self, ticker: str, key: str, value: Any, ttl: int | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {"ticker": ticker, "key": key, "value": value}
+        if ttl:
+            body["ttl"] = ttl
+        return self._request("POST", "/api/v1/tools/evidence-cache", json=body)
+
+    def llm_complete(self, prompt: str, system: str | None = None,
+                     response_format: dict | None = None, role: str = "default") -> dict[str, Any]:
+        body: dict[str, Any] = {"prompt": prompt, "role": role}
+        if system:
+            body["system"] = system
+        if response_format:
+            body["response_format"] = response_format
+        return self._request("POST", "/api/v1/tools/llm-complete", json=body)

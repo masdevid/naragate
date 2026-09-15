@@ -1,0 +1,7 @@
+tools:
+  - name: llm_complete
+    description: Run the configured LLM to compute the Reality Gap score (0-100) and verdict from the assessment and skeptic score
+    parameters:
+      prompt: string
+      response_format: string
+    returns: RealityGapScore

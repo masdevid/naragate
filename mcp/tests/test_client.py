@@ -73,3 +73,26 @@ def test_unreachable_backend_is_wrapped():
 def test_base_url_from_env(monkeypatch):
     monkeypatch.setenv("NARAGATE_BACKEND_URL", "http://remote.test:9000/")
     assert NaragateClient().base_url == "http://remote.test:9000"
+
+
+def test_low_level_sectors_tools_hit_tool_endpoints():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen[request.url.path] = dict(request.url.params)
+        return httpx.Response(200, json={})
+
+    client = _client(handler)
+    client.sectors_company_report("bbca", ["valuation", "overview"])
+    client.sectors_quarterly_financials("tlkm", 4)
+    client.sectors_daily_transaction("unvr", "2026-01-01", "2026-03-01")
+    client.sectors_filings("bbri", "buy")
+    client.evidence_cache_merge("bbca", "valuation", {"metrics": {"pe": 25}})
+    client.llm_complete("classify", role="news")
+
+    assert seen["/api/v1/tools/sectors/company-report"] == {"ticker": "bbca", "sections": "valuation,overview"}
+    assert seen["/api/v1/tools/sectors/quarterly-financials"] == {"ticker": "tlkm", "n_quarters": "4"}
+    assert seen["/api/v1/tools/sectors/daily-transaction"]["start"] == "2026-01-01"
+    assert seen["/api/v1/tools/sectors/filings"] == {"ticker": "bbri", "filing_type": "buy"}
+    assert "/api/v1/tools/evidence-cache" in seen
+    assert "/api/v1/tools/llm-complete" in seen

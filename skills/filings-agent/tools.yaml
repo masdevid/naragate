@@ -1,0 +1,21 @@
+tools:
+  - name: sectors_filings
+    description: Fetch insider-trade filings for a ticker from Sectors v2 API
+    parameters:
+      ticker: string
+      filing_type: string
+    returns: Filings
+
+  - name: evidence_cache_get
+    description: Read the full Evidence Graph for a ticker from the cache
+    parameters:
+      ticker: string
+    returns: EvidenceGraph | null
+
+  - name: evidence_cache_merge
+    description: Atomically merge one section into the cached Evidence Graph for a ticker
+    parameters:
+      ticker: string
+      key: string
+      value: object
+    returns: void

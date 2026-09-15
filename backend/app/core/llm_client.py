@@ -52,6 +52,24 @@ async def stream_chat(
     return await _stream_direct(role, messages, response_format, on_token)
 
 
+async def complete(
+    prompt: str,
+    system: Optional[str] = None,
+    response_format: Optional[dict] = None,
+    role: str = "default",
+) -> str:
+    """Generic one-shot completion against the configured LLM.
+
+    Unlike `stream_chat`, this bypasses the Pi-agent role/skill routing (used by
+    the MCP `llm_complete` tool, where the caller supplies the full prompt).
+    """
+    messages: list = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    return await _stream_direct(role, messages, response_format)
+
+
 async def _stream_direct(
     role: str,
     messages: list,

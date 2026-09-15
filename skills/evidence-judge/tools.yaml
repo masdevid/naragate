@@ -1,0 +1,7 @@
+tools:
+  - name: llm_complete
+    description: Run the configured LLM to aggregate all evidence and the skeptic analysis into a unified assessment
+    parameters:
+      prompt: string
+      response_format: string
+    returns: Assessment

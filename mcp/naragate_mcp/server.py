@@ -164,6 +164,73 @@ def get_usage() -> dict[str, Any]:
     return NaragateClient().get_usage()
 
 
+# ---------------------------------------------- low-level tools (tools.yaml parity) --
+# These mirror skills/*/tools.yaml exactly, for harnesses that want to compose
+# per-agent. Credit discipline: check `evidence_cache_get` first, then call the
+# `sectors_*` tool on a miss and `evidence_cache_merge` the result.
+
+
+@mcp.tool()
+def sectors_company_report(ticker: str, sections: list[str] | None = None) -> dict[str, Any]:
+    """Sectors v2 company report (sections: valuation, overview, financials)."""
+    return NaragateClient().sectors_company_report(ticker, sections)
+
+
+@mcp.tool()
+def sectors_subsector_report(sub_sector: str, sections: list[str] | None = None) -> dict[str, Any]:
+    """Sectors v2 subsector report (sections: statistics, valuation, ...)."""
+    return NaragateClient().sectors_subsector_report(sub_sector, sections)
+
+
+@mcp.tool()
+def sectors_quarterly_financials(ticker: str, n_quarters: int = 8) -> list[dict[str, Any]]:
+    """Sectors v2 quarterly financials (revenue, earnings, margins) for a ticker."""
+    return NaragateClient().sectors_quarterly_financials(ticker, n_quarters)
+
+
+@mcp.tool()
+def sectors_daily_transaction(ticker: str, start: str | None = None, end: str | None = None) -> list[dict[str, Any]]:
+    """Sectors v2 daily transaction data (price, volume, close). Sectors caps a call at 90 days."""
+    return NaragateClient().sectors_daily_transaction(ticker, start, end)
+
+
+@mcp.tool()
+def sectors_news(ticker: str, limit: int = 20) -> dict[str, Any]:
+    """Sectors v2 recent news headlines for a ticker."""
+    return NaragateClient().sectors_news(ticker, limit)
+
+
+@mcp.tool()
+def sectors_corporate_actions(ticker: str) -> dict[str, Any]:
+    """Sectors v2 corporate actions (dividends, splits, warrants) for a ticker."""
+    return NaragateClient().sectors_corporate_actions(ticker)
+
+
+@mcp.tool()
+def sectors_filings(ticker: str, filing_type: str | None = None) -> dict[str, Any]:
+    """Sectors v2 insider-trade filings for a ticker (filing_type: buy, sell, others)."""
+    return NaragateClient().sectors_filings(ticker, filing_type)
+
+
+@mcp.tool()
+def evidence_cache_get(ticker: str) -> dict[str, Any]:
+    """Read the full Evidence Graph for a ticker from the cache (null on miss)."""
+    return NaragateClient().evidence_cache_get(ticker)
+
+
+@mcp.tool()
+def evidence_cache_merge(ticker: str, key: str, value: Any, ttl: int | None = None) -> dict[str, Any]:
+    """Atomically merge one section into the cached Evidence Graph for a ticker."""
+    return NaragateClient().evidence_cache_merge(ticker, key, value, ttl)
+
+
+@mcp.tool()
+def llm_complete(prompt: str, system: str | None = None,
+                 response_format: dict | None = None, role: str = "default") -> dict[str, Any]:
+    """Run a one-shot completion on Naragate's configured LLM and return the raw text."""
+    return NaragateClient().llm_complete(prompt, system, response_format, role)
+
+
 # ----------------------------------------------------------------- resources --
 
 @mcp.resource("naragate://templates")

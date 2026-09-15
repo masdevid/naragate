@@ -1,0 +1,13 @@
+tools:
+  - name: llm_complete
+    description: Run the configured LLM to answer a follow-up question grounded only in the completed analysis evidence
+    parameters:
+      prompt: string
+      response_format: string
+    returns: string
+
+  - name: evidence_cache_get
+    description: Read the cached Evidence Graph backing the completed analysis
+    parameters:
+      ticker: string
+    returns: EvidenceGraph | null

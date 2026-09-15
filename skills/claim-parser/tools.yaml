@@ -1,0 +1,7 @@
+tools:
+  - name: llm_complete
+    description: Run the configured LLM to extract a structured financial claim (and policy signal) from Indonesian text
+    parameters:
+      prompt: string
+      response_format: string
+    returns: Claim

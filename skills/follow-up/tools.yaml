@@ -1,0 +1,7 @@
+tools:
+  - name: llm_complete
+    description: Run the configured LLM to generate 3-5 contextual follow-up question templates for a completed analysis
+    parameters:
+      prompt: string
+      response_format: string
+    returns: string

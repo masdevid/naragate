@@ -60,8 +60,13 @@ def _fake_client(monkeypatch):
 async def test_tool_surface_is_registered():
     tools = {t.name for t in await server.mcp.list_tools()}
     assert {
+        # high-level (credit-safe)
         "analyze_narrative", "analyze_template", "list_templates", "get_claim",
         "get_reality_gap", "list_history", "get_trend_summary", "get_policy_precheck", "get_usage",
+        # low-level (tools.yaml parity)
+        "sectors_company_report", "sectors_subsector_report", "sectors_quarterly_financials",
+        "sectors_daily_transaction", "sectors_news", "sectors_corporate_actions", "sectors_filings",
+        "evidence_cache_get", "evidence_cache_merge", "llm_complete",
     } <= tools
 
 

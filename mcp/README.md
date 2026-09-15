@@ -63,6 +63,27 @@ Transport is **stdio**.
 | `get_policy_precheck(sector)` | Policy→price pre-check, scoped to the claim's sector |
 | `get_usage()` | Sectors/LLM credit usage, cache hits, remaining budget |
 
+### Low-level tools — full `tools.yaml` parity
+
+Every primitive declared in `skills/*/tools.yaml` is also exposed, for harnesses that want to compose
+per-agent exactly like the Pi pipeline (check the cache, then fetch on a miss and merge back):
+
+| Tool | What it does |
+|---|---|
+| `sectors_company_report(ticker, sections)` | Sectors v2 company report (valuation/overview/financials) |
+| `sectors_subsector_report(sub_sector, sections)` | Sectors v2 subsector report |
+| `sectors_quarterly_financials(ticker, n_quarters)` | Sectors v2 quarterly financials |
+| `sectors_daily_transaction(ticker, start, end)` | Sectors v2 daily price/volume (Sectors caps a call at 90 days) |
+| `sectors_news(ticker, limit)` | Sectors v2 news headlines |
+| `sectors_corporate_actions(ticker)` | Sectors v2 corporate actions |
+| `sectors_filings(ticker, filing_type)` | Sectors v2 insider-trade filings |
+| `evidence_cache_get(ticker)` | Read the Evidence Graph (null on miss) |
+| `evidence_cache_merge(ticker, key, value, ttl?)` | Merge one section into the cache |
+| `llm_complete(prompt, system?, response_format?, role?)` | One-shot completion on Naragate's configured LLM |
+
+A test (`tests/test_parity.py`) asserts that **every** tool declared in any `skills/*/tools.yaml`
+exists on the server, so this can't drift.
+
 ## Resources
 
 - `naragate://templates`

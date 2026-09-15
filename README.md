@@ -189,7 +189,7 @@ export NARAGATE_BACKEND_URL="http://127.0.0.1:5678"
 claude mcp add naragate -- uvx naragate-mcp     # Claude Code
 ```
 
-Works with **Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex** and any MCP-capable harness — config snippets per harness are in [`mcp/README.md`](mcp/README.md). Tools: `analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, plus `naragate://` resources. The same 12 curated templates are available via `list_templates`, so a non-web user gets the same entry points as the dashboard tiles.
+Works with **Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex** and any MCP-capable harness — config snippets per harness are in [`mcp/README.md`](mcp/README.md). **19 tools** are exposed: 9 high-level (`analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, …) plus **full `tools.yaml` parity** — every primitive declared by the skills (`sectors_company_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_filings`, `evidence_cache_get/merge`, `llm_complete`, …) — with `naragate://` resources. A test enforces that parity. The same 12 curated templates are available via `list_templates`, so a non-web user gets the same entry points as the dashboard tiles.
 
 ## Quick Start (no coding required)
 

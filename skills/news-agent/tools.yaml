@@ -6,6 +6,12 @@ tools:
       limit: number
     returns: NewsCorpus
 
+  - name: sectors_corporate_actions
+    description: Fetch corporate actions (dividends, splits, warrants) for a ticker from Sectors v2 API
+    parameters:
+      ticker: string
+    returns: CorporateActions
+
   - name: evidence_cache_get
     description: Read the full Evidence Graph for a ticker from the cache
     parameters:

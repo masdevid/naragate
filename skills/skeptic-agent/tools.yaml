@@ -1,0 +1,7 @@
+tools:
+  - name: llm_complete
+    description: Run the configured LLM to challenge the claim by re-interpreting the same evidence with a negation bias
+    parameters:
+      prompt: string
+      response_format: string
+    returns: SkepticAnalysis
