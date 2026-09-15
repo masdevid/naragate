@@ -10,6 +10,16 @@ export default {
   'nav.credit': 'Kredit',
   'nav.logout': 'Keluar',
 
+  // Not found
+  'notfound.eyebrow': 'Error 404',
+  'notfound.title': 'Halaman tidak ditemukan.',
+  'notfound.sub': 'Alamat ini tidak ada atau sudah dipindahkan.',
+  'notfound.path': 'Diminta',
+  'notfound.home': 'Buka dasbor',
+  'notfound.back': 'Kembali',
+  'notfound.redirecting': 'Mengalihkan ke dasbor dalam',
+  'notfound.now': 'sekarang',
+
   // Teaser
   'teaser.play': 'Putar teaser',
   'teaser.prev': 'Scene sebelumnya',

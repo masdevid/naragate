@@ -53,4 +53,9 @@ export const routes: Routes = [
     path: 'dashboard',
     loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent),
   },
+  {
+    // Catch-all: unknown paths render the 404 recovery page (public).
+    path: '**',
+    loadComponent: () => import('./pages/not-found/not-found.component').then(m => m.NotFoundComponent),
+  },
 ];

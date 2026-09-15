@@ -10,6 +10,16 @@ export default {
   'nav.credit': 'Credits',
   'nav.logout': 'Logout',
 
+  // Not found
+  'notfound.eyebrow': 'Error 404',
+  'notfound.title': 'Page not found.',
+  'notfound.sub': 'This address doesn’t exist or has moved.',
+  'notfound.path': 'Requested',
+  'notfound.home': 'Open dashboard',
+  'notfound.back': 'Go back',
+  'notfound.redirecting': 'Redirecting to the dashboard in',
+  'notfound.now': 'now',
+
   // Teaser
   'teaser.play': 'Play teaser',
   'teaser.prev': 'Previous scene',
