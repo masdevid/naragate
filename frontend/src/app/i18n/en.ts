@@ -10,6 +10,13 @@ export default {
   'nav.credit': 'Credits',
   'nav.logout': 'Logout',
 
+  // Teaser
+  'teaser.play': 'Play teaser',
+  'teaser.prev': 'Previous scene',
+  'teaser.next': 'Next scene',
+  'teaser.play_pause': 'Play or pause',
+  'teaser.restart': 'Restart',
+
   // Login
   'login.title': 'Login with your Sectors Account',
   'login.sub': 'Sign in with your Sectors email and password.',

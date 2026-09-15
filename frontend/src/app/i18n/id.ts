@@ -10,6 +10,13 @@ export default {
   'nav.credit': 'Kredit',
   'nav.logout': 'Keluar',
 
+  // Teaser
+  'teaser.play': 'Putar teaser',
+  'teaser.prev': 'Scene sebelumnya',
+  'teaser.next': 'Scene berikutnya',
+  'teaser.play_pause': 'Putar atau jeda',
+  'teaser.restart': 'Ulang',
+
   // Login
   'login.title': 'Masuk dengan Akun Sectors Anda',
   'login.sub': 'Masuk dengan email dan kata sandi Sectors Anda.',

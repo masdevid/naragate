@@ -6,6 +6,11 @@ export const routes: Routes = [
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent),
   },
+  {
+    // Public 60s teaser player (chromeless).
+    path: 'teaser',
+    loadComponent: () => import('./pages/teaser/teaser.component').then(m => m.TeaserComponent),
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   {
     path: 'claim',

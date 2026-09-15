@@ -21,7 +21,7 @@ interface NavItem {
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent, SectorsHackathonComponent, ScrollTopComponent, NavAccountMenuComponent],
   template: `
-    @if (!isLoginPage()) {
+    @if (!chromeless()) {
     <nav class="nav" [class.nav--open]="menuOpen()">
       <a routerLink="/dashboard" class="nav__brand" (click)="closeMenu()"><app-nara-wordmark /></a>
 
@@ -298,7 +298,7 @@ export class AppComponent implements OnInit {
   private usageService = inject(UsageService);
   private authService = inject(AuthService);
 
-  isLoginPage = signal(false);
+  chromeless = signal(false);
 
   menuItems: NavItem[] = [
     { route: '/dashboard', labelKey: 'nav.dashboard' },
@@ -323,7 +323,8 @@ export class AppComponent implements OnInit {
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.menuOpen.set(false);
-        this.isLoginPage.set(event.urlAfterRedirects.startsWith('/login'));
+        const url = event.urlAfterRedirects;
+        this.chromeless.set(url.startsWith('/login') || url.startsWith('/teaser'));
         this.refreshCredit();
       }
     });
