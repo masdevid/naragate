@@ -5,13 +5,13 @@ import { NarrativeService } from '../../services/narrative.service';
 import { I18nService } from '../../services/i18n.service';
 import { FormatService } from '../../services/format.service';
 import { PipelineEvent } from '../../models/pipeline.model';
-import { AgentFlowComponent } from '../../components/agent-flow/agent-flow.component';
+import { AgentCircuitComponent } from '../../components/agent-circuit/agent-circuit.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-claim',
   standalone: true,
-  imports: [AgentFlowComponent, TPipe],
+  imports: [AgentCircuitComponent, TPipe],
   template: `
     <div class="claim">
       <div class="claim__inner">
@@ -22,7 +22,7 @@ import { TPipe } from '../../pipes/t.pipe';
         </div>
 
         <div class="claim__flow">
-          <app-agent-flow [currentStep]="currentStep()" [completedSteps]="completedSteps()"/>
+          <app-agent-circuit [currentStep]="currentStep()" [completedSteps]="completedSteps()"/>
         </div>
 
         @if (connecting()) {

@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, Output, EventEmitter, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, Input, Output, EventEmitter, ViewChild, AfterViewInit, inject, signal } from '@angular/core';
 import { I18nService } from '../../services/i18n.service';
 import { VerdictBadgeComponent } from '../verdict-badge/verdict-badge.component';
 import { TrendTickerCardComponent } from '../trend-ticker-card/trend-ticker-card.component';
@@ -43,12 +43,15 @@ import { TPipe } from '../../pipes/t.pipe';
 
           @if (tickers().length) {
             <div class="trend__slider">
-              <button
-                type="button"
-                class="trend__nav trend__nav--prev"
-                (click)="scroll(-1)"
-                [attr.aria-label]="'trend.scroll_left' | t">&#8249;</button>
-              <div class="trend__tickers" #tickerTrack>
+              @if (scrollable()) {
+                <button
+                  type="button"
+                  class="trend__nav trend__nav--prev"
+                  [disabled]="atStart()"
+                  (click)="scroll(-1)"
+                  [attr.aria-label]="'trend.scroll_left' | t">&#8249;</button>
+              }
+              <div class="trend__tickers" #tickerTrack (scroll)="onTrackScroll()">
                 @for (ticker of tickers(); track ticker) {
                   <app-trend-ticker-card
                     [ticker]="ticker"
@@ -62,11 +65,14 @@ import { TPipe } from '../../pipes/t.pipe';
                     (select)="tickerClick.emit($event)"/>
                 }
               </div>
-              <button
-                type="button"
-                class="trend__nav trend__nav--next"
-                (click)="scroll(1)"
-                [attr.aria-label]="'trend.scroll_right' | t">&#8250;</button>
+              @if (scrollable()) {
+                <button
+                  type="button"
+                  class="trend__nav trend__nav--next"
+                  [disabled]="atEnd()"
+                  (click)="scroll(1)"
+                  [attr.aria-label]="'trend.scroll_right' | t">&#8250;</button>
+              }
             </div>
           }
         </div>
@@ -166,7 +172,7 @@ import { TPipe } from '../../pipes/t.pipe';
     }
     .trend__slider {
       display: flex;
-      align-items: stretch;
+      align-items: center;
       gap: var(--space-sm);
       padding-top: var(--space-lg);
       border-top: 1px solid var(--color-paper-3);
@@ -179,45 +185,79 @@ import { TPipe } from '../../pipes/t.pipe';
       overflow-x: auto;
       scroll-snap-type: x mandatory;
       scroll-behavior: smooth;
-      padding-bottom: var(--space-2xs);
+      scroll-padding-inline: var(--space-2xs);
+      padding: var(--space-2xs) var(--space-2xs) var(--space-md);
       scrollbar-width: thin;
+      scrollbar-color: var(--color-rule) transparent;
     }
+    .trend__tickers::-webkit-scrollbar { height: 6px; }
+    .trend__tickers::-webkit-scrollbar-track { background: var(--color-paper-2); }
+    .trend__tickers::-webkit-scrollbar-thumb {
+      background: var(--color-rule);
+      border-radius: 999px;
+    }
+    .trend__tickers::-webkit-scrollbar-thumb:hover { background: var(--color-accent-dim); }
     .trend__nav {
       flex: 0 0 auto;
-      align-self: center;
-      width: 2rem;
-      height: 2.5rem;
+      width: 2.25rem;
+      height: 2.25rem;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: none;
-      border: 1px solid var(--color-paper-3);
+      border-radius: 999px;
+      background: var(--color-paper-2);
+      border: 1px solid var(--color-rule);
       color: var(--color-muted);
-      font-size: var(--text-lg);
+      font-size: var(--text-md);
       line-height: 1;
       cursor: pointer;
-      transition: border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+      transition: background var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
     }
-    .trend__nav:hover { border-color: var(--color-accent); color: var(--color-accent); }
+    .trend__nav:hover:not(:disabled) {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: var(--color-paper);
+    }
+    .trend__nav:disabled { opacity: 0.35; cursor: not-allowed; }
     @media (max-width: 640px) {
       .trend { padding-left: var(--space-md); padding-right: var(--space-md); }
       .trend__stats { grid-template-columns: 1fr; gap: var(--space-lg); }
     }
   `],
 })
-export class DashboardTrendComponent {
+export class DashboardTrendComponent implements AfterViewInit {
   @Input() summary: () => any = () => null;
   @Input() selectedTicker: () => string | null = () => null;
   @Output() tickerClick = new EventEmitter<string>();
 
   @ViewChild('tickerTrack') tickerTrack?: ElementRef<HTMLDivElement>;
 
+  atStart = signal(true);
+  atEnd = signal(false);
+
   private i18n = inject(I18nService);
+
+  ngAfterViewInit(): void {
+    this.onTrackScroll();
+  }
+
+  scrollable(): boolean {
+    return this.tickers().length > 3;
+  }
+
+  onTrackScroll(): void {
+    const el = this.tickerTrack?.nativeElement;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    this.atStart.set(el.scrollLeft <= 1);
+    this.atEnd.set(max <= 0 || el.scrollLeft >= max - 1);
+  }
 
   scroll(direction: number): void {
     const el = this.tickerTrack?.nativeElement;
     if (!el) return;
     el.scrollBy({ left: direction * Math.round(el.clientWidth * 0.8), behavior: 'smooth' });
+    window.setTimeout(() => this.onTrackScroll(), 350);
   }
 
   readonly verdictBands = ['contradicted', 'mixed', 'supported', 'strongly_supported'];

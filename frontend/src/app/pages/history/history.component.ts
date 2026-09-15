@@ -119,7 +119,7 @@ export class HistoryComponent implements OnInit {
   selectedTicker = signal<string | null>(null);
   page = signal(0);
   totalClaims = signal(0);
-  readonly pageSize = 10;
+  readonly pageSize = 5;
   pendingDelete: any = null;
   bulkDelete = false;
   deleteAll = false;

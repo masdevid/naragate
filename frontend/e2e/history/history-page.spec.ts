@@ -22,7 +22,7 @@ const VERDICT_LABEL: Record<string, string> = {
 
 test.describe('Production history page (real data)', () => {
   test('@HIST-E2E-001 list, trend summary and detail pages are coherent', async ({ page, request }) => {
-    const PAGE_SIZE = 10;
+    const PAGE_SIZE = 5;
     const all = await (await request.get('/api/v1/claims/?limit=1000')).json();
     const summary = await (await request.get('/api/v1/claims/summary')).json();
     const total = (await (await request.get('/api/v1/claims/count')).json()).total;
