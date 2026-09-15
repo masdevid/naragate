@@ -279,6 +279,7 @@ export default {
   'filings.bias.balanced': 'Seimbang',
   'filings.type.buy': 'Beli',
   'filings.type.sell': 'Jual',
+  'filings.type.others': 'Lainnya',
 
   // Follow-up chat
   'chat.title': 'Tanya Lanjutan',

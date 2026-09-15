@@ -279,6 +279,7 @@ export default {
   'filings.bias.balanced': 'Balanced',
   'filings.type.buy': 'Buy',
   'filings.type.sell': 'Sell',
+  'filings.type.others': 'Other',
 
   // Follow-up chat
   'chat.title': 'Ask a Follow-Up',

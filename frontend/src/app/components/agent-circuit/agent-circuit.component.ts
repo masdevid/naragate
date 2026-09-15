@@ -69,24 +69,18 @@ interface CircuitAgent {
     }
     .circuit { width: 100%; }
     .circuit__board {
-      overflow-x: auto;
       padding: var(--space-lg) var(--space-md);
       background: var(--color-paper-2);
       border: 1px solid var(--color-rule);
-      scrollbar-width: thin;
-      scrollbar-color: var(--color-rule) transparent;
     }
-    .circuit__board::-webkit-scrollbar { height: 6px; }
-    .circuit__board::-webkit-scrollbar-thumb { background: var(--color-rule); border-radius: 999px; }
     .circuit__track {
       display: flex;
-      align-items: center;
-      min-width: max-content;
+      align-items: stretch;
     }
     .circuit__block {
       position: relative;
-      flex: 0 0 auto;
-      width: 7.5rem;
+      flex: 1 1 0;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -154,8 +148,9 @@ interface CircuitAgent {
     .circuit__block.is-error .circuit__node { color: var(--color-danger); border-color: var(--color-danger); }
     .circuit__trace {
       position: relative;
-      flex: 0 0 auto;
-      width: 3rem;
+      flex: 0 1 2.5rem;
+      min-width: 1.25rem;
+      align-self: center;
       height: 2px;
       background: var(--color-rule);
     }
@@ -196,13 +191,37 @@ interface CircuitAgent {
       15% { opacity: 1; }
       100% { left: 100%; opacity: 0; }
     }
+    @keyframes circuitFlowY {
+      0% { top: 0; opacity: 0; }
+      15% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
     @keyframes circuitPing {
       0% { transform: scale(1); opacity: 0.5; }
       100% { transform: scale(1.35); opacity: 0; }
     }
     @media (max-width: 640px) {
-      .circuit__block { width: 6.25rem; }
-      .circuit__trace { width: 2rem; }
+      .circuit__track { flex-direction: column; }
+      .circuit__block {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+      }
+      .circuit__trace {
+        flex: 0 0 auto;
+        width: 2px;
+        min-width: 0;
+        height: 1.5rem;
+        margin: 0 auto;
+      }
+      .circuit__pulse {
+        left: 50%;
+        top: 0;
+        margin-top: 0;
+        margin-left: -4px;
+        animation-name: circuitFlowY;
+      }
     }
     @media (prefers-reduced-motion: reduce) {
       .circuit__pulse, .circuit__ping { animation: none; }

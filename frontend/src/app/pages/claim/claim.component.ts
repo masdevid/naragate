@@ -22,7 +22,7 @@ import { TPipe } from '../../pipes/t.pipe';
         </div>
 
         <div class="claim__flow">
-          <app-agent-circuit [currentStep]="currentStep()" [completedSteps]="completedSteps()"/>
+          <app-agent-circuit [currentStep]="currentStep()" [completedSteps]="completedSteps()" [errorStep]="failedStep()"/>
         </div>
 
         @if (connecting()) {
@@ -203,6 +203,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
   narrative = signal('');
   currentStep = signal('claim_parsing');
   completedSteps = signal<string[]>([]);
+  failedStep = signal('');
   currentEvent = signal<PipelineEvent | null>(null);
   thinking = signal<{ agent: string; text: string } | null>(null);
   usage = signal<any>(null);
@@ -282,11 +283,13 @@ export class ClaimComponent implements OnInit, OnDestroy {
         }
         if (event.event_type === 'pipeline_error') {
           this.terminalEvent = true;
+          this.failedStep.set(this.currentStep());
           this.error.set(event.data?.error || this.i18n.t('claim.failed'));
           return;
         }
         if (event.event_type === 'clarification_required') {
           this.terminalEvent = true;
+          this.failedStep.set(this.currentStep());
           this.error.set(event.data?.message || this.i18n.t('claim.failed'));
           return;
         }

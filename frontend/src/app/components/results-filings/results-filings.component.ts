@@ -101,6 +101,7 @@ import { TPipe } from '../../pipes/t.pipe';
     }
     .filings__type--buy { color: var(--color-success); border-color: var(--color-success); }
     .filings__type--sell { color: var(--color-danger); border-color: var(--color-danger); }
+    .filings__type--others { color: var(--color-muted); border-color: var(--color-rule); }
     .filings__shares { text-align: right; }
     .filings__value { text-align: right; }
   `],
