@@ -120,14 +120,48 @@ Naragate analyzes any Indonesian market narrative in real-time and produces a **
 ## Architecture
 
 ```mermaid
-flowchart LR
-  Surfaces["Web UI · MCP agents · Pi pipeline"] --> Engine[Naragate engine]
-  Policy[Policy narrative] --> Resolver[Sector resolver] --> Engine
-  Engine --> Pipeline[Multi-agent pipeline]
-  Pipeline --> Sectors[Sectors v2]
-  Pipeline --> LLM[LLM provider]
-  Pipeline --> Cache[(Evidence Graph cache)]
-  Pipeline --> Result[Reality Gap Score + evidence]
+flowchart TD
+  subgraph Surfaces["Agent surfaces"]
+    Web[Web UI]
+    MCP[MCP server]
+    Pi[Pi agent pipeline]
+  end
+
+  subgraph Pipeline["Naragate multi-agent pipeline"]
+    Parse["1 - Claim parser<br/>ticker · category · direction"]
+    Route{"policy claim?"}
+    Resolve["Sector resolver<br/>keyword → sector + member tickers"]
+    Evidence["2 - Evidence agents<br/>valuation · fundamental · market · news · filings"]
+    Skeptic["3 - Skeptic<br/>re-reads evidence with a negation bias"]
+    Judge["4 - Evidence judge<br/>aggregate + weigh all evidence"]
+    Score["5 - Score generator<br/>Reality Gap 0-100 + verdict"]
+    Events["Policy-event labeling<br/>headlines → dated events"]
+    PolicyGap["Policy-gap dimension<br/>price reaction after each event"]
+
+    Parse --> Route
+    Route -- no --> Evidence
+    Route -- yes --> Resolve
+    Resolve --> Evidence
+    Resolve --> Events --> PolicyGap --> Score
+    Evidence --> Skeptic --> Judge --> Score
+  end
+
+  subgraph Data["Data & models"]
+    Sectors[Sectors v2 API]
+    Cache[(Evidence Graph cache · Redis)]
+    LLM[LLM provider]
+  end
+
+  Web --> Parse
+  MCP --> Parse
+  Pi --> Parse
+  Evidence <--> Cache
+  Evidence --> Sectors
+  Parse -.-> LLM
+  Skeptic -.-> LLM
+  Judge -.-> LLM
+  Score -.-> LLM
+  Score --> Result["Reality Gap Score + evidence + policy signal"]
 ```
 
 ### Multi-Agent Pipeline
