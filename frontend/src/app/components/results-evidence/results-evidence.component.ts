@@ -11,7 +11,9 @@ import { TPipe } from '../../pipes/t.pipe';
   imports: [EvidenceCardComponent, SectionHelpComponent, TPipe],
   template: `
     <div class="evidence">
-      <app-section-help helpKey="section_help.evidence"/>
+      @if (valuation() || fundamental() || market()) {
+        <app-section-help helpKey="section_help.evidence"/>
+      }
       @if (valuation()) {
         <app-evidence-card [title]="'results.valuation_title' | t" [cacheHit]="valuation().cache_hit">
           <div class="metrics">

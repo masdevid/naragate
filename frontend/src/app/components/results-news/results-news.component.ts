@@ -10,7 +10,9 @@ import { TPipe } from '../../pipes/t.pipe';
   imports: [EvidenceCardComponent, SectionHelpComponent, TPipe],
   template: `
     <div class="news">
-      <app-section-help helpKey="section_help.news"/>
+      @if (news() || corpActions()) {
+        <app-section-help helpKey="section_help.news"/>
+      }
       @if (news()) {
         <app-evidence-card [title]="'results.news_title' | t" [cacheHit]="news().cache_hit">
           <div class="news__body">
