@@ -28,12 +28,11 @@ clarification signal in the UI.
 
 ### Expected Result:
 - The clarification message ("… Mohon berikan ticker saham …") is shown in the error block.
-- The last parsed-claim event data is visible with `needs_clarification`.
-- No evidence phases (`evidence_ready`) ever appear.
+- The pipeline never reaches the evidence stage; the claim page stays on `/claim`.
 
 ### Key verification points:
 - `.claim__error` contains the clarification message.
-- `.claim__event-data` contains `needs_clarification` and does not contain `evidence_ready`.
+- `.claim__error` shows the clarification message; the page stays on `/claim`.
 
 ### Notes:
 - The evaluate endpoint is mocked so the test is deterministic and hits no real Sectors/LLM calls.

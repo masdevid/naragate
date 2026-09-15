@@ -614,8 +614,6 @@ test.describe('Dashboard claim templates', () => {
         if (c.clarification) {
           // Ticker guardrail: halts on /claim, never reaches evidence or results.
           await expect(page.locator('.claim__error')).toContainText(/kode saham/i);
-          await expect(page.locator('.claim__event-data')).toContainText(/needs_clarification/i);
-          await expect(page.locator('.claim__event-data')).not.toContainText(/evidence_ready/i);
           await page.waitForTimeout(1_500);
           await expect(page).toHaveURL(/\/claim/);
           return;

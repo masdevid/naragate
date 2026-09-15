@@ -22,20 +22,17 @@ export class DashboardPage {
 }
 
 export class ClaimPage {
-  readonly eventData: Locator;
   readonly error: Locator;
 
   constructor(private readonly page: Page) {
-    this.eventData = page.locator('.claim__event-data');
     this.error = page.locator('.claim__error');
   }
 
   async expectClarificationShown(): Promise<void> {
-    await expect(this.error).toContainText(/kode saham/i);
+    // The ticker guardrail surfaces the clarification message and never
+    // advances the pipeline to the evidence stage.
     await expect(this.error).toBeVisible();
-    // The guardrail emits the clarification signal (not evidence fetching).
-    await expect(this.eventData).toContainText(/needs_clarification/i);
-    await expect(this.eventData).not.toContainText(/evidence_ready/i);
+    await expect(this.error).toContainText(/kode saham/i);
   }
 
   async waitForCompletionRedirect(): Promise<void> {

@@ -131,8 +131,7 @@ ends with `clarification_required`, the claim page shows the guardrail error, an
 redirect occurs.
 
 **Key verification points:**
-- `.claim__error` mentions `kode saham`; `.claim__event-data` contains `needs_clarification` and no
-  `evidence_ready`; URL remains `/claim`.
+- `.claim__error` mentions `kode saham`; the URL remains `/claim`.
 
 ---
 

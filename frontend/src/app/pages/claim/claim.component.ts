@@ -4,7 +4,6 @@ import { Subscription } from 'rxjs';
 import { NarrativeService } from '../../services/narrative.service';
 import { I18nService } from '../../services/i18n.service';
 import { FormatService } from '../../services/format.service';
-import { PipelineEvent } from '../../models/pipeline.model';
 import { AgentCircuitComponent } from '../../components/agent-circuit/agent-circuit.component';
 import { TPipe } from '../../pipes/t.pipe';
 
@@ -46,13 +45,6 @@ import { TPipe } from '../../pipes/t.pipe';
           <div class="claim__thinking">
             <h2 class="claim__thinking-title">{{ 'claim.thinking' | t }} &mdash; {{ thinking()?.agent }}</h2>
             <pre class="claim__thinking-text">{{ thinking()?.text }}</pre>
-          </div>
-        }
-
-        @if (currentEvent()) {
-          <div class="claim__event">
-            <h2 class="claim__event-title">{{ getEventTitle() }}</h2>
-            <pre class="claim__event-data">{{ formatEvent(currentEvent()) }}</pre>
           </div>
         }
 
@@ -144,27 +136,6 @@ import { TPipe } from '../../pipes/t.pipe';
       white-space: pre-wrap; word-break: break-word;
       max-height: 16rem; overflow-y: auto;
     }
-    .claim__event {
-      border-top: 1px solid var(--color-rule);
-      padding-top: var(--space-lg);
-    }
-    .claim__event-title {
-      font-family: var(--font-display);
-      font-size: var(--text-lg);
-      text-transform: uppercase;
-      margin-bottom: var(--space-md);
-    }
-    .claim__event-data {
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      color: var(--color-muted);
-      background: var(--color-paper-2);
-      padding: var(--space-lg);
-      overflow-x: auto;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
     .claim__error {
       border-top: 1px solid var(--color-danger);
       padding-top: var(--space-lg);
@@ -204,7 +175,6 @@ export class ClaimComponent implements OnInit, OnDestroy {
   currentStep = signal('claim_parsing');
   completedSteps = signal<string[]>([]);
   failedStep = signal('');
-  currentEvent = signal<PipelineEvent | null>(null);
   thinking = signal<{ agent: string; text: string } | null>(null);
   usage = signal<any>(null);
   connecting = signal(true);
@@ -301,7 +271,6 @@ export class ClaimComponent implements OnInit, OnDestroy {
           this.claimId.set(event.data?.claim_id || event.claim_id);
           this.navigateToResults();
         }
-        this.currentEvent.set(event);
         this.claimId.set(event.data?.claim_id || event.claim_id);
         this.applyStage(event.event_type);
         if (event.event_type === 'pipeline_complete') {
@@ -357,14 +326,6 @@ export class ClaimComponent implements OnInit, OnDestroy {
     setTimeout(() => this.router.navigate(['/results', this.claimId()], { replaceUrl: true }), 1000 + extraDelay);
   }
 
-  getEventTitle(): string {
-    return this.i18n.tEventTitle(this.currentEvent()?.event_type || '');
-  }
-
-  formatEvent(event: PipelineEvent | null): string {
-    return event ? JSON.stringify(event.data, null, 2) : '';
-  }
-
   fmtNumber(value: number | null | undefined, decimals = 0): string {
     return this.format.number(value, decimals);
   }
@@ -376,7 +337,6 @@ export class ClaimComponent implements OnInit, OnDestroy {
     this.error.set('');
     this.errorCode.set('');
     this.terminalEvent = false;
-    this.currentEvent.set(null);
     this.thinking.set(null);
     this.thinkingMap.clear();
     this.completedSteps.set([]);

@@ -81,7 +81,11 @@ export class NarrativeService {
               const lines = buffer.split('\n');
               buffer = lines.pop() || '';
 
-              for (const line of lines) {
+              for (const raw of lines) {
+                // sse-starlette terminates lines with CRLF; strip the CR so the
+                // blank-line terminator is recognised and events emit as they
+                // arrive (otherwise only the final flush fires).
+                const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
                 if (line.startsWith('event:')) {
                   eventType = line.slice(6).trim();
                 } else if (line.startsWith('data:')) {
