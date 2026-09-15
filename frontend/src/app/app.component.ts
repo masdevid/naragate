@@ -49,6 +49,10 @@ interface NavItem {
               {{ lang.code | uppercase }}
             </button>
           }
+          @if (user()?.email) {
+            <span [title]="user()!.email!"
+              style="font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-muted); max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ user()!.email }}</span>
+          }
           <button class="nav__lang-btn" (click)="logout()">{{ 'nav.logout' | t }}</button>
         </div>
       </div>
@@ -71,6 +75,9 @@ interface NavItem {
               class="nav__panel-link" (click)="closeMenu()">{{ item.labelKey | t }}</a>
           }
           <a routerLink="/usage" class="nav__panel-credit" (click)="closeMenu()">{{ 'nav.credit' | t }}</a>
+          @if (user()?.email) {
+            <span class="nav__panel-link">{{ user()!.email }}</span>
+          }
           <div class="nav__panel-lang">
             @for (lang of langs; track lang.code) {
               <button class="nav__lang-btn" [class.nav__lang-btn--active]="i18n.language() === lang.code"
@@ -295,9 +302,10 @@ export class AppComponent implements OnInit {
   menuItems: NavItem[] = [
     { route: '/dashboard', labelKey: 'nav.dashboard' },
     { route: '/history', labelKey: 'nav.history' },
-    { route: '/llm-connector', labelKey: 'nav.connector' },
     { route: '/settings', labelKey: 'nav.settings' },
   ];
+
+  user = this.authService.user;
 
   menuOpen = signal(false);
   credit = signal<{ remaining: number; budget: number } | null>(null);
@@ -321,6 +329,7 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.authService.me().subscribe({ error: () => {} });
     let dismissed = false;
     try { dismissed = localStorage.getItem('naragate_setup_dismissed') === '1'; } catch {}
     if (dismissed || this.router.url.startsWith('/setup')) return;
