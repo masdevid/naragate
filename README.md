@@ -121,31 +121,13 @@ Naragate analyzes any Indonesian market narrative in real-time and produces a **
 
 ```mermaid
 flowchart LR
-  User[Retail investor] --> App[Naragate web UI]
-  CLI[Claude Code · Claude Desktop · Cursor · opencode · Codex] --> MCP[MCP server]
-  Pi[Pi agent pipeline] --> Analysis
-  App --> Analysis[AI analysis]
-  MCP --> Analysis
-  Analysis --> Result[Evidence and Reality Gap Score]
-  Analysis --> Data[Financial data]
-  Data --> Sectors[Sectors v2]
-  Analysis --> Cache[Cached data]
-  Analysis --> LLM[AI language model]
-  Policy[Policy narrative] --> Resolver[Sector resolver]
-  Resolver --> PolicyEvidence[Policy-event labeling]
-  PolicyEvidence --> Scorer[Policy gap dimension]
-  Scorer --> Result
-
-  subgraph Naragate[Naragate]
-    App
-    MCP
-    Pi
-    Analysis
-    Result
-    Cache
-    Resolver
-    Scorer
-  end
+  Surfaces["Web UI · MCP agents · Pi pipeline"] --> Engine[Naragate engine]
+  Policy[Policy narrative] --> Resolver[Sector resolver] --> Engine
+  Engine --> Pipeline[Multi-agent pipeline]
+  Pipeline --> Sectors[Sectors v2]
+  Pipeline --> LLM[LLM provider]
+  Pipeline --> Cache[(Evidence Graph cache)]
+  Pipeline --> Result[Reality Gap Score + evidence]
 ```
 
 ### Multi-Agent Pipeline
