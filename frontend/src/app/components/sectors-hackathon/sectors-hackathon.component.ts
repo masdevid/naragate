@@ -14,7 +14,7 @@ import { TPipe } from '../../pipes/t.pipe';
       <span class="min-w-0">
         <span class="block text-sm font-bold leading-none tracking-tight">{{ 'footer.sectors' | t }}</span>
         <span class="mt-1 hidden font-mono text-xs font-semibold uppercase tracking-[0.16em]
-          text-muted min-[23rem]:block">{{ 'footer.sectors_track' | t }}</span>
+          text-muted min-[368px]:block">{{ 'footer.sectors_track' | t }}</span>
       </span>
     </a>
   `,

@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 from functools import lru_cache
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
     # Required
     SECTORS_API_KEY: str = Field(default="", validation_alias="SECTORS_API_KEY")
 
@@ -106,10 +108,6 @@ class Settings(BaseSettings):
     @property
     def follow_up_model(self) -> str:
         return self.FOLLOW_UP_MODEL or self.OLLAMA_MODEL
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 @lru_cache()
 def get_settings() -> Settings:

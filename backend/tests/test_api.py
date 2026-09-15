@@ -75,6 +75,31 @@ class TestClaimsEndpoint:
             assert isinstance(response.json(), list)
 
     @pytest.mark.asyncio
+    async def test_list_claims_forwards_pagination_and_ticker(self):
+        with patch("app.api.v1.endpoints.claims.claims_store") as mock_store:
+            mock_store.list_claims = AsyncMock(return_value=[])
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get("/api/v1/claims/?limit=5&offset=10&ticker=bbca")
+
+            assert response.status_code == 200
+            mock_store.list_claims.assert_awaited_once_with(limit=5, offset=10, ticker="bbca")
+
+    @pytest.mark.asyncio
+    async def test_count_claims_route_resolves_before_claim_id(self):
+        with patch("app.api.v1.endpoints.claims.claims_store") as mock_store:
+            mock_store.count_claims = AsyncMock(return_value=7)
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get("/api/v1/claims/count")
+
+            assert response.status_code == 200
+            assert response.json() == {"total": 7}
+            mock_store.count_claims.assert_awaited_once_with(ticker=None)
+
+    @pytest.mark.asyncio
     async def test_get_claim_returns_404_for_missing(self):
         with patch("app.api.v1.endpoints.claims.claims_store") as mock_store:
             mock_store.get_claim = AsyncMock(return_value=None)

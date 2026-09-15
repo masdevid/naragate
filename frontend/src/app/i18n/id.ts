@@ -42,6 +42,10 @@ export default {
   'history.filtering': 'Difilter ke {{ticker}}',
   'history.filter_clear': 'Hapus filter',
   'history.filter_empty': 'Belum ada analisis untuk {{ticker}}.',
+  'history.page': 'Halaman {{page}} / {{total}}',
+  'history.prev': 'Sebelumnya',
+  'history.next': 'Berikutnya',
+  'history.showing': 'Menampilkan {{from}}–{{to}} dari {{total}}',
 
   // Dashboard warnings
   'dashboard.warn_sectors': 'Kunci API Sectors belum diatur. Analisis tidak akan berfungsi tanpa kunci ini.',
@@ -300,6 +304,8 @@ export default {
   'trend.total': '{{count}} analisis',
   'trend.avg_score': 'Rata-rata Skor Reality Gap',
   'trend.empty': 'Belum ada analisis',
+  'trend.scroll_left': 'Geser kiri',
+  'trend.scroll_right': 'Geser kanan',
 
   // Bulk scanner
   'bulk.placeholder': 'Satu narasi per baris. Duplikat antar baris terdeteksi otomatis.',

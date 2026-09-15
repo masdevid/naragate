@@ -42,6 +42,10 @@ export default {
   'history.filtering': 'Filtered to {{ticker}}',
   'history.filter_clear': 'Clear filter',
   'history.filter_empty': 'No analyses for {{ticker}} yet.',
+  'history.page': 'Page {{page}} / {{total}}',
+  'history.prev': 'Previous',
+  'history.next': 'Next',
+  'history.showing': 'Showing {{from}}–{{to}} of {{total}}',
 
   // Dashboard warnings
   'dashboard.warn_sectors': 'Sectors API key not set. Analysis will not work without this key.',
@@ -300,6 +304,8 @@ export default {
   'trend.total': '{{count}} analyses',
   'trend.avg_score': 'Avg Reality Gap Score',
   'trend.empty': 'No analyses yet',
+  'trend.scroll_left': 'Scroll left',
+  'trend.scroll_right': 'Scroll right',
 
   // Bulk scanner
   'bulk.placeholder': 'One narrative per line. Duplicates across lines are detected automatically.',

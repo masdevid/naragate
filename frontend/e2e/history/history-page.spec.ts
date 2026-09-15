@@ -22,13 +22,16 @@ const VERDICT_LABEL: Record<string, string> = {
 
 test.describe('Production history page (real data)', () => {
   test('@HIST-E2E-001 list, trend summary and detail pages are coherent', async ({ page, request }) => {
-    // Mirror the page's own request (getClaims() uses the backend default limit).
-    const claims = await (await request.get('/api/v1/claims/')).json();
+    const PAGE_SIZE = 10;
+    const all = await (await request.get('/api/v1/claims/?limit=1000')).json();
     const summary = await (await request.get('/api/v1/claims/summary')).json();
-    const completed = claims.filter((c: any) => c.status === 'completed' && c.score);
+    const total = (await (await request.get('/api/v1/claims/count')).json()).total;
+    const page1 = await (await request.get(`/api/v1/claims/?limit=${PAGE_SIZE}&offset=0`)).json();
+    const completed = all.filter((c: any) => c.status === 'completed' && c.score);
     test.skip(completed.length === 0, 'no completed claims in the live store — run generate-history first');
 
     // ---- API-level coherence (is the data itself sensible?) ----
+    expect(total).toBe(all.length);
     expect(summary.total_analyses).toBe(completed.length);
     const scores = completed.map((c: any) => c.score.reality_gap_score);
     const mean = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
@@ -46,7 +49,17 @@ test.describe('Production history page (real data)', () => {
     await expect(page.locator('.history__title')).toBeVisible();
 
     const rows = page.locator('.recent__item');
-    await expect(rows).toHaveCount(claims.length);
+    await expect(rows).toHaveCount(page1.length);
+
+    // Pagination appears when there is more than one page, and pages differ.
+    if (total > PAGE_SIZE) {
+      await expect(page.locator('.recent__pager')).toBeVisible();
+      await expect(page.locator('.recent__pager-info')).toContainText(/Halaman 1|Page 1/);
+      await page.locator('.recent__pager-btn').last().click();
+      await expect(page.locator('.recent__pager-info')).toContainText(/Halaman 2|Page 2/);
+      await page.locator('.recent__pager-btn').first().click();
+      await expect(page.locator('.recent__item')).toHaveCount(page1.length);
+    }
 
     await expect(page.locator('.trend__count')).toContainText(String(summary.total_analyses));
     await expect(page.locator('.trend__stat-value')).toHaveText(String(summary.average_score));
@@ -60,9 +73,8 @@ test.describe('Production history page (real data)', () => {
     const historyText = await page.locator('.history').innerText();
     expect(historyText).not.toMatch(/undefined|NaN|\{\{/);
 
-    // Every completed narrative is listed and labelled "Selesai"
-    // (a narrative can repeat — e.g. a stuck retry — so require at least one).
-    for (const c of completed) {
+    // Every completed narrative on the current page is listed and labelled "Selesai".
+    for (const c of page1.filter((c: any) => c.status === 'completed')) {
       const row = page
         .locator('.recent__item')
         .filter({ has: page.locator('.recent__narrative', { hasText: c.narrative }) })
@@ -70,15 +82,14 @@ test.describe('Production history page (real data)', () => {
       await expect(row.first()).toBeVisible();
     }
 
-    // The guardrail claim is stored as failed and presented as such.
-    const failed = claims.find((c: any) => c.status === 'failed' && c.narrative === 'Saham perbankan sedang mahal.');
-    if (failed) {
-      const row = page.locator('.recent__item').filter({ hasText: 'Saham perbankan sedang mahal.' });
-      await expect(row.locator('.recent__meta')).toContainText('Gagal');
+    // A failed claim on the page is presented as failed, not completed.
+    if (page1.some((c: any) => c.status === 'failed')) {
+      await expect(page.locator('.recent__item').filter({ hasText: 'Gagal' }).first()).toBeVisible();
     }
 
     // ---- Cross-page coherence: clicking a row opens a detail page that agrees ----
-    const target = completed[0];
+    const target = page1.find((c: any) => c.status === 'completed' && c.score);
+    test.skip(!target, 'no completed claim on the first page');
     await page
       .locator('.recent__item')
       .filter({ has: page.locator('.recent__narrative', { hasText: target.narrative }) })
@@ -97,7 +108,7 @@ test.describe('Production history page (real data)', () => {
   });
 
   test('@HIST-E2E-002 stored policy claims render the policy section, not evidence cards', async ({ page, request }) => {
-    const claims = await (await request.get('/api/v1/claims/')).json();
+    const claims = await (await request.get('/api/v1/claims/?limit=1000')).json();
     const policy = claims.filter((c: any) => c.status === 'completed' && c.claim?.is_policy && c.claim?.sector);
     test.skip(policy.length === 0, 'no stored policy claims — run generate-history first');
 

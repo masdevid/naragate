@@ -176,3 +176,66 @@ class TestClaimsStore:
         for claim_id in ids:
             assert await store.get_claim(claim_id) is None
         assert await store.delete_all_claims() == 0
+
+
+class TestNarrativeDedupe:
+    """One row per narrative: re-analyzing a narrative must not duplicate history."""
+
+    @pytest.mark.asyncio
+    async def test_same_narrative_reuses_one_row(self, store):
+        first = await store.create_claim("PE BBCA mahal di 25x")
+        second = await store.create_claim("PE BBCA mahal di 25x")
+        assert first == second
+        rows = [c for c in await store.list_all_claims() if c["narrative"] == "PE BBCA mahal di 25x"]
+        assert len(rows) == 1
+
+    @pytest.mark.asyncio
+    async def test_different_narratives_get_distinct_rows(self, store):
+        a = await store.create_claim("PE BBCA mahal di 25x")
+        b = await store.create_claim("Saham UNVR turun 15% dalam seminggu")
+        assert a != b
+        assert len(await store.list_all_claims()) == 2
+
+    @pytest.mark.asyncio
+    async def test_rerun_refreshes_the_existing_row(self, store):
+        claim_id = await store.create_claim("Laba BBRI naik")
+        await store.update_claim(claim_id, {"status": "completed", "score": {"reality_gap_score": 47.0}})
+
+        reused = await store.create_claim("Laba BBRI naik")
+
+        assert reused == claim_id
+        state = await store.get_claim(claim_id)
+        assert state["status"] == "pending"
+        assert "score" not in state
+        assert len(await store.list_all_claims()) == 1
+
+    @pytest.mark.asyncio
+    async def test_find_latest_by_narrative_returns_none_when_absent(self, store):
+        assert await store.find_latest_by_narrative("no such narrative") is None
+
+    @pytest.mark.asyncio
+    async def test_find_latest_by_narrative_returns_the_row(self, store):
+        claim_id = await store.create_claim("narrative x")
+        found = await store.find_latest_by_narrative("narrative x")
+        assert found is not None
+        assert found["claim_id"] == claim_id
+
+
+class TestClaimsPagination:
+    @pytest.mark.asyncio
+    async def test_list_claims_paginates_filters_by_ticker_and_counts(self, store):
+        for i in range(5):
+            claim_id = await store.create_claim(f"narrative {i}")
+            await store.update_claim(claim_id, {"claim": {"ticker": "BBCA" if i % 2 == 0 else "TLKM"}})
+
+        assert await store.count_claims() == 5
+        assert await store.count_claims(ticker="BBCA") == 3
+
+        page1 = await store.list_claims(limit=2, offset=0)
+        page2 = await store.list_claims(limit=2, offset=2)
+        assert len(page1) == 2
+        assert {c["claim_id"] for c in page1}.isdisjoint({c["claim_id"] for c in page2})
+
+        bbc = await store.list_claims(limit=10, ticker="BBCA")
+        assert len(bbc) == 3
+        assert all(c["claim"]["ticker"] == "BBCA" for c in bbc)

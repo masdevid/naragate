@@ -72,10 +72,21 @@ class ClaimsStore:
             await self._db.close()
             self._db = None
 
-    async def create_claim(self, narrative: str, claim: Optional[Claim] = None) -> str:
+    async def create_claim(
+        self, narrative: str, claim: Optional[Claim] = None, claim_id: Optional[str] = None
+    ) -> str:
+        """Create a claim row, or refresh the existing one for the same narrative.
+
+        One row per narrative: re-analyzing a narrative reuses its claim_id so it
+        updates that history entry in place instead of creating a duplicate.
+        """
         await self.connect()
         assert self._db is not None
-        claim_id = str(uuid.uuid4())
+        if claim_id is None:
+            existing = await self.find_latest_by_narrative(narrative)
+            if existing:
+                claim_id = existing["claim_id"]
+        claim_id = claim_id or str(uuid.uuid4())
         now = datetime.now().isoformat()
 
         state: dict = {
@@ -92,11 +103,26 @@ class ClaimsStore:
 
         await self._db.execute(
             "INSERT INTO claims (claim_id, narrative, status, created_at, updated_at, state) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(claim_id) DO UPDATE SET "
+            "narrative = excluded.narrative, status = excluded.status, "
+            "created_at = excluded.created_at, updated_at = excluded.updated_at, state = excluded.state",
             (claim_id, narrative, state["status"], now, now, json.dumps(state)),
         )
         await self._db.commit()
         return claim_id
+
+    async def find_latest_by_narrative(self, narrative: str) -> Optional[dict]:
+        """Return the most recent claim for an exact narrative, or None."""
+        await self.connect()
+        assert self._db is not None
+        cur = await self._db.execute(
+            "SELECT state FROM claims WHERE narrative = ? ORDER BY created_at DESC LIMIT 1",
+            (narrative,),
+        )
+        row = await cur.fetchone()
+        await cur.close()
+        return json.loads(row["state"]) if row else None
 
     async def get_claim(self, claim_id: str) -> Optional[dict]:
         await self.connect()
@@ -161,15 +187,37 @@ class ClaimsStore:
         await self._db.commit()
         return cur.rowcount
 
-    async def list_claims(self, limit: int = 20) -> list[dict]:
+    async def list_claims(self, limit: int = 20, offset: int = 0, ticker: Optional[str] = None) -> list[dict]:
         await self.connect()
         assert self._db is not None
-        cur = await self._db.execute(
-            "SELECT state FROM claims ORDER BY created_at DESC LIMIT ?", (limit,)
-        )
+        if ticker:
+            cur = await self._db.execute(
+                "SELECT state FROM claims WHERE json_extract(state, '$.claim.ticker') = ? "
+                "ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (ticker.upper(), limit, offset),
+            )
+        else:
+            cur = await self._db.execute(
+                "SELECT state FROM claims ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            )
         rows = await cur.fetchall()
         await cur.close()
         return [json.loads(r["state"]) for r in rows]
+
+    async def count_claims(self, ticker: Optional[str] = None) -> int:
+        await self.connect()
+        assert self._db is not None
+        if ticker:
+            cur = await self._db.execute(
+                "SELECT COUNT(*) AS n FROM claims WHERE json_extract(state, '$.claim.ticker') = ?",
+                (ticker.upper(),),
+            )
+        else:
+            cur = await self._db.execute("SELECT COUNT(*) AS n FROM claims")
+        row = await cur.fetchone()
+        await cur.close()
+        return int(row["n"]) if row else 0
 
     async def list_all_claims(self) -> list[dict]:
         await self.connect()

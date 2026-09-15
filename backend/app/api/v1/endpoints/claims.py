@@ -59,8 +59,13 @@ async def create_claim(claim_input: ClaimCreate):
 
 
 @router.get("/", response_model=list)
-async def list_claims(limit: int = 20):
-    return await claims_store.list_claims(limit=limit)
+async def list_claims(limit: int = 20, offset: int = 0, ticker: str | None = None):
+    return await claims_store.list_claims(limit=limit, offset=offset, ticker=ticker)
+
+
+@router.get("/count", response_model=dict)
+async def count_claims(ticker: str | None = None):
+    return {"total": await claims_store.count_claims(ticker=ticker)}
 
 
 @router.delete("/", response_model=dict)

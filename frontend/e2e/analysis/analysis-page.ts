@@ -76,6 +76,8 @@ export class ResultsPage {
   }
 
   async expectContextualSuggestions(): Promise<void> {
+    // Suggestions load lazily when the chat panel opens.
+    await this.page.locator('.chat__fab').click();
     await expect(this.suggestionChips.first()).toContainText(/skornya 72/i);
   }
 }

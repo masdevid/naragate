@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NarrativeService } from '../../services/narrative.service';
 import { ConfirmModalComponent } from '../../components/confirm-modal/confirm-modal.component';
@@ -22,15 +22,19 @@ import { TPipe } from '../../pipes/t.pipe';
       }
 
       <app-dashboard-recent
-        [claims]="filteredClaims"
+        [claims]="recentClaims"
         [selectedIds]="selectedIds"
         [filterTicker]="selectedTicker"
+        [total]="totalClaims"
+        [page]="page"
+        [pageSize]="pageSize"
         (viewClaim)="viewClaim($event)"
         (confirmDelete)="confirmDelete($event)"
         (confirmBulkDelete)="confirmBulkDelete()"
         (confirmDeleteAll)="confirmDeleteAll()"
         (selectedChange)="selectedIds.set($event)"
-        (clearFilter)="selectedTicker.set(null)"/>
+        (clearFilter)="clearFilter()"
+        (pageChange)="onPageChange($event)"/>
 
       <app-dashboard-trend
         [summary]="trendSummary"
@@ -113,12 +117,9 @@ export class HistoryComponent implements OnInit {
   trendSummary = signal<any>(null);
   selectedIds = signal<string[]>([]);
   selectedTicker = signal<string | null>(null);
-  filteredClaims = computed(() => {
-    const claims = this.recentClaims();
-    const ticker = this.selectedTicker();
-    if (!ticker) return claims;
-    return claims.filter(c => (c.claim?.ticker || '') === ticker);
-  });
+  page = signal(0);
+  totalClaims = signal(0);
+  readonly pageSize = 10;
   pendingDelete: any = null;
   bulkDelete = false;
   deleteAll = false;
@@ -136,6 +137,19 @@ export class HistoryComponent implements OnInit {
 
   onTickerClick(ticker: string) {
     this.selectedTicker.set(this.selectedTicker() === ticker ? null : ticker);
+    this.page.set(0);
+    this.loadPage();
+  }
+
+  clearFilter() {
+    this.selectedTicker.set(null);
+    this.page.set(0);
+    this.loadPage();
+  }
+
+  onPageChange(page: number) {
+    this.page.set(page);
+    this.loadPage();
   }
 
   confirmDelete(claim: any) {
@@ -155,9 +169,8 @@ export class HistoryComponent implements OnInit {
       const id = this.pendingDelete.claim_id;
       this.narrativeService.deleteClaim(id).subscribe({
         next: () => {
-          this.recentClaims.update(cs => cs.filter(c => c.claim_id !== id));
           this.pendingDelete = null;
-          this.refreshSummary();
+          this.refreshLists();
         },
         error: () => { this.pendingDelete = null; },
       });
@@ -165,10 +178,9 @@ export class HistoryComponent implements OnInit {
       const ids = this.selectedIds();
       this.narrativeService.deleteClaims(ids).subscribe({
         next: () => {
-          this.recentClaims.update(cs => cs.filter(c => !ids.includes(c.claim_id)));
           this.selectedIds.set([]);
           this.bulkDelete = false;
-          this.refreshSummary();
+          this.refreshLists();
         },
         error: () => { this.bulkDelete = false; },
       });
@@ -178,10 +190,10 @@ export class HistoryComponent implements OnInit {
   onDeleteAllConfirmed() {
     this.narrativeService.deleteAllClaims().subscribe({
       next: () => {
-        this.recentClaims.set([]);
         this.selectedIds.set([]);
         this.deleteAll = false;
-        this.refreshSummary();
+        this.page.set(0);
+        this.refreshLists();
       },
       error: () => { this.deleteAll = false; },
     });
@@ -197,11 +209,19 @@ export class HistoryComponent implements OnInit {
   }
 
   refreshLists() {
-    this.narrativeService.getClaims().subscribe({
+    this.loadPage();
+    this.refreshSummary();
+  }
+
+  loadPage() {
+    this.narrativeService.getClaims(this.pageSize, this.page() * this.pageSize, this.selectedTicker()).subscribe({
       next: (claims) => this.recentClaims.set(claims),
       error: () => {},
     });
-    this.refreshSummary();
+    this.narrativeService.getClaimsCount(this.selectedTicker()).subscribe({
+      next: (total) => this.totalClaims.set(total),
+      error: () => {},
+    });
   }
 
   refreshSummary() {

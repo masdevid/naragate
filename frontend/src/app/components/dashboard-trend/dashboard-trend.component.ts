@@ -1,12 +1,13 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, ElementRef, Input, Output, EventEmitter, ViewChild, inject } from '@angular/core';
 import { I18nService } from '../../services/i18n.service';
 import { VerdictBadgeComponent } from '../verdict-badge/verdict-badge.component';
+import { TrendTickerCardComponent } from '../trend-ticker-card/trend-ticker-card.component';
 import { TPipe } from '../../pipes/t.pipe';
 
 @Component({
   selector: 'app-dashboard-trend',
   standalone: true,
-  imports: [VerdictBadgeComponent, TPipe],
+  imports: [VerdictBadgeComponent, TrendTickerCardComponent, TPipe],
   template: `
     @if (summary()) {
       <section class="trend reveal" style="--i: 6">
@@ -41,44 +42,31 @@ import { TPipe } from '../../pipes/t.pipe';
           </div>
 
           @if (tickers().length) {
-            <div class="trend__tickers">
-              @for (ticker of tickers(); track ticker) {
-                <div
-                  class="trend__ticker"
-                  [class.trend__ticker--active]="selectedTicker() === ticker"
-                  role="button"
-                  tabindex="0"
-                  (click)="tickerClick.emit(ticker)"
-                  (keydown.enter)="tickerClick.emit(ticker)"
-                  (keydown.space)="tickerClick.emit(ticker); $event.preventDefault()">
-                  <div class="trend__ticker-head">
-                    <span class="trend__ticker-name">{{ ticker }}</span>
-                    <span class="trend__ticker-actions">
-                      <span class="trend__ticker-latest">{{ latestScore(ticker) }}</span>
-                      <a
-                        class="trend__ticker-sectors"
-                        [href]="sectorsUrl(ticker)"
-                        target="_blank"
-                        rel="noopener"
-                        title="Open in Sectors"
-                        (click)="$event.stopPropagation()">&#8599;</a>
-                    </span>
-                  </div>
-                  <svg class="trend__spark" [attr.viewBox]="sparkViewBox" preserveAspectRatio="none">
-                    @for (line of sparkLines(ticker); track line) {
-                      <polyline
-                        class="trend__spark-line"
-                        [attr.points]="line.points"
-                        fill="none"/>
-                    }
-                    <circle
-                      class="trend__spark-dot"
-                      [attr.cx]="sparkDot(ticker).x"
-                      [attr.cy]="sparkDot(ticker).y"
-                      r="3"/>
-                  </svg>
-                </div>
-              }
+            <div class="trend__slider">
+              <button
+                type="button"
+                class="trend__nav trend__nav--prev"
+                (click)="scroll(-1)"
+                [attr.aria-label]="'trend.scroll_left' | t">&#8249;</button>
+              <div class="trend__tickers" #tickerTrack>
+                @for (ticker of tickers(); track ticker) {
+                  <app-trend-ticker-card
+                    [ticker]="ticker"
+                    [active]="selectedTicker() === ticker"
+                    [latest]="latestScore(ticker)"
+                    [sectorsUrl]="sectorsUrl(ticker)"
+                    [viewBox]="sparkViewBox"
+                    [lines]="sparkPoints(ticker)"
+                    [dotX]="sparkDot(ticker).x"
+                    [dotY]="sparkDot(ticker).y"
+                    (select)="tickerClick.emit($event)"/>
+                }
+              </div>
+              <button
+                type="button"
+                class="trend__nav trend__nav--next"
+                (click)="scroll(1)"
+                [attr.aria-label]="'trend.scroll_right' | t">&#8250;</button>
             </div>
           }
         </div>
@@ -176,86 +164,41 @@ import { TPipe } from '../../pipes/t.pipe';
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .trend__tickers {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-      gap: var(--space-md);
+    .trend__slider {
+      display: flex;
+      align-items: stretch;
+      gap: var(--space-sm);
       padding-top: var(--space-lg);
       border-top: 1px solid var(--color-paper-3);
     }
-    .trend__ticker {
-      border: 1px solid var(--color-paper-3);
-      padding: var(--space-md);
+    .trend__tickers {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-      cursor: pointer;
-      text-align: left;
-      background: none;
-      transition: border-color var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+      gap: var(--space-md);
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      padding-bottom: var(--space-2xs);
+      scrollbar-width: thin;
     }
-    .trend__ticker:hover {
-      border-color: var(--color-accent);
-      box-shadow: inset 0 0 0 1px var(--color-accent);
-    }
-    .trend__ticker:focus-visible {
-      outline: 2px solid var(--color-accent);
-      outline-offset: 2px;
-    }
-    .trend__ticker--active {
-      border-color: var(--color-accent);
-      box-shadow: inset 0 0 0 1px var(--color-accent);
-    }
-    .trend__ticker-head {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: var(--space-sm);
-    }
-    .trend__ticker-name {
-      font-family: var(--font-mono);
-      font-size: var(--text-sm);
-      color: var(--color-ink);
-      font-weight: 600;
-      text-decoration: none;
-      transition: color var(--dur-short) var(--ease-out);
-    }
-    .trend__ticker:hover .trend__ticker-name {
-      color: var(--color-accent);
-    }
-    .trend__ticker-actions {
-      display: flex;
-      align-items: baseline;
-      gap: var(--space-sm);
-    }
-    .trend__ticker-latest {
-      font-family: var(--font-mono);
-      font-size: var(--text-sm);
-      color: var(--color-accent);
-    }
-    .trend__ticker-sectors {
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      color: var(--color-dim);
-      text-decoration: none;
-      transition: color var(--dur-short) var(--ease-out);
-    }
-    .trend__ticker-sectors:hover {
-      color: var(--color-accent);
-    }
-    .trend__spark {
-      width: 100%;
+    .trend__nav {
+      flex: 0 0 auto;
+      align-self: center;
+      width: 2rem;
       height: 2.5rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: 1px solid var(--color-paper-3);
+      color: var(--color-muted);
+      font-size: var(--text-lg);
+      line-height: 1;
+      cursor: pointer;
+      transition: border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
     }
-    .trend__spark-line {
-      stroke: var(--color-accent);
-      stroke-width: 1.5;
-      stroke-linejoin: round;
-      stroke-linecap: round;
-    }
-    .trend__spark-dot {
-      fill: var(--color-accent);
-    }
+    .trend__nav:hover { border-color: var(--color-accent); color: var(--color-accent); }
     @media (max-width: 640px) {
       .trend { padding-left: var(--space-md); padding-right: var(--space-md); }
       .trend__stats { grid-template-columns: 1fr; gap: var(--space-lg); }
@@ -267,7 +210,15 @@ export class DashboardTrendComponent {
   @Input() selectedTicker: () => string | null = () => null;
   @Output() tickerClick = new EventEmitter<string>();
 
+  @ViewChild('tickerTrack') tickerTrack?: ElementRef<HTMLDivElement>;
+
   private i18n = inject(I18nService);
+
+  scroll(direction: number): void {
+    const el = this.tickerTrack?.nativeElement;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.round(el.clientWidth * 0.8), behavior: 'smooth' });
+  }
 
   readonly verdictBands = ['contradicted', 'mixed', 'supported', 'strongly_supported'];
   readonly sparkWidth = 200;
@@ -307,6 +258,10 @@ export class DashboardTrendComponent {
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
     return [{ points: coords.join(' ') }];
+  }
+
+  sparkPoints(ticker: string): string[] {
+    return this.sparkLines(ticker).map(line => line.points);
   }
 
   sparkDot(ticker: string): { x: number; y: number } {

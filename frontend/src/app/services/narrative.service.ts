@@ -111,11 +111,23 @@ export class NarrativeService {
     });
   }
 
-  getClaims(): Observable<any[]> {
+  getClaims(limit = 20, offset = 0, ticker?: string | null): Observable<any[]> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (ticker) params.set('ticker', ticker);
     return new Observable(observer => {
-      fetch(`${this.apiUrl}/api/v1/claims/`)
+      fetch(`${this.apiUrl}/api/v1/claims/?${params.toString()}`)
         .then(r => r.json())
         .then(data => { observer.next(data); observer.complete(); })
+        .catch(err => observer.error(err));
+    });
+  }
+
+  getClaimsCount(ticker?: string | null): Observable<number> {
+    const query = ticker ? `?ticker=${encodeURIComponent(ticker)}` : '';
+    return new Observable(observer => {
+      fetch(`${this.apiUrl}/api/v1/claims/count${query}`)
+        .then(r => r.json())
+        .then(data => { observer.next(data?.total ?? 0); observer.complete(); })
         .catch(err => observer.error(err));
     });
   }
