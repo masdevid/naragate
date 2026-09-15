@@ -1,11 +1,11 @@
 name: Publish naragate-mcp
 
-# Publishes the `mcp/` package to PyPI. Runs when a GitHub release is published
-# (and can be triggered manually). Requires a PyPI API token stored as the
-# repository secret `PYPI_TOKEN` (Settings → Secrets and variables → Actions).
+# Publishes the `mcp/` package to PyPI. Runs when a GitHub release is published,
+# or on demand via `gh workflow run publish-mcp.yml` (both upload to PyPI).
+# Requires a PyPI API token stored as the repository secret `PYPI_TOKEN`
+# (Settings → Secrets and variables → Actions).
 #
-# It tests + builds + validates the distributions on every trigger, and only
-# uploads to PyPI for a published release.
+# It tests + builds + validates the distributions on every trigger, then uploads.
 
 on:
   release:
@@ -54,7 +54,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
       name: pypi
