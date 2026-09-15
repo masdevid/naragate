@@ -348,7 +348,10 @@ export class ClaimComponent implements OnInit, OnDestroy {
     // agent-flow animation on screen a little longer so it doesn't flash by.
     const elapsed = Date.now() - this.pipelineStart;
     const extraDelay = Math.max(0, 1000 - elapsed);
-    setTimeout(() => this.router.navigate(['/results', this.claimId()]), 1000 + extraDelay);
+    // Replace /claim?narrative=… in history so the browser back button does not
+    // re-mount it and re-run the pipeline; back now lands on the page that
+    // launched the analysis (dashboard) instead.
+    setTimeout(() => this.router.navigate(['/results', this.claimId()], { replaceUrl: true }), 1000 + extraDelay);
   }
 
   getEventTitle(): string {
