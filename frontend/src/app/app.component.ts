@@ -4,6 +4,7 @@ import { UpperCasePipe } from '@angular/common';
 import { I18nService } from './services/i18n.service';
 import { SettingsService } from './services/settings.service';
 import { UsageService } from './services/usage.service';
+import { AuthService } from './services/auth.service';
 import { NaraWordmarkComponent } from './components/nara-wordmark/nara-wordmark.component';
 import { SectorsHackathonComponent } from './components/sectors-hackathon/sectors-hackathon.component';
 import { ScrollTopComponent } from './components/scroll-top/scroll-top.component';
@@ -19,6 +20,7 @@ interface NavItem {
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent, SectorsHackathonComponent, ScrollTopComponent],
   template: `
+    @if (!isLoginPage()) {
     <nav class="nav" [class.nav--open]="menuOpen()">
       <a routerLink="/dashboard" class="nav__brand" (click)="closeMenu()"><app-nara-wordmark /></a>
 
@@ -47,6 +49,7 @@ interface NavItem {
               {{ lang.code | uppercase }}
             </button>
           }
+          <button class="nav__lang-btn" (click)="logout()">{{ 'nav.logout' | t }}</button>
         </div>
       </div>
 
@@ -76,9 +79,11 @@ interface NavItem {
               </button>
             }
           </div>
+          <button class="nav__panel-link" (click)="logout()">{{ 'nav.logout' | t }}</button>
         </div>
       }
     </nav>
+    }
     <router-outlet></router-outlet>
     <app-scroll-top/>
     <footer class="disclaimer">
@@ -283,6 +288,9 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
   private settingsService = inject(SettingsService);
   private usageService = inject(UsageService);
+  private authService = inject(AuthService);
+
+  isLoginPage = signal(false);
 
   menuItems: NavItem[] = [
     { route: '/dashboard', labelKey: 'nav.dashboard' },
@@ -306,6 +314,7 @@ export class AppComponent implements OnInit {
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.menuOpen.set(false);
+        this.isLoginPage.set(event.urlAfterRedirects.startsWith('/login'));
         this.refreshCredit();
       }
     });
@@ -322,6 +331,13 @@ export class AppComponent implements OnInit {
         }
       },
       error: () => {},
+    });
+  }
+
+  logout() {
+    this.authService.logout().subscribe({
+      next: () => this.router.navigate(['/login']),
+      error: () => this.router.navigate(['/login']),
     });
   }
 

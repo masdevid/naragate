@@ -1,8 +1,17 @@
+"""Sectors credentials, keyed by the logged-in **email** (not IP).
+
+Ownership model: each Sectors account (email) has its own API key, stored in
+runtime settings under `sectors_keys_by_email`. The server-side/deployment key
+(env `SECTORS_API_KEY`) is the fallback when no user session is bound, so health
+checks and background jobs still work. There is no IP-based ownership.
+"""
+
 import json
+import secrets
 from pathlib import Path
 
 from app.config.settings import settings
-from app.core.client_ip import get_client_ip
+from app.core.identity import get_current_email
 
 SETTINGS_FILE = Path(__file__).parent.parent / "data" / "runtime_settings.json"
 
@@ -16,106 +25,64 @@ def _load_runtime() -> dict:
     return {}
 
 
+def _save_runtime(data: dict) -> None:
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SETTINGS_FILE.write_text(json.dumps(data, indent=2))
+
+
 def _env_key() -> str:
     return settings.SECTORS_API_KEY or ""
 
 
-def dev_ips() -> list[str]:
-    """IPs that are always authorized to use the shared Sectors key.
-
-    Development/test convenience: a known IP (e.g. "127.0.0.1" or the Docker
-    bridge gateway "172.21.0.1" seen when hitting the app locally) bypasses the
-    allowlist so local runs and e2e tests never trip over owner gating.
-    Configure via SECTORS_DEV_IPS (comma-separated).
-    """
-    raw = settings.SECTORS_DEV_IPS
-    return [ip.strip() for ip in raw.split(",") if ip and ip.strip()]
+def keys_by_email(data: dict) -> dict:
+    keys = data.get("sectors_keys_by_email")
+    return keys if isinstance(keys, dict) else {}
 
 
-def _migrate_runtime(data: dict) -> dict:
-    """Fold the legacy per-IP registry into the shared-key allowlist model.
-
-    Legacy identity:
-        sectors_keys_by_ip: {ip: key, ...}   (each IP bound its own key copy)
-        sectors_key_bound_to: owner ip marker (first ip that bound a key)
-    New identity:
-        sectors_api_key            one shared key (owner's copy wins)
-        sectors_key_owner_ip       the IP that first bound the key
-        sectors_authorized_ips     the IPs allowed to use the shared key
-
-    The first IP to bind acts as the owner; it is the only session that can add
-    further IPs. Migration is idempotent; the legacy registry is retired from
-    the loaded copy on each read (the file is cleaned on the next save).
-    """
-    registry = data.get("sectors_keys_by_ip")
-    if registry:
-        ip_list = list(registry.keys())
-        owner = (
-            data.get("sectors_key_owner_ip")
-            or data.get("sectors_key_bound_to")
-            or (ip_list[0] if ip_list else None)
-        )
-        if owner and owner in registry:
-            data.setdefault("sectors_api_key", registry[owner])
-        elif owner:
-            data.setdefault("sectors_api_key", "")
-        authorized = data.get("sectors_authorized_ips") or []
-        for ip in ip_list:
-            if ip not in authorized:
-                authorized.append(ip)
-        data["sectors_authorized_ips"] = authorized
-        data["sectors_key_owner_ip"] = owner
-        data.pop("sectors_keys_by_ip", None)
-    elif data.get("sectors_key_owner_ip"):
-        owner = data["sectors_key_owner_ip"]
-        authorized = data.get("sectors_authorized_ips") or []
-        if owner not in authorized:
-            authorized.append(owner)
-        data["sectors_authorized_ips"] = authorized
-    return data
+def key_for_email(email: str) -> str:
+    """The API key bound to an email, falling back to the deployment key."""
+    data = _load_runtime()
+    if email:
+        bound = keys_by_email(data).get(email)
+        if bound:
+            return bound
+    return data.get("sectors_api_key") or _env_key()
 
 
-def sectors_ip_authorized(data: dict, ip: str) -> bool:
-    """Whether an IP may use the shared Sectors key.
-
-    Authorized when: no request context (server-side calls), the IP is a dev IP,
-    per-IP enforcement is OFF, the IP is the owner, or it is on the allowlist
-    that the owner maintains.
-    """
-    if not ip:
-        return True
-    if ip in dev_ips():
-        return True
-    if not sectors_per_ip_enforced(data):
-        return True
-    if data.get("sectors_key_owner_ip") == ip:
-        return True
-    return ip in (data.get("sectors_authorized_ips") or [])
+def bind_key_to_email(email: str, api_key: str) -> None:
+    """Bind (or replace) the API key for an email and mark it the owner."""
+    data = _load_runtime()
+    keys = keys_by_email(data)
+    keys[email] = api_key
+    data["sectors_keys_by_email"] = keys
+    data["sectors_key_owner_email"] = email
+    # Keep a copy as the deployment/global key for server-side fallback.
+    data["sectors_api_key"] = api_key
+    _save_runtime(data)
 
 
-def sectors_per_ip_enforced(data: dict) -> bool:
-    """Whether the per-IP Sectors allowlist is active for the current config.
+def unbind_key(email: str) -> None:
+    data = _load_runtime()
+    keys = keys_by_email(data)
+    keys.pop(email, None)
+    data["sectors_keys_by_email"] = keys
+    if data.get("sectors_key_owner_email") == email:
+        data.pop("sectors_key_owner_email", None)
+    _save_runtime(data)
 
-    Defaults to OFF: a key configured at the server level is shared by every
-    client. Explicitly opt in via the runtime setting or SECTORS_ENFORCE_PER_IP.
-    """
-    return bool(data.get("sectors_enforce_per_ip", settings.SECTORS_ENFORCE_PER_IP))
+
+def owner_email() -> str:
+    return _load_runtime().get("sectors_key_owner_email") or ""
 
 
-def sectors_key_for_ip(data: dict, ip: str) -> str:
-    """The shared Sectors key for an IP ('' when the IP is not authorized)."""
-    if sectors_ip_authorized(data, ip):
-        return data.get("sectors_api_key") or _env_key()
-    return ""
+def sectors_api_key() -> str:
+    """Resolve the Sectors API key for the current request's identity."""
+    return key_for_email(get_current_email())
 
 
 def sectors_oauth_tokens() -> dict:
-    """Resolve Sectors first-party OAuth tokens.
-
-    Runtime settings (set via the Settings UI) take precedence over env, so a
-    pasted token updates immediately without a redeploy.
-    """
-    data = _migrate_runtime(_load_runtime())
+    """Resolve Sectors first-party OAuth tokens (runtime settings, then env)."""
+    data = _load_runtime()
     return {
         "access_token": data.get("sectors_oauth_access_token") or settings.SECTORS_OAUTH_ACCESS_TOKEN,
         "refresh_token": data.get("sectors_oauth_refresh_token") or settings.SECTORS_OAUTH_REFRESH_TOKEN,
@@ -126,13 +93,34 @@ def sectors_oauth_tokens() -> dict:
     }
 
 
-def sectors_api_key() -> str:
-    """Resolve the Sectors API key for the current request's client IP.
+def store_oauth_login(email: str, password: str | None, access: str | None, refresh: str | None) -> None:
+    """Persist the login credentials/tokens so account usage can self-renew."""
+    data = _load_runtime()
+    data["sectors_oauth_email"] = email
+    if password:
+        data["sectors_oauth_password"] = password
+    if access:
+        data["sectors_oauth_access_token"] = access
+    if refresh:
+        data["sectors_oauth_refresh_token"] = refresh
+    _save_runtime(data)
 
-    One shared key owned by the first IP that bound it (see CONTEXT.md: Credit).
-    The owner can authorize more IPs via Settings. Dev IPs bypass the allowlist.
-    A request with no IP context (health probes, server-side calls) falls back to
-    the runtime/startup key.
-    """
-    data = _migrate_runtime(_load_runtime())
-    return sectors_key_for_ip(data, get_client_ip())
+
+def clear_oauth_login() -> None:
+    data = _load_runtime()
+    for k in ("sectors_oauth_email", "sectors_oauth_password",
+              "sectors_oauth_access_token", "sectors_oauth_refresh_token"):
+        data.pop(k, None)
+    _save_runtime(data)
+
+
+def session_secret() -> str:
+    """Signing secret for the login session cookie (generated once, persisted)."""
+    data = _load_runtime()
+    secret = data.get("session_secret") or settings.SESSION_SECRET
+    if secret:
+        return secret
+    secret = secrets.token_urlsafe(48)
+    data["session_secret"] = secret
+    _save_runtime(data)
+    return secret

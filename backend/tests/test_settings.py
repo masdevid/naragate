@@ -7,8 +7,10 @@ from app.main import app
 @pytest.fixture
 def settings_file(tmp_path, monkeypatch):
     from app.api.v1.endpoints import settings as settings_mod
+    from app.core import sectors_config as sc
     target = tmp_path / "runtime_settings.json"
     monkeypatch.setattr(settings_mod, "SETTINGS_FILE", target)
+    monkeypatch.setattr(sc, "SETTINGS_FILE", target)
     return target
 
 
@@ -25,106 +27,70 @@ def _write(settings_file, data):
     settings_file.write_text(__import__("json").dumps(data))
 
 
-class TestSectorsAuthorizedIps:
+class TestSectorsKeyByEmail:
+    """The Sectors API key is bound to the session email, not an IP."""
+
+    def _as(self, monkeypatch, email):
+        monkeypatch.setattr(
+            "app.api.v1.endpoints.settings.email_from_request", lambda request: email
+        )
+
     @pytest.mark.asyncio
-    async def test_first_binder_becomes_owner(self, settings_file):
-        async with _client({"X-Real-IP": "1.2.3.4"}) as client:
-            r = await client.put("/api/v1/settings", json={"sectors_api_key": "shared_key"})
+    async def test_unauthenticated_cannot_set_key(self, settings_file, monkeypatch):
+        self._as(monkeypatch, "")
+        async with _client() as client:
+            r = await client.put("/api/v1/settings", json={"sectors_api_key": "key_a"})
+        assert r.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_authenticated_binds_key_to_email(self, settings_file, monkeypatch):
+        self._as(monkeypatch, "a@example.com")
+        async with _client() as client:
+            r = await client.put("/api/v1/settings", json={"sectors_api_key": "key_a"})
         assert r.status_code == 200
         data = __import__("json").loads(settings_file.read_text())
-        assert data["sectors_key_owner_ip"] == "1.2.3.4"
-        assert data["sectors_authorized_ips"] == ["1.2.3.4"]
-        assert data["sectors_api_key"] == "shared_key"
+        assert data["sectors_keys_by_email"]["a@example.com"] == "key_a"
+        assert data["sectors_key_owner_email"] == "a@example.com"
 
     @pytest.mark.asyncio
-    async def test_non_owner_cannot_replace_key_when_enforced(self, settings_file):
-        _write(settings_file, {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
-            "sectors_enforce_per_ip": True,
-        })
-        async with _client({"X-Real-IP": "5.6.7.8"}) as client:
-            r = await client.put("/api/v1/settings", json={"sectors_api_key": "other_key"})
-        assert r.status_code == 403
-
-    @pytest.mark.asyncio
-    async def test_any_ip_can_replace_key_by_default(self, settings_file):
-        _write(settings_file, {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
-        })
-        async with _client({"X-Real-IP": "5.6.7.8"}) as client:
-            r = await client.put("/api/v1/settings", json={"sectors_api_key": "other_key"})
-        assert r.status_code == 200
+    async def test_each_email_gets_its_own_key(self, settings_file, monkeypatch):
+        self._as(monkeypatch, "a@example.com")
+        async with _client() as client:
+            await client.put("/api/v1/settings", json={"sectors_api_key": "key_a"})
+        self._as(monkeypatch, "b@example.com")
+        async with _client() as client:
+            await client.put("/api/v1/settings", json={"sectors_api_key": "key_b"})
         data = __import__("json").loads(settings_file.read_text())
-        assert data["sectors_api_key"] == "other_key"
+        assert data["sectors_keys_by_email"] == {"a@example.com": "key_a", "b@example.com": "key_b"}
 
     @pytest.mark.asyncio
-    async def test_owner_adds_ip(self, settings_file):
+    async def test_get_exposes_bound_email_and_masks_key(self, settings_file, monkeypatch):
+        self._as(monkeypatch, "a@example.com")
         _write(settings_file, {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4"],
+            "sectors_keys_by_email": {"a@example.com": "key_abcdef123456"},
+            "sectors_key_owner_email": "a@example.com",
+            "session_secret": "should-not-leak",
         })
-        async with _client({"X-Real-IP": "1.2.3.4"}) as client:
-            r = await client.post("/api/v1/settings/sectors-ips", json={"ip": "5.6.7.8", "action": "add"})
-        assert r.status_code == 200
-        body = r.json()
-        assert set(body["sectors_authorized_ips"]) == {"1.2.3.4", "5.6.7.8"}
-
-    @pytest.mark.asyncio
-    async def test_non_owner_cannot_add_ip(self, settings_file):
-        _write(settings_file, {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
-        })
-        async with _client({"X-Real-IP": "5.6.7.8"}) as client:
-            r = await client.post("/api/v1/settings/sectors-ips", json={"ip": "9.9.9.9", "action": "add"})
-        assert r.status_code == 403
-
-    @pytest.mark.asyncio
-    async def test_owner_removes_ip_but_not_self(self, settings_file):
-        _write(settings_file, {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
-        })
-        async with _client({"X-Real-IP": "1.2.3.4"}) as client:
-            r = await client.post("/api/v1/settings/sectors-ips", json={"ip": "5.6.7.8", "action": "remove"})
-            assert r.status_code == 200
-            assert r.json()["sectors_authorized_ips"] == ["1.2.3.4"]
-            r2 = await client.post("/api/v1/settings/sectors-ips", json={"ip": "1.2.3.4", "action": "remove"})
-        assert r2.status_code == 400
-
-    @pytest.mark.asyncio
-    async def test_get_settings_exposes_allowlist(self, settings_file):
-        _write(settings_file, {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
-        })
-        async with _client({"X-Real-IP": "1.2.3.4"}) as client:
+        async with _client() as client:
             r = await client.get("/api/v1/settings")
         assert r.status_code == 200
         body = r.json()
-        assert body["sectors_key_owner_ip"] == "1.2.3.4"
-        assert set(body["sectors_authorized_ips"]) == {"1.2.3.4", "5.6.7.8"}
-        assert body["sectors_key_is_owner"] is True
-        assert body["sectors_key_bound_to"] == "1.2.3.4"
+        assert body["authenticated"] is True
+        assert body["email"] == "a@example.com"
+        assert body["sectors_key_owner_email"] == "a@example.com"
+        assert "..." in body["sectors_api_key"]
+        assert "sectors_keys_by_email" not in body
+        assert "session_secret" not in body
 
     @pytest.mark.asyncio
-    async def test_dev_ip_is_owner_for_management(self, settings_file):
-        _write(settings_file, {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4"],
-        })
-        async with _client({"X-Real-IP": "127.0.0.1"}) as client:
-            r = await client.post("/api/v1/settings/sectors-ips", json={"ip": "5.6.7.8", "action": "add"})
-        assert r.status_code == 200
+    async def test_unauthenticated_get_has_no_key(self, settings_file, monkeypatch):
+        self._as(monkeypatch, "")
+        _write(settings_file, {"sectors_keys_by_email": {"a@example.com": "key_a"}})
+        async with _client() as client:
+            r = await client.get("/api/v1/settings")
+        body = r.json()
+        assert body["authenticated"] is False
+        assert body["sectors_api_key"] == ""
 
 
 class TestAgentModelSettings:

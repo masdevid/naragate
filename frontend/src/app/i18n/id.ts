@@ -8,6 +8,17 @@ export default {
   'nav.menu': 'Buka menu',
   'nav.close': 'Tutup menu',
   'nav.credit': 'Kredit',
+  'nav.logout': 'Keluar',
+
+  // Login
+  'login.title': 'Masuk dengan Akun Sectors Anda',
+  'login.sub': 'Masuk dengan email dan kata sandi Sectors Anda. Kunci API Sectors terikat ke akun ini, bukan alamat IP Anda.',
+  'login.email': 'Email',
+  'login.password': 'Kata Sandi',
+  'login.submit': 'Masuk',
+  'login.submitting': 'Sedang masuk…',
+  'login.required': 'Email dan kata sandi wajib diisi.',
+  'login.failed': 'Gagal masuk. Periksa email dan kata sandi Sectors Anda.',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -95,6 +106,7 @@ export default {
   'settings.field_chat': 'Model Chat',
   'settings.field_follow_up': 'Model Follow-Up',
   'settings.section_sectors': 'Sectors API',
+  'settings.sectors_bound_email': 'Terikat ke akun Sectors: {{email}}',
   'settings.field_sectors_key': 'Kunci API',
   'settings.sectors_key_placeholder': 'Masukkan kunci API Sectors v2',
   'settings.sectors_validate': 'Validasi',

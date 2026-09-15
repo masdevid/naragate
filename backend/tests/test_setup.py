@@ -91,78 +91,46 @@ class TestSettingsResolution:
             assert sectors_api_key() == settings.SECTORS_API_KEY
 
 
-class TestSectorsKeyAllowlist:
-    """Shared key owned by the first binding IP; owner + allowlist may use it."""
-
-    @staticmethod
-    def _runtime(**overrides):
-        data = {
-            "sectors_api_key": "shared_key",
-            "sectors_key_owner_ip": "1.2.3.4",
-            "sectors_authorized_ips": ["1.2.3.4", "5.6.7.8"],
-        }
-        data.update(overrides)
-        return data
+class TestSectorsKeyByEmail:
+    """Sectors API keys are owned by the logged-in email, not an IP."""
 
     def teardown_method(self):
-        from app.core.client_ip import set_client_ip
-        set_client_ip("")
+        from app.core.identity import set_current_email
+        set_current_email("")
 
-    def test_owner_ip_gets_key(self):
-        from app.core.client_ip import set_client_ip
-        set_client_ip("1.2.3.4")
-        with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
-            assert sectors_api_key() == "shared_key"
+    def test_email_bound_key_returned(self):
+        from app.core.identity import set_current_email
+        set_current_email("a@example.com")
+        runtime = {"sectors_keys_by_email": {"a@example.com": "k_a"}, "sectors_api_key": "global"}
+        with patch("app.core.sectors_config._load_runtime", return_value=runtime):
+            assert sectors_api_key() == "k_a"
 
-    def test_authorized_ip_gets_key(self):
-        from app.core.client_ip import set_client_ip
-        set_client_ip("5.6.7.8")
-        with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
-            assert sectors_api_key() == "shared_key"
+    def test_unbound_email_falls_back_to_deployment_key(self):
+        from app.core.identity import set_current_email
+        set_current_email("b@example.com")
+        runtime = {"sectors_keys_by_email": {"a@example.com": "k_a"}, "sectors_api_key": "global"}
+        with patch("app.core.sectors_config._load_runtime", return_value=runtime):
+            assert sectors_api_key() == "global"
 
-    def test_unauthorized_ip_gets_no_key_when_enforced(self):
-        from app.core.client_ip import set_client_ip
-        set_client_ip("9.9.9.9")
-        with patch("app.core.sectors_config._load_runtime",
-                   return_value=self._runtime(sectors_enforce_per_ip=True)):
-            assert sectors_api_key() == ""
+    def test_no_session_uses_deployment_key(self):
+        with patch("app.core.sectors_config._load_runtime", return_value={"sectors_api_key": "global"}):
+            assert sectors_api_key() == "global"
 
-    def test_unauthorized_ip_gets_key_by_default(self):
-        from app.core.client_ip import set_client_ip
-        set_client_ip("9.9.9.9")
-        with patch("app.core.sectors_config._load_runtime", return_value=self._runtime()):
-            assert sectors_api_key() == "shared_key"
+    def test_email_lookup_is_case_insensitive(self):
+        from app.core.identity import set_current_email
+        set_current_email("A@Example.com")  # identity lowercases
+        runtime = {"sectors_keys_by_email": {"a@example.com": "k_a"}}
+        with patch("app.core.sectors_config._load_runtime", return_value=runtime):
+            assert sectors_api_key() == "k_a"
 
-    def test_dev_ip_bypasses_allowlist(self):
-        from app.core.client_ip import set_client_ip
-        set_client_ip("127.0.0.1")
-        with patch("app.core.sectors_config._load_runtime", return_value={"sectors_api_key": "k"}):
-            assert sectors_api_key() == "k"
-
-    def test_enforcement_off_shares_legacy_key(self):
-        from app.core.client_ip import set_client_ip
-        set_client_ip("9.9.9.9")
-        with patch("app.core.sectors_config._load_runtime",
-                   return_value={"sectors_api_key": "k", "sectors_enforce_per_ip": False}):
-            assert sectors_api_key() == "k"
-
-
-class TestSectorsKeyMigration:
-    def test_migrates_legacy_registry_to_allowlist(self):
-        from app.core.sectors_config import _migrate_runtime
-        data = _migrate_runtime({
-            "sectors_keys_by_ip": {"203.0.113.10": "k", "110.139.62.115": "k"},
-            "sectors_key_bound_to": "110.139.62.115",
-        })
-        assert data["sectors_key_owner_ip"] == "110.139.62.115"
-        assert set(data["sectors_authorized_ips"]) == {"203.0.113.10", "110.139.62.115"}
-        assert data["sectors_api_key"] == "k"
-        assert "sectors_keys_by_ip" not in data
-
-    def test_migration_owner_kept_in_allowlist(self):
-        from app.core.sectors_config import _migrate_runtime
-        data = _migrate_runtime({"sectors_key_owner_ip": "1.2.3.4", "sectors_api_key": "k"})
-        assert data["sectors_authorized_ips"] == ["1.2.3.4"]
+    def test_bind_key_to_email_persists(self):
+        from app.core.sectors_config import bind_key_to_email
+        with patch("app.core.sectors_config._load_runtime", return_value={}), \
+             patch("app.core.sectors_config._save_runtime") as save:
+            bind_key_to_email("a@example.com", "k")
+        saved = save.call_args[0][0]
+        assert saved["sectors_keys_by_email"]["a@example.com"] == "k"
+        assert saved["sectors_key_owner_email"] == "a@example.com"
 
 
 class TestSectorsClientKey:

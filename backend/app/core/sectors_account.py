@@ -82,6 +82,41 @@ async def _login_access_token(client: httpx.AsyncClient) -> str | None:
         return None
 
 
+async def login_with_password(
+    email: str, password: str, client: httpx.AsyncClient | None = None
+) -> dict | None:
+    """Verify account credentials via POST /auth/token/ and load the profile.
+
+    Returns {"access", "refresh", "profile"} on success, else None.
+    """
+    owns_client = client is None
+    client = client or httpx.AsyncClient(timeout=15.0, follow_redirects=True)
+    try:
+        resp = await client.post(
+            f"{BASE}/auth/token/",
+            json={"email": email, "password": password},
+            headers={"User-Agent": USER_AGENT},
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        access = data.get("access")
+        if not access:
+            return None
+        profile: dict = {}
+        user_id = _jwt_claims(access).get("user_id")
+        if user_id:
+            prof = await client.get(f"{BASE}/auth/users/{user_id}/", headers=_headers(access))
+            if prof.status_code == 200:
+                profile = prof.json()
+        return {"access": access, "refresh": data.get("refresh"), "profile": profile}
+    except Exception:  # noqa: BLE001 — treated as invalid login
+        return None
+    finally:
+        if owns_client:
+            await client.aclose()
+
+
 async def _refresh_grant_token(client: httpx.AsyncClient) -> str | None:
     """OAuth refresh_token grant (needs a registered client_id)."""
     tokens = _tokens()

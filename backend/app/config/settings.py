@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     SECTORS_ACCOUNT_EMAIL: str = Field(default="", validation_alias="SECTORS_ACCOUNT_EMAIL")
     SECTORS_ACCOUNT_PASSWORD: str = Field(default="", validation_alias="SECTORS_ACCOUNT_PASSWORD")
 
+    # Signs the app login session cookie. Generated + persisted to runtime
+    # settings on first use when unset.
+    SESSION_SECRET: str = Field(default="", validation_alias="SESSION_SECRET")
+
     # LLM Provider (OpenAI-compatible)
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", validation_alias="OLLAMA_BASE_URL")
     # Empty by default: the model is configured via the web UI settings page.

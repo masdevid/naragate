@@ -28,13 +28,8 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
         <!-- Sectors API -->
         <app-settings-sectors-section
           [sectorsApiKey]="form().sectors_api_key"
-          [keyBoundTo]="form().sectors_key_bound_to"
-          [clientIp]="clientIp()"
-          [ownerIp]="ownerIp()"
-          [authorizedIps]="authorizedIps()"
-          [isOwner]="isOwner()"
-          (fieldChange)="onFieldChange($event.field, $event.value)"
-          (authorizedIpsChange)="authorizedIps.set($event)"/>
+          [boundEmail]="form().email || null"
+          (fieldChange)="onFieldChange($event.field, $event.value)"/>
 
         <!-- LLM Provider: default model only; manage the connection in the LLM Connector -->
         <section class="settings__section">
@@ -383,10 +378,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   validating = signal(false);
   validation = signal<ValidateResult | null>(null);
   availableModels = signal<string[]>([]);
-  clientIp = signal<string | null>(null);
-  ownerIp = signal<string | null>(null);
-  authorizedIps = signal<string[]>([]);
-  isOwner = signal(false);
+
   private pendingSave: RuntimeSettings | null = null;
   private saveInFlight = false;
   private saveQueued = false;
@@ -398,10 +390,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         next: (data) => {
           const s = data || {};
           this.form.set(s);
-          this.clientIp.set(s.client_ip || null);
-          this.ownerIp.set(s.sectors_key_owner_ip || null);
-          this.authorizedIps.set(s.sectors_authorized_ips || []);
-          this.isOwner.set(!!s.sectors_key_is_owner);
+
           if (s.llm_endpoint) {
             this.validateEndpoint(s.llm_endpoint, s.llm_api_key);
           }

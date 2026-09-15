@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import type { Page } from '@playwright/test';
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { DashboardPage } from '../analysis/analysis-page';

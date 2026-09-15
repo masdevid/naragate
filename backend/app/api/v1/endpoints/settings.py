@@ -1,4 +1,3 @@
-import ipaddress
 import json
 import httpx
 from pathlib import Path
@@ -6,13 +5,24 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from app.core.client_ip import resolve_client_ip, set_client_ip
 from app.core.setup import missing_setup_items
-from app.core.sectors_config import _migrate_runtime, dev_ips, sectors_key_for_ip, sectors_per_ip_enforced
+from app.core import sectors_config
+from app.core.identity import email_from_request
 
 router = APIRouter()
 
 SETTINGS_FILE = Path(__file__).parent.parent.parent.parent / "data" / "runtime_settings.json"
+
+# Never returned verbatim to clients.
+_SENSITIVE_KEYS = {
+    "sectors_keys_by_email",
+    "session_secret",
+    "sectors_oauth_access_token",
+    "sectors_oauth_refresh_token",
+    "sectors_oauth_client_secret",
+    "sectors_oauth_password",
+    "sectors_oauth_email",
+}
 
 
 class RuntimeSettings(BaseModel):
@@ -21,7 +31,6 @@ class RuntimeSettings(BaseModel):
     llm_api_key: Optional[str] = None
     llm_model: Optional[str] = None
     sectors_api_key: Optional[str] = None
-    sectors_enforce_per_ip: Optional[bool] = None
     claim_parser_model: Optional[str] = None
     skeptic_model: Optional[str] = None
     scorer_model: Optional[str] = None
@@ -51,13 +60,8 @@ class ValidateSectorsResponse(BaseModel):
     error: Optional[str] = None
 
 
-class ManageSectorsIpsRequest(BaseModel):
-    ip: str
-    action: str  # "add" | "remove"
-
-
 def _mask(key: str) -> str:
-    """Mask a secret for display: first 4 (or 6) chars + ... + last 4."""
+    """Mask a secret for display: first 4/6 chars + ... + last 4."""
     if not key:
         return ""
     if len(key) <= 12:
@@ -68,7 +72,7 @@ def _mask(key: str) -> str:
 def _load() -> dict:
     if SETTINGS_FILE.exists():
         try:
-            return _migrate_runtime(json.loads(SETTINGS_FILE.read_text()))
+            return json.loads(SETTINGS_FILE.read_text())
         except Exception:
             return {}
     return {}
@@ -83,31 +87,19 @@ def get_runtime_settings() -> dict:
     return _load()
 
 
-def _ip_is_owner(data: dict, ip: str) -> bool:
-    return ip in dev_ips() or data.get("sectors_key_owner_ip") == ip
-
-
-def _authorized_ips(data: dict) -> list[str]:
-    return list(data.get("sectors_authorized_ips") or [])
-
-
 @router.get("/status")
-async def setup_status(request: Request):
-    set_client_ip(resolve_client_ip(request))
+async def setup_status():
     missing = missing_setup_items()
     return {"complete": len(missing) == 0, "missing": missing}
 
 
 @router.post("/validate-sectors", response_model=ValidateSectorsResponse)
-async def validate_sectors(request: Request, req: ValidateSectorsRequest):
-    set_client_ip(resolve_client_ip(request))
+async def validate_sectors(req: ValidateSectorsRequest):
     key = req.api_key
-    # A masked placeholder (e.g. "ab12...wxyz" or "ab••••••wxyz") means the
-    # frontend loaded the saved key but never holds the real secret — validate
-    # against the stored key instead so "Validate" works on reload.
+    # A masked placeholder means the frontend never holds the real secret —
+    # validate against the stored key instead so "Validate" works on reload.
     if "..." in key or "••••" in key:
-        from app.core.sectors_config import sectors_api_key
-        key = sectors_api_key()
+        key = sectors_config.sectors_api_key()
     headers = {"Authorization": key}
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
@@ -124,13 +116,11 @@ async def validate_sectors(request: Request, req: ValidateSectorsRequest):
 
 
 @router.post("/validate-llm", response_model=ValidateEndpointResponse)
-async def validate_llm_endpoint(request: Request, req: ValidateEndpointRequest):
-    set_client_ip(resolve_client_ip(request))
+async def validate_llm_endpoint(req: ValidateEndpointRequest):
     endpoint = req.endpoint.rstrip("/")
     models_url = f"{endpoint}/v1/models" if "/v1" not in endpoint else f"{endpoint}/models"
     headers = {}
     api_key = req.api_key
-    # Masked placeholder → validate with the stored key instead.
     if api_key and ("..." in api_key or "••••" in api_key):
         from app.core.llm_config import llm_api_key
         api_key = llm_api_key()
@@ -156,129 +146,61 @@ async def validate_llm_endpoint(request: Request, req: ValidateEndpointRequest):
 @router.get("")
 async def get_settings(request: Request):
     data = _load()
-    ip = resolve_client_ip(request)
-    set_client_ip(ip)
-    owner = data.get("sectors_key_owner_ip")
-    authorized = _authorized_ips(data)
-    this_key = sectors_key_for_ip(data, ip)
+    email = email_from_request(request)
 
-    # Mask API keys in response; expose allowlist + detected IP + owner flag.
-    masked = {}
-    for k, v in data.items():
-        if k == "sectors_keys_by_ip":
-            continue  # legacy registry is server-side only
-        if "key" in k.lower() and v and len(str(v)) > 8:
-            masked[k] = _mask(str(v))
-        else:
-            masked[k] = v
-    masked["sectors_api_key"] = _mask(this_key)
-    masked["sectors_key_owner_ip"] = owner
-    masked["sectors_authorized_ips"] = authorized
-    # With per-IP enforcement off the key is deployment-wide, so every client is
-    # effectively the owner (they can view, update, and manage the allowlist).
-    masked["sectors_key_is_owner"] = _ip_is_owner(data, ip) or not sectors_per_ip_enforced(data)
-    # Legacy alias kept for frontend compat (any resolved key present).
-    masked["sectors_key_bound_to"] = owner if owner else (ip if this_key else None)
-    if ip:
-        masked["client_ip"] = ip
+    masked = {k: v for k, v in data.items() if k not in _SENSITIVE_KEYS}
+    masked.pop("sectors_api_key", None)
+    # Only surface the caller's own bound key; never the deployment key to anon.
+    masked["sectors_api_key"] = _mask(sectors_config.key_for_email(email) if email else "")
+    masked["sectors_key_owner_email"] = sectors_config.owner_email()
+    masked["authenticated"] = bool(email)
+    masked["email"] = email or None
     return masked
 
 
 @router.put("")
 async def update_settings(request: Request, update: RuntimeSettings):
     current = _load()
-    ip = resolve_client_ip(request)
-    set_client_ip(ip)
+    email = email_from_request(request)
 
     for field_name in RuntimeSettings.model_fields:
         val = getattr(update, field_name)
+        if val is None:
+            continue
 
-        # Sectors key is a single shared key owned by the first IP that bound it.
-        # Only the owner (or a dev IP) may set or replace it.
         if field_name == "sectors_api_key":
-            if val is None:
-                continue
             stripped = str(val)
-            if stripped == "":
-                if _ip_is_owner(current, ip):
-                    current.pop("sectors_api_key", None)
-                    current.pop("sectors_key_owner_ip", None)
-                    current.pop("sectors_authorized_ips", None)
-                continue
             # masked placeholder → leave the stored key as-is
             if "..." in stripped or "••••" in stripped:
                 continue
-            owner = current.get("sectors_key_owner_ip")
-            # Enforce the owner gate only when per-IP gating is switched on.
-            # Otherwise the key is deployment-wide and updatable by any client.
-            if owner and sectors_per_ip_enforced(current) and not _ip_is_owner(current, ip):
-                raise HTTPException(
-                    status_code=403,
-                    detail="Only the owner IP can change the Sectors API key. Ask the owner to add your IP first.",
-                )
-            if not owner:
-                current["sectors_key_owner_ip"] = ip
-            current["sectors_api_key"] = stripped
-            authorized = _authorized_ips(current)
-            for a in {ip, current["sectors_key_owner_ip"]}:
-                if a and a not in authorized:
-                    authorized.append(a)
-            current["sectors_authorized_ips"] = authorized
+            if not email:
+                raise HTTPException(status_code=401, detail="Sign in to bind a Sectors API key.")
+            keys = current.get("sectors_keys_by_email")
+            keys = dict(keys) if isinstance(keys, dict) else {}
+            if stripped == "":
+                keys.pop(email, None)
+                current["sectors_keys_by_email"] = keys
+                if current.get("sectors_key_owner_email") == email:
+                    current.pop("sectors_key_owner_email", None)
+            else:
+                keys[email] = stripped
+                current["sectors_keys_by_email"] = keys
+                current["sectors_key_owner_email"] = email
+                current["sectors_api_key"] = stripped
             continue
 
-        if val is not None:
-            if "key" in field_name.lower() and ("..." in str(val) or "••••" in str(val)):
-                continue
-            current[field_name] = val
+        # Don't let a masked key overwrite a stored secret.
+        if "key" in field_name.lower() and ("..." in str(val) or "••••" in str(val)):
+            continue
+        current[field_name] = val
 
     _save(current)
 
-    masked_settings = dict(current.items())
-    for k, v in list(masked_settings.items()):
-        if k == "sectors_keys_by_ip":
-            continue
-        if k == "sectors_api_key":
-            masked_settings[k] = _mask(str(v))
-        elif "key" in k.lower() and v and len(str(v)) > 8:
-            masked_settings[k] = _mask(str(v))
+    masked_settings = {k: v for k, v in current.items() if k not in _SENSITIVE_KEYS}
+    masked_settings.pop("sectors_api_key", None)
+    if "llm_api_key" in masked_settings:
+        masked_settings["llm_api_key"] = _mask(str(masked_settings["llm_api_key"]))
     return {"status": "ok", "settings": masked_settings}
-
-
-@router.post("/sectors-ips")
-async def manage_sectors_ips(request: Request, req: ManageSectorsIpsRequest):
-    """Add/remove an authorized IP. Only the owner IP may manage the list."""
-    data = _load()
-    ip = resolve_client_ip(request)
-    set_client_ip(ip)
-
-    owner = data.get("sectors_key_owner_ip")
-    if not owner:
-        raise HTTPException(status_code=400, detail="No Sectors API key is bound yet.")
-    if not _ip_is_owner(data, ip):
-        raise HTTPException(
-            status_code=403,
-            detail="Only the owner IP can manage the authorized IP list.",
-        )
-
-    try:
-        ipaddress.ip_address(req.ip)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid IP address: {req.ip}")
-
-    authorized = _authorized_ips(data)
-    if req.action == "add":
-        if req.ip not in authorized and req.ip != owner:
-            authorized.append(req.ip)
-    elif req.action == "remove":
-        if req.ip == owner:
-            raise HTTPException(status_code=400, detail="The owner IP cannot be removed.")
-        authorized = [a for a in authorized if a != req.ip]
-    else:
-        raise HTTPException(status_code=400, detail="action must be 'add' or 'remove'")
-
-    data["sectors_authorized_ips"] = authorized
-    _save(data)
-    return {"ok": True, "sectors_key_owner_ip": owner, "sectors_authorized_ips": authorized}
 
 
 @router.delete("")

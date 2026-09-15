@@ -82,11 +82,6 @@ const DISMISS_KEY = 'naragate_setup_dismissed';
                   {{ 'settings.sectors_validate' | t }}
                 </button>
               </div>
-              @if (form().client_ip) {
-                <p class="setup__hint" style="margin-top: var(--space-sm)">
-                  {{ 'settings.sectors_bound_ip' | t:{ip: maskedIp(form().client_ip || '')} }}
-                </p>
-              }
               <span class="setup__status" [class.setup__status--ok]="sectorsValidation()?.ok === true"
                 [class.setup__status--err]="sectorsValidation()?.ok === false"
                 [class.setup__status--loading]="sectorsValidating()">
@@ -365,7 +360,7 @@ export class SetupComponent implements OnInit, OnDestroy {
 
   sectorsKeyPresent(): boolean {
     const k = this.form().sectors_api_key;
-    return !!(k && k.trim()) || !!this.form().sectors_key_bound_to;
+    return !!(k && k.trim());
   }
 
   validateSectorsKey() {

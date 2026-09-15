@@ -6,10 +6,9 @@ point non-web clients (the MCP server, scripts, harnesses) call, so they share
 the exact web-UI pipeline, evidence cache and credit accounting.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.core.client_ip import resolve_client_ip, set_client_ip
 from app.core.setup import missing_setup_items
 from app.services.claims_store import claims_store
 from app.services.pipeline import run_pipeline
@@ -22,9 +21,7 @@ class AnalyzeInput(BaseModel):
 
 
 @router.post("")
-async def analyze(request: Request, input_data: AnalyzeInput):
-    set_client_ip(resolve_client_ip(request))
-
+async def analyze(input_data: AnalyzeInput):
     missing = missing_setup_items()
     if missing:
         raise HTTPException(

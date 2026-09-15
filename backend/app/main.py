@@ -13,10 +13,31 @@ from app.core.sectors_client import sectors_client
 from app.core.evidence_cache import cache as evidence_cache
 from app.core.llm_config import llm_endpoint
 from app.core.sectors_config import sectors_api_key
-from app.api.v1.endpoints import analyze, claims, evidence, precheck, stream, templates
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.requests import Request
+
+from app.api.v1.endpoints import analyze, claims, evidence, precheck, stream, templates, auth
 from app.api.v1.endpoints import agent_tools as agent_tools_router
 from app.api.v1.endpoints import settings as settings_router
 from app.api.v1.endpoints import usage as usage_router
+from app.core import sectors_config
+from app.core.identity import email_from_request, set_current_email
+
+
+class IdentityMiddleware:
+    """Bind the session email to a context var for deep (request-less) code."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            return await self.app(scope, receive, send)
+        set_current_email(email_from_request(Request(scope, receive=receive)))
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            set_current_email("")
 
 SETTINGS_FILE = Path(__file__).parent / "data" / "runtime_settings.json"
 
@@ -66,6 +87,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Order matters (last added = outermost): identity reads the session, so the
+# session middleware must wrap it; CORS wraps everything.
+app.add_middleware(IdentityMiddleware)
+app.add_middleware(SessionMiddleware, secret_key=sectors_config.session_secret(), same_site="lax")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -83,6 +108,7 @@ app.include_router(templates.router, prefix="/api/v1/templates", tags=["template
 app.include_router(agent_tools_router.router, prefix="/api/v1/tools", tags=["agent-tools"])
 app.include_router(settings_router.router, prefix="/api/v1/settings", tags=["settings"])
 app.include_router(usage_router.router, prefix="/api/v1/usage", tags=["usage"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
 async def check_ollama() -> dict:
     endpoint = llm_endpoint()

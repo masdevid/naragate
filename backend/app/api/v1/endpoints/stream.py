@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from app.core.client_ip import resolve_client_ip, set_client_ip
+from app.core.identity import email_from_request, set_current_email
 from app.core.setup import missing_setup_items
 from app.services.pipeline import run_pipeline
 
@@ -19,7 +19,7 @@ class BulkNarrativeInput(BaseModel):
 
 
 def _guard(request: Request):
-    set_client_ip(resolve_client_ip(request))
+    set_current_email(email_from_request(request))
 
 
 @router.post("/evaluate")
@@ -33,7 +33,7 @@ async def evaluate_narrative(request: Request, input_data: NarrativeInput):
         )
 
     async def event_generator():
-        set_client_ip(resolve_client_ip(request))
+        set_current_email(email_from_request(request))
         async for event in run_pipeline(input_data.narrative):
             yield {
                 "event": event.event_type,
@@ -58,7 +58,7 @@ async def evaluate_bulk(request: Request, input_data: BulkNarrativeInput):
         raise HTTPException(status_code=422, detail="No narratives provided")
 
     async def event_generator():
-        set_client_ip(resolve_client_ip(request))
+        set_current_email(email_from_request(request))
         yield {
             "event": "bulk_started",
             "data": json.dumps({"total": len(narratives)}),

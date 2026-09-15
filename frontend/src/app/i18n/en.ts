@@ -8,6 +8,17 @@ export default {
   'nav.menu': 'Open menu',
   'nav.close': 'Close menu',
   'nav.credit': 'Credits',
+  'nav.logout': 'Logout',
+
+  // Login
+  'login.title': 'Login with your Sectors Account',
+  'login.sub': 'Sign in with your Sectors email and password. Your Sectors API key is bound to this account, not your IP address.',
+  'login.email': 'Email',
+  'login.password': 'Password',
+  'login.submit': 'Sign In',
+  'login.submitting': 'Signing in…',
+  'login.required': 'Email and password are required.',
+  'login.failed': 'Login failed. Check your Sectors email and password.',
 
   // Dashboard
   'dashboard.eyebrow': 'Naragate',
@@ -95,6 +106,7 @@ export default {
   'settings.field_chat': 'Chat Model',
   'settings.field_follow_up': 'Follow-Up Model',
   'settings.section_sectors': 'Sectors API',
+  'settings.sectors_bound_email': 'Bound to Sectors account: {{email}}',
   'settings.field_sectors_key': 'API Key',
   'settings.sectors_key_placeholder': 'Enter your Sectors v2 API key',
   'settings.sectors_validate': 'Validate',
