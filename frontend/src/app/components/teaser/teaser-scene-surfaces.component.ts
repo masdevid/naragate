@@ -13,8 +13,10 @@ import { Component } from '@angular/core';
       <div class="pane left">
         <div class="win">
           <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">naragate.ilkomers.com</span></div>
-          <img class="shot" src="assets/result-app.png"
-            alt="Halaman hasil Naragate: klaim &quot;Saham UNVR turun 15% dalam seminggu&quot;, Reality Gap Score 58.76, verdict Campuran">
+          <div class="shotwrap">
+            <img class="shot" src="assets/result-app.png"
+              alt="Halaman hasil Naragate: klaim &quot;Saham UNVR turun 15% dalam seminggu&quot;, Reality Gap Score 58.76, verdict Campuran">
+          </div>
         </div>
         <div class="pane-label">Web UI &mdash; hasil verifikasi langsung</div>
       </div>
@@ -67,8 +69,11 @@ import { Component } from '@angular/core';
     .win .bar .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
     .win .bar .url { margin-left: 10px; font-size: 12px; color: var(--text-muted); }
 
-    /* web UI body is the screenshot, filling the frame */
-    .win .shot { display: block; width: 100%; flex: 1; min-height: 0; object-fit: cover; object-position: top center; }
+    /* web UI body is the screenshot, filling the frame.
+       The wrapper oversizes by 200x40 and is top-left anchored, so the
+       screenshot content sits 100px right and 20px lower than centre. */
+    .shotwrap { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+    .shot { position: absolute; top: 0; left: 0; width: calc(100% + 200px); height: calc(100% + 40px); object-fit: cover; object-position: center; display: block; }
 
     /* repository window body: plain panel with the bundle list */
     .body { flex: 1; min-height: 0; overflow: hidden; padding: 20px; }
