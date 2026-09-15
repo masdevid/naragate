@@ -175,6 +175,14 @@ function skepticPoint(data: any, lang: NarrativeLang): string | null {
 }
 
 function contradictionPoints(data: any, lang: NarrativeLang): string[] {
+  const i18n = data?.assessment?.contradictions_i18n;
+  if (Array.isArray(i18n) && i18n.length) {
+    return i18n
+      .slice(0, 2)
+      .map((c: any) => c?.[lang] || c?.en)
+      .filter((c: unknown): c is string => typeof c === 'string' && c.length > 0)
+      .map((c: string) => (lang === 'en' ? `Flag: ${c}.` : `Catatan: ${c}.`));
+  }
   const list = Array.isArray(data?.assessment?.contradictions) ? data.assessment.contradictions : [];
   return list.slice(0, 2).map((c: string) =>
     lang === 'en' ? `Flag: ${c}.` : `Catatan: ${c}.`

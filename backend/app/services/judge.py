@@ -9,6 +9,45 @@ MAX_PRIOR_DRIFT = 0.3        # % — run-up drift that disqualifies a "reaction"
 MIN_POLICY_REACTION = 0.3    # % — post-announcement move floor for a signal
 POLICY_REACTION_SCALE = 5.0  # multiplies % move, mirroring market_momentum_gap
 
+# Foreign-flow / broker-summary corroboration for market_momentum_gap. Flow is a
+# secondary signal: it shifts the momentum dimension by at most this many points,
+# and only when a clear bias is present (balanced/absent flow is neutral).
+FLOW_MOMENTUM_WEIGHT = 10.0
+MARKET_MOVER_WEIGHT = 5.0    # bounded nudge for top-gainer/loser membership
+FLOW_CONTRADICTION_THRESHOLD = 0.5  # |alignment| needed to flag flow as a contradiction
+FLOW_SIGNAL = {
+    "net_inflow": 1.0,
+    "net_buy": 1.0,
+    "net_outflow": -1.0,
+    "net_sell": -1.0,
+    "balanced": 0.0,
+}
+
+
+def direction_factor(direction: str) -> float:
+    # "below" claims are the mirror image: a positive metric contradicts them.
+    return -1.0 if direction == "below" else 1.0
+
+
+def flow_net_signal(flow_summary: Optional[dict]) -> float:
+    """Net price-supportive flow signal in [-1, 1].
+
+    +1 = foreign inflow / broker net buy, -1 = outflow / net sell. Foreign and
+    broker biases are averaged, so disagreement dilutes toward 0 and no clear
+    bias yields exactly 0 (flow never fabricates a signal).
+    """
+    if not flow_summary:
+        return 0.0
+    signals = []
+    for key in ("foreign_bias", "broker_bias"):
+        bias = flow_summary.get(key)
+        signal = FLOW_SIGNAL.get(bias) if isinstance(bias, str) else None
+        if signal:
+            signals.append(signal)
+    if not signals:
+        return 0.0
+    return sum(signals) / len(signals)
+
 
 def _clean_policy_reactions(policy_evidence: Optional[dict]) -> list[dict]:
     """Reactions respecting timing discipline.
@@ -50,7 +89,14 @@ def policy_narrative_dimension(policy_evidence: Optional[dict], direction: str) 
 class EvidenceJudge:
     def assess(self, claim: Claim, evidence: dict, skeptic: Optional[SkepticOutput] = None) -> EvidenceAssessment:
         evidence_summary = {}
-        contradictions = []
+        contradictions: list[str] = []
+        contradictions_i18n: list[dict] = []
+
+        def _add(en: str, id_: str) -> None:
+            """Record a contradiction in both languages (EN canonical list kept
+            for compatibility; the i18n list drives the localised result page)."""
+            contradictions.append(en)
+            contradictions_i18n.append({"en": en, "id": id_})
 
         valuation = evidence.get("valuation")
         fundamental = evidence.get("fundamental")
@@ -81,12 +127,18 @@ class EvidenceJudge:
             pe = v_metrics.get("pe")
             earnings_trend = (fundamental.trend if hasattr(fundamental, "trend") else {}).get("earnings_trend")
             if pe and pe > 30 and earnings_trend == "improving":
-                contradictions.append("High PE but improving earnings suggests growth premium, not overvaluation")
+                _add(
+                    "High PE but improving earnings suggests growth premium, not overvaluation",
+                    "PE tinggi namun laba membaik menunjukkan premi pertumbuhan, bukan overvaluasi",
+                )
 
         if news and claim.category.value != "valuation":
             corroboration = news.corroboration if hasattr(news, "corroboration") else "neutral"
             if corroboration == "contradicts":
-                contradictions.append("Recent news contradicts the claim's direction")
+                _add(
+                    "Recent news contradicts the claim's direction",
+                    "Berita terbaru bertentangan dengan arah klaim",
+                )
 
         # T5: a sector that reacts against the claim's direction is a contradiction —
         # but only for non-valuation categories (anti-dilution guardrail).
@@ -100,8 +152,9 @@ class EvidenceJudge:
                     or (direction == "above" and post <= -MIN_POLICY_REACTION)
                 )
                 if contradicts:
-                    contradictions.append(
-                        "The sector's reaction to the policy announcement contradicts the claim's direction"
+                    _add(
+                        "The sector's reaction to the policy announcement contradicts the claim's direction",
+                        "Reaksi sektor terhadap pengumuman kebijakan bertentangan dengan arah klaim",
                     )
 
         if corporate_actions:
@@ -110,16 +163,35 @@ class EvidenceJudge:
                 perf_1d = (market.performance if hasattr(market, "performance") else {}).get("1d", {})
                 change = perf_1d.get("price_change_pct", 0)
                 if abs(change or 0) > 2:
-                    contradictions.append(
-                        f"Price movement may be explained by corporate actions ({', '.join(relevant[:3])})"
+                    names = ", ".join(relevant[:3])
+                    _add(
+                        f"Price movement may be explained by corporate actions ({names})",
+                        f"Pergerakan harga dapat dijelaskan oleh aksi korporasi ({names})",
                     )
+
+        # Flow that runs against the claim's direction is a contradiction — but,
+        # like news/policy, it must not dilute a valuation claim.
+        if market and claim.category.value != "valuation":
+            flow = (evidence_summary.get("market") or {}).get("flow_summary")
+            alignment = direction_factor(claim.direction.value) * flow_net_signal(flow)
+            if alignment <= -FLOW_CONTRADICTION_THRESHOLD:
+                _add(
+                    "Foreign/broker flow moved against the claim's direction",
+                    "Arus asing/broker bergerak berlawanan dengan arah klaim",
+                )
 
         if filings:
             recent_bias = filings.recent_bias if hasattr(filings, "recent_bias") else "balanced"
             if recent_bias == "net_selling":
-                contradictions.append("Insiders are net selling — bearish signal that may contradict bullish narratives")
+                _add(
+                    "Insiders are net selling — bearish signal that may contradict bullish narratives",
+                    "Insider net sell — sinyal bearish yang dapat bertentangan dengan narasi bullish",
+                )
             elif recent_bias == "net_buying":
-                contradictions.append("Insiders are net buying — bullish signal that may contradict bearish narratives")
+                _add(
+                    "Insiders are net buying — bullish signal that may contradict bearish narratives",
+                    "Insider net buy — sinyal bullish yang dapat bertentangan dengan narasi bearish",
+                )
 
         applicable_dimensions = []
         cat = claim.category.value
@@ -150,6 +222,7 @@ class EvidenceJudge:
             direction=claim.direction.value,
             evidence_summary=evidence_summary,
             contradictions=contradictions,
+            contradictions_i18n=contradictions_i18n,
             skeptic_challenges=[c.get("point", "") for c in (skeptic.counter_arguments if skeptic else [])],
             evidence_confidence=round(confidence, 2),
             applicable_dimensions=applicable_dimensions,
@@ -189,8 +262,59 @@ class ScoreGenerator:
 
     @staticmethod
     def _direction_factor(direction: str) -> float:
-        # "below" claims are the mirror image: a positive metric contradicts them.
-        return -1.0 if direction == "below" else 1.0
+        return direction_factor(direction)
+
+    def _flow_momentum_adjustment(self, flow_summary: Optional[dict], direction: str) -> float:
+        """Bounded corroboration from foreign/broker flow, in score points.
+
+        Positive flow (foreign inflow / broker net buy) is price-supportive: it
+        corroborates an "above" claim and undercuts a "below" one. Returns 0
+        when no clear bias is present — flow never fabricates signal.
+        """
+        signal = flow_net_signal(flow_summary)
+        if not signal:
+            return 0.0
+        return direction_factor(direction) * signal * FLOW_MOMENTUM_WEIGHT
+
+    def _market_mover_adjustment(self, movers: Optional[dict], direction: str) -> float:
+        """Small bounded nudge when the ticker is an extreme market mover."""
+        if not movers:
+            return 0.0
+        classification = movers.get("classification")
+        if classification == "top_gainers":
+            signal = 1.0
+        elif classification == "top_losers":
+            signal = -1.0
+        else:
+            return 0.0
+        return direction_factor(direction) * signal * MARKET_MOVER_WEIGHT
+
+    def _momentum_tension_note(self, evidence_summary: dict, direction: str) -> str:
+        """Explain a dimension propped up by flow while the index-relative move opposes.
+
+        The score sums corroboration (flow/movers) on top of the beta-adjusted
+        move, so a bullish claim can read supportive even when the stock lagged
+        IHSG. This note keeps that tension visible in the human-facing summary.
+        """
+        market = evidence_summary.get("market") or {}
+        relative = (market.get("relative_strength") or {}).get("1d")
+        if not isinstance(relative, (int, float)) or relative == 0:
+            return ""
+        if direction_factor(direction) * relative >= 0:
+            return ""  # relative move does not oppose the claim
+
+        flow = flow_net_signal(market.get("flow_summary"))
+        classification = (market.get("market_movers") or {}).get("classification")
+        mover = 1.0 if classification == "top_gainers" else -1.0 if classification == "top_losers" else 0.0
+        if direction_factor(direction) * (flow + mover) <= 0:
+            return ""  # nothing is propping it up; not a tension case
+
+        return (
+            f"Momentum ditopang arus dana/broker meski pergerakan relatif saham "
+            f"terhadap indeks berlawanan arah klaim (relatif 1H {relative}%). / "
+            f"Momentum is propped up by fund/broker flow even though the stock's "
+            f"move relative to the index runs against the claim (1d relative {relative}%)."
+        )
 
     @staticmethod
     def _premium_support(premium: float, direction: str) -> float:
@@ -271,8 +395,15 @@ class ScoreGenerator:
             elif dim == "market_momentum_gap":
                 market = evidence_summary.get("market")
                 if market:
-                    change = (market.get("performance", {}) or {}).get("1d", {}).get("price_change_pct", 0)
-                    dim_score = max(0, min(100, 50 + self._direction_factor(direction) * change * 5))
+                    perf = (market.get("performance") or {}).get("1d", {}) or {}
+                    relative = (market.get("relative_strength") or {}).get("1d")
+                    # Prefer the beta-adjusted (index-excess) move when available:
+                    # +3% while IHSG is +5% is underperformance, not strength.
+                    change = relative if isinstance(relative, (int, float)) else perf.get("price_change_pct", 0)
+                    dim_score = 50 + self._direction_factor(direction) * change * 5
+                    dim_score += self._flow_momentum_adjustment(market.get("flow_summary"), direction)
+                    dim_score += self._market_mover_adjustment(market.get("market_movers"), direction)
+                    dim_score = max(0, min(100, dim_score))
                 else:
                     dim_score = 50.0
             elif dim == "peer_relative_gap":
@@ -321,11 +452,15 @@ class ScoreGenerator:
                     verdict = VerdictBand.CONTRADICTED
                     total_score = min(total_score, 30.0)
 
+        quality_note = self._quality_premium_note(evidence_summary, direction)
+        momentum_note = self._momentum_tension_note(evidence_summary, direction)
         explanation = self._build_explanation(
-            assessment, dimensions, verdict, "id", quality_note=self._quality_premium_note(evidence_summary, direction)
+            assessment, dimensions, verdict, "id",
+            quality_note=quality_note, momentum_note=momentum_note,
         )
         explanation_en = self._build_explanation(
-            assessment, dimensions, verdict, "en", quality_note=self._quality_premium_note(evidence_summary, direction)
+            assessment, dimensions, verdict, "en",
+            quality_note=quality_note, momentum_note=momentum_note,
         )
 
         return RealityGapScore(
@@ -340,12 +475,22 @@ class ScoreGenerator:
             direction=direction,
         )
 
-    def _build_explanation(self, assessment: EvidenceAssessment, dimensions: dict, verdict: VerdictBand, language: str = "id", quality_note: str = "") -> str:
+    @staticmethod
+    def _contradictions_for(assessment: EvidenceAssessment, language: str) -> list[str]:
+        """Localised contradiction texts, falling back to the canonical EN list."""
+        items = getattr(assessment, "contradictions_i18n", None) or []
+        if items:
+            key = "en" if language == "en" else "id"
+            return [c.get(key) or c.get("en", "") for c in items]
+        return list(assessment.contradictions)
+
+    def _build_explanation(self, assessment: EvidenceAssessment, dimensions: dict, verdict: VerdictBand, language: str = "id", quality_note: str = "", momentum_note: str = "") -> str:
         if language == "en":
             parts = [f"Verdict: {verdict.value.replace('_', ' ').title()}"]
 
-            if assessment.contradictions:
-                parts.append(f"Contradictions found: {'; '.join(assessment.contradictions[:2])}")
+            en_contradictions = self._contradictions_for(assessment, "en")
+            if en_contradictions:
+                parts.append(f"Contradictions found: {'; '.join(en_contradictions[:2])}")
 
             if assessment.skeptic_challenges:
                 parts.append(f"Skeptic challenges: {len(assessment.skeptic_challenges)} counter-arguments")
@@ -356,8 +501,9 @@ class ScoreGenerator:
 
             parts.append(f"Evidence confidence: {assessment.evidence_confidence:.0%}")
             if quality_note:
-                en_part = quality_note.split(" / ")[-1]
-                parts.append(en_part)
+                parts.append(quality_note.split(" / ")[-1])
+            if momentum_note:
+                parts.append(momentum_note.split(" / ")[-1])
             return ". ".join(parts) + "."
 
         verdict_names = {
@@ -369,8 +515,9 @@ class ScoreGenerator:
         verdict_label = verdict_names.get(verdict.value, verdict.value.replace("_", " ").title())
         parts = [f"Verdik: {verdict_label}"]
 
-        if assessment.contradictions:
-            parts.append(f"Kontradiksi ditemukan: {'; '.join(assessment.contradictions[:2])}")
+        id_contradictions = self._contradictions_for(assessment, "id")
+        if id_contradictions:
+            parts.append(f"Kontradiksi ditemukan: {'; '.join(id_contradictions[:2])}")
 
         if assessment.skeptic_challenges:
             parts.append(f"Tantangan skeptis: {len(assessment.skeptic_challenges)} argumen balasan")
@@ -381,8 +528,9 @@ class ScoreGenerator:
 
         parts.append(f"Keyakinan bukti: {assessment.evidence_confidence:.0%}")
         if quality_note:
-            id_part = quality_note.split(" / ")[0]
-            parts.append(id_part)
+            parts.append(quality_note.split(" / ")[0])
+        if momentum_note:
+            parts.append(momentum_note.split(" / ")[0])
         return ". ".join(parts) + "."
 
 

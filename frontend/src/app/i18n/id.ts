@@ -338,6 +338,15 @@ export default {
   'metric.change_1d': 'Perubahan 1H',
   'metric.change_7d': 'Perubahan 7H',
   'metric.change_30d': 'Perubahan 30H',
+  'metric.foreign_flow': 'Arus Asing',
+  'metric.broker_flow': 'Arus Broker',
+  'metric.relative_strength': 'Relatif vs IHSG',
+  'metric.top_segment': 'Segmen Utama',
+  'flow.net_inflow': 'Net Masuk',
+  'flow.net_outflow': 'Net Keluar',
+  'flow.net_buy': 'Net Beli',
+  'flow.net_sell': 'Net Jual',
+  'flow.balanced': 'Seimbang',
 
   // Verdicts
   'verdict.contradicted': 'Bertentangan',

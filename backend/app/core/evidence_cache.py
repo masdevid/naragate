@@ -111,6 +111,52 @@ class EvidenceGraphCache:
             await self.connect()
         await self._redis.delete(self._sector_key(sector))
 
+    # --- Market-keyed entries (rankings shared across all claims) -----------
+    # Universe-wide feeds (top movers) are not per-ticker. They are fetched
+    # once per trading day and reused by every claim, so the cost amortises to
+    # ~0 per claim instead of being paid per symbol.
+
+    @staticmethod
+    def _market_key(key: str) -> str:
+        return f"evidence:market:{key}"
+
+    async def get_market(self, key: str):
+        if not self._redis:
+            await self.connect()
+        data = await self._redis.get(self._market_key(key))
+        if data:
+            return json.loads(data)
+        return None
+
+    async def set_market(self, key: str, data, ttl: int = None):
+        if not self._redis:
+            await self.connect()
+        ttl = ttl or settings.EVIDENCE_CACHE_TTL_DAILY
+        await self._redis.setex(self._market_key(key), ttl, json.dumps(data))
+
+    # --- Index-keyed daily series (relative-strength inputs) ----------------
+    # Index closes use the same deterministic 90-day epoch grid as daily
+    # transactions, keyed by (index_code, epoch_start), so a re-run reuses
+    # historical chunks and only a new epoch costs a call.
+
+    @staticmethod
+    def _index_chunk_key(index_code: str, epoch_start: str) -> str:
+        return f"evidence:index:{index_code}:{epoch_start}"
+
+    async def get_index_chunk(self, index_code: str, epoch_start: str) -> list | None:
+        if not self._redis:
+            await self.connect()
+        data = await self._redis.get(self._index_chunk_key(index_code, epoch_start))
+        if data:
+            return json.loads(data)
+        return None
+
+    async def set_index_chunk(self, index_code: str, epoch_start: str, rows: list, ttl: int = None):
+        if not self._redis:
+            await self.connect()
+        ttl = ttl or settings.EVIDENCE_CACHE_TTL_DAILY
+        await self._redis.setex(self._index_chunk_key(index_code, epoch_start), ttl, json.dumps(rows))
+
     async def is_sector_stale(self, sector: str, data_type: str) -> bool:
         cached = await self.get_sector(sector)
         if not cached or data_type not in cached:

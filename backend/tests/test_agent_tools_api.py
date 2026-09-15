@@ -61,6 +61,78 @@ async def test_news_tool_passes_limit():
 
 
 @pytest.mark.asyncio
+async def test_foreign_flow_tool_uppercases_ticker_and_passes_window():
+    fake = SimpleNamespace(get_foreign_flow=AsyncMock(return_value=[]))
+
+    with patch("app.api.v1.endpoints.agent_tools.sectors_client", fake):
+        async with _client() as client:
+            resp = await client.get(
+                "/api/v1/tools/sectors/foreign-flow",
+                params={"ticker": "bbca", "start": "2026-01-01", "end": "2026-03-01"},
+            )
+
+    assert resp.status_code == 200
+    fake.get_foreign_flow.assert_awaited_once_with("BBCA", start="2026-01-01", end="2026-03-01")
+
+
+@pytest.mark.asyncio
+async def test_broker_summary_tool_uppercases_ticker():
+    fake = SimpleNamespace(get_broker_summary=AsyncMock(return_value={"results": []}))
+
+    with patch("app.api.v1.endpoints.agent_tools.sectors_client", fake):
+        async with _client() as client:
+            resp = await client.get("/api/v1/tools/sectors/broker-summary", params={"ticker": "tlkm"})
+
+    assert resp.status_code == 200
+    fake.get_broker_summary.assert_awaited_once_with("TLKM", start=None, end=None)
+
+
+@pytest.mark.asyncio
+async def test_top_changes_tool_passes_classification_and_period():
+    fake = SimpleNamespace(get_top_changes=AsyncMock(return_value={}))
+
+    with patch("app.api.v1.endpoints.agent_tools.sectors_client", fake):
+        async with _client() as client:
+            resp = await client.get(
+                "/api/v1/tools/sectors/top-changes",
+                params={"classifications": "top_gainers,top_losers", "periods": "1d", "n_stock": 10},
+            )
+
+    assert resp.status_code == 200
+    fake.get_top_changes.assert_awaited_once_with("top_gainers,top_losers", "1d", 10)
+
+
+@pytest.mark.asyncio
+async def test_segments_tool_uppercases_ticker_and_passes_year():
+    fake = SimpleNamespace(get_segments=AsyncMock(return_value={}))
+
+    with patch("app.api.v1.endpoints.agent_tools.sectors_client", fake):
+        async with _client() as client:
+            resp = await client.get(
+                "/api/v1/tools/sectors/segments",
+                params={"ticker": "bbca", "financial_year": 2024},
+            )
+
+    assert resp.status_code == 200
+    fake.get_segments.assert_awaited_once_with("BBCA", 2024)
+
+
+@pytest.mark.asyncio
+async def test_index_daily_tool_passes_index_and_window():
+    fake = SimpleNamespace(get_index_daily=AsyncMock(return_value=[]))
+
+    with patch("app.api.v1.endpoints.agent_tools.sectors_client", fake):
+        async with _client() as client:
+            resp = await client.get(
+                "/api/v1/tools/sectors/index-daily",
+                params={"index_code": "ihsg", "start": "2026-01-01", "end": "2026-03-01"},
+            )
+
+    assert resp.status_code == 200
+    fake.get_index_daily.assert_awaited_once_with("ihsg", start="2026-01-01", end="2026-03-01")
+
+
+@pytest.mark.asyncio
 async def test_evidence_cache_endpoints_never_touch_sectors():
     fake_cache = SimpleNamespace(
         get=AsyncMock(return_value={"valuation": {"metrics": {"pe": 25}}}),

@@ -63,6 +63,35 @@ async def sectors_corporate_actions(ticker: str):
     return await sectors_client.get_corporate_actions(ticker.upper())
 
 
+@router.get("/sectors/foreign-flow")
+async def sectors_foreign_flow(ticker: str, start: str | None = None, end: str | None = None):
+    return await sectors_client.get_foreign_flow(ticker.upper(), start=start, end=end)
+
+
+@router.get("/sectors/broker-summary")
+async def sectors_broker_summary(ticker: str, start: str | None = None, end: str | None = None):
+    return await sectors_client.get_broker_summary(ticker.upper(), start=start, end=end)
+
+
+@router.get("/sectors/top-changes")
+async def sectors_top_changes(
+    classifications: str = "top_gainers",
+    periods: str = "1d",
+    n_stock: int = 5,
+):
+    return await sectors_client.get_top_changes(classifications, periods, n_stock)
+
+
+@router.get("/sectors/segments")
+async def sectors_segments(ticker: str, financial_year: int | None = None):
+    return await sectors_client.get_segments(ticker.upper(), financial_year)
+
+
+@router.get("/sectors/index-daily")
+async def sectors_index_daily(index_code: str, start: str | None = None, end: str | None = None):
+    return await sectors_client.get_index_daily(index_code, start=start, end=end)
+
+
 @router.get("/sectors/filings")
 async def sectors_filings(ticker: str, filing_type: str | None = None):
     return await sectors_client.get_filings(ticker.upper(), filing_type=filing_type)

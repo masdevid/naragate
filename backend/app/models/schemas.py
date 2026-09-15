@@ -86,6 +86,7 @@ class FundamentalEvidence(BaseModel):
     trend: dict
     evidence_freshness: str
     cache_hit: bool
+    segments: Optional[dict] = None
 
 class MarketEvidence(BaseModel):
     claim_ticker: str
@@ -94,6 +95,11 @@ class MarketEvidence(BaseModel):
     volatility: float
     evidence_freshness: str
     cache_hit: bool
+    foreign_flow: Optional[list | dict] = None
+    broker_flow: Optional[dict] = None
+    flow_summary: Optional[dict] = None
+    market_movers: Optional[dict] = None
+    relative_strength: Optional[dict] = None
 
 class NewsEvidence(BaseModel):
     claim_ticker: str
@@ -120,6 +126,7 @@ class FilingsEvidence(BaseModel):
     category: str
     filings: list[dict]
     summary: str
+    summary_en: Optional[str] = None
     recent_bias: str
     evidence_freshness: str
     cache_hit: bool
@@ -139,6 +146,7 @@ class EvidenceAssessment(BaseModel):
     direction: str = "neutral"
     evidence_summary: dict
     contradictions: list[str]
+    contradictions_i18n: list[dict] = []
     skeptic_challenges: list[str]
     evidence_confidence: float
     applicable_dimensions: list[str]

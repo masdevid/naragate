@@ -5,6 +5,38 @@ tools:
       ticker: string
     returns: DailyTransaction[]
 
+  - name: sectors_foreign_flow
+    description: Fetch foreign investor flow for a ticker from Sectors v2 API (net inflow/outflow)
+    parameters:
+      ticker: string
+      start: string
+      end: string
+    returns: ForeignFlow
+
+  - name: sectors_broker_summary
+    description: Fetch broker accumulation/distribution summary for a ticker from Sectors v2 API
+    parameters:
+      ticker: string
+      start: string
+      end: string
+    returns: BrokerSummary
+
+  - name: sectors_top_changes
+    description: Fetch top gainers/losers across the IDX universe (market-wide, 1 credit per classification × period)
+    parameters:
+      classifications: string
+      periods: string
+      n_stock: number
+    returns: TopChanges
+
+  - name: sectors_index_daily
+    description: Fetch daily closing prices for an IDX index (e.g. ihsg) for relative-strength comparison
+    parameters:
+      index_code: string
+      start: string
+      end: string
+    returns: IndexDaily[]
+
   - name: evidence_cache_get
     description: Read the full Evidence Graph for a ticker from the cache
     parameters:

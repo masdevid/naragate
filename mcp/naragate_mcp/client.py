@@ -109,6 +109,41 @@ class NaragateClient:
     def sectors_corporate_actions(self, ticker: str) -> dict[str, Any]:
         return self._request("GET", "/api/v1/tools/sectors/corporate-actions", params={"ticker": ticker})
 
+    def sectors_foreign_flow(self, ticker: str, start: str | None = None, end: str | None = None) -> Any:
+        params: dict[str, Any] = {"ticker": ticker}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return self._request("GET", "/api/v1/tools/sectors/foreign-flow", params=params)
+
+    def sectors_broker_summary(self, ticker: str, start: str | None = None, end: str | None = None) -> dict[str, Any]:
+        params: dict[str, Any] = {"ticker": ticker}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return self._request("GET", "/api/v1/tools/sectors/broker-summary", params=params)
+
+    def sectors_top_changes(self, classifications: str = "top_gainers", periods: str = "1d", n_stock: int = 5) -> dict[str, Any]:
+        return self._request("GET", "/api/v1/tools/sectors/top-changes", params={
+            "classifications": classifications, "periods": periods, "n_stock": n_stock,
+        })
+
+    def sectors_segments(self, ticker: str, financial_year: int | None = None) -> dict[str, Any]:
+        params: dict[str, Any] = {"ticker": ticker}
+        if financial_year:
+            params["financial_year"] = financial_year
+        return self._request("GET", "/api/v1/tools/sectors/segments", params=params)
+
+    def sectors_index_daily(self, index_code: str, start: str | None = None, end: str | None = None) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {"index_code": index_code}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return self._request("GET", "/api/v1/tools/sectors/index-daily", params=params)
+
     def sectors_filings(self, ticker: str, filing_type: str | None = None) -> dict[str, Any]:
         params: dict[str, Any] = {"ticker": ticker}
         if filing_type:

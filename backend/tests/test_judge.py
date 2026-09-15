@@ -155,6 +155,73 @@ class TestEvidenceJudge:
         assert len(assessment.contradictions) > 0
         assert "net buying" in assessment.contradictions[0].lower()
 
+    def test_detects_flow_against_claim_as_contradiction(self, judge):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.MARKET,
+            assertion="foreign investors are buying",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.8,
+        )
+        evidence = {"market": {
+            "performance": {"1d": {"price_change_pct": 0.0}},
+            "flow_summary": {"foreign_bias": "net_outflow", "broker_bias": "net_sell"},
+        }}
+
+        assessment = judge.assess(claim, evidence)
+
+        assert any("flow" in c.lower() for c in assessment.contradictions)
+
+    def test_aligned_flow_is_not_a_contradiction(self, judge):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.MARKET,
+            assertion="foreign investors are buying",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.8,
+        )
+        evidence = {"market": {
+            "performance": {"1d": {"price_change_pct": 0.0}},
+            "flow_summary": {"foreign_bias": "net_inflow", "broker_bias": "net_buy"},
+        }}
+
+        assessment = judge.assess(claim, evidence)
+
+        assert not any("flow" in c.lower() for c in assessment.contradictions)
+
+    def test_flow_does_not_contradict_a_valuation_claim(self, judge, claim):
+        # claim fixture is a valuation claim; flow must not dilute it.
+        evidence = {"market": {
+            "performance": {"1d": {"price_change_pct": 0.0}},
+            "flow_summary": {"foreign_bias": "net_outflow", "broker_bias": "net_sell"},
+        }}
+
+        assessment = judge.assess(claim, evidence)
+
+        assert not any("flow" in c.lower() for c in assessment.contradictions)
+
+    def test_contradictions_carry_both_languages(self, judge):
+        claim = Claim(
+            ticker="BBCA",
+            category=ClaimCategory.MARKET,
+            assertion="foreign investors are buying",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.8,
+        )
+        evidence = {"market": {
+            "performance": {"1d": {"price_change_pct": 0.0}},
+            "flow_summary": {"foreign_bias": "net_outflow", "broker_bias": "net_sell"},
+        }}
+
+        assessment = judge.assess(claim, evidence)
+
+        assert assessment.contradictions_i18n
+        item = assessment.contradictions_i18n[0]
+        assert "flow moved against" in item["en"]
+        assert "Arus asing/broker" in item["id"]
+        # canonical EN list still populated for compatibility
+        assert assessment.contradictions[0] == item["en"]
+
     def test_insider_filings_included_in_evidence_summary(self, judge):
         claim = Claim(
             ticker="BBCA",
@@ -509,6 +576,149 @@ class TestDirectionAwareScoring:
 
         assert up_result.dimensions["market_momentum_gap"] == 75.0
         assert down_result.dimensions["market_momentum_gap"] == 25.0
+
+    @staticmethod
+    def _market_assessment(direction, price_change_pct, flow_summary=None, market_movers=None, relative_strength=None):
+        market = {"performance": {"1d": {"price_change_pct": price_change_pct}}}
+        if flow_summary is not None:
+            market["flow_summary"] = flow_summary
+        if market_movers is not None:
+            market["market_movers"] = market_movers
+        if relative_strength is not None:
+            market["relative_strength"] = relative_strength
+        return EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="market",
+            direction=direction,
+            evidence_summary={"market": market},
+            contradictions=[],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["market_momentum_gap", "evidence_confidence"],
+        )
+
+    def test_market_momentum_corroborated_by_unanimous_flow(self, generator):
+        # Flat price but foreign inflow + broker net buy corroborate an "above" claim.
+        result = generator.compute(self._market_assessment(
+            "above", 0.0, {"foreign_bias": "net_inflow", "broker_bias": "net_buy"}
+        ))
+        assert result.dimensions["market_momentum_gap"] == 60.0  # 50 + 10
+
+    def test_market_momentum_flow_opposes_claim(self, generator):
+        # Outflow + net sell undercut a bullish claim.
+        result = generator.compute(self._market_assessment(
+            "above", 0.0, {"foreign_bias": "net_outflow", "broker_bias": "net_sell"}
+        ))
+        assert result.dimensions["market_momentum_gap"] == 40.0  # 50 - 10
+
+    def test_market_momentum_flow_mirrors_for_below_claim(self, generator):
+        # Outflow corroborates a bearish claim.
+        result = generator.compute(self._market_assessment(
+            "below", 0.0, {"foreign_bias": "net_outflow", "broker_bias": "net_sell"}
+        ))
+        assert result.dimensions["market_momentum_gap"] == 60.0
+
+    def test_market_momentum_flow_dilutes_on_disagreement(self, generator):
+        # Foreign inflow vs broker net sell cancel out — no fabricated edge.
+        result = generator.compute(self._market_assessment(
+            "above", 0.0, {"foreign_bias": "net_inflow", "broker_bias": "net_sell"}
+        ))
+        assert result.dimensions["market_momentum_gap"] == 50.0
+
+    def test_market_momentum_balanced_or_absent_flow_is_neutral(self, generator):
+        balanced = generator.compute(self._market_assessment(
+            "above", 0.0, {"foreign_bias": "balanced", "broker_bias": "balanced"}
+        ))
+        absent = generator.compute(self._market_assessment("above", 0.0))
+        assert balanced.dimensions["market_momentum_gap"] == 50.0
+        assert absent.dimensions["market_momentum_gap"] == 50.0
+
+    def test_market_momentum_flow_is_bounded(self, generator):
+        # +5% price alone is 75; inflow adds 10 -> 85, still within [0, 100].
+        high = generator.compute(self._market_assessment(
+            "above", 5.0, {"foreign_bias": "net_inflow"}
+        ))
+        low = generator.compute(self._market_assessment(
+            "above", -20.0, {"foreign_bias": "net_outflow"}
+        ))
+        assert high.dimensions["market_momentum_gap"] == 85.0
+        assert low.dimensions["market_momentum_gap"] == 0.0  # clamped
+
+    def test_relative_strength_overrides_raw_price_change(self, generator):
+        # Raw +3% looks bullish, but +3% vs an IHSG +5% day is underperformance.
+        result = generator.compute(self._market_assessment(
+            "above", 3.0, None, relative_strength={"1d": -2.0}
+        ))
+        assert result.dimensions["market_momentum_gap"] == 40.0  # 50 + (-2)*5
+
+    def test_market_mover_membership_nudges_score(self, generator):
+        gainer = generator.compute(self._market_assessment(
+            "above", 0.0, None, market_movers={"classification": "top_gainers", "rank": 1}
+        ))
+        loser = generator.compute(self._market_assessment(
+            "above", 0.0, None, market_movers={"classification": "top_losers", "rank": 1}
+        ))
+        assert gainer.dimensions["market_momentum_gap"] == 55.0
+        assert loser.dimensions["market_momentum_gap"] == 45.0
+
+    def test_flow_and_mover_adjustments_combine(self, generator):
+        result = generator.compute(self._market_assessment(
+            "above", 0.0,
+            {"foreign_bias": "net_inflow", "broker_bias": "net_buy"},
+            market_movers={"classification": "top_gainers", "rank": 1},
+        ))
+        assert result.dimensions["market_momentum_gap"] == 65.0  # 50 + 10 + 5
+
+    def test_combined_scenario_pins_sum_and_explains_index_tension(self, generator):
+        # Raw +3% but underperformed IHSG (-2% relative), propped up by inflow + top-gainer.
+        assessment = self._market_assessment(
+            "above", 3.0,
+            {"foreign_bias": "net_inflow", "broker_bias": "net_buy"},
+            market_movers={"classification": "top_gainers", "rank": 1},
+            relative_strength={"1d": -2.0},
+        )
+        result = generator.compute(assessment, skeptic_score=50.0)
+
+        # relative overrides raw (-2), then flow +10 and mover +5 => 55
+        assert result.dimensions["market_momentum_gap"] == 55.0
+        assert "indeks" in result.explanation.lower()
+        assert "index" in result.explanation_en.lower()
+
+    def test_no_tension_note_when_relative_aligns(self, generator):
+        result = generator.compute(self._market_assessment(
+            "above", 3.0, {"foreign_bias": "net_inflow"}, relative_strength={"1d": 2.0}
+        ))
+        assert "indeks" not in result.explanation.lower()
+        assert "index" not in result.explanation_en.lower()
+
+    def test_no_tension_note_when_nothing_props_it_up(self, generator):
+        # Relative opposes the claim, but flow also opposes — no "propped up" story.
+        result = generator.compute(self._market_assessment(
+            "above", 3.0, {"foreign_bias": "net_outflow"}, relative_strength={"1d": -2.0}
+        ))
+        assert "indeks" not in result.explanation.lower()
+
+    def test_indonesian_explanation_uses_localised_contradictions(self, generator):
+        assessment = EvidenceAssessment(
+            claim_ticker="BBCA",
+            claim_category="market",
+            direction="above",
+            evidence_summary={"market": {"performance": {"1d": {"price_change_pct": 0.0}}}},
+            contradictions=["Foreign/broker flow moved against the claim's direction"],
+            contradictions_i18n=[{
+                "en": "Foreign/broker flow moved against the claim's direction",
+                "id": "Arus asing/broker bergerak berlawanan dengan arah klaim",
+            }],
+            skeptic_challenges=[],
+            evidence_confidence=0.8,
+            applicable_dimensions=["market_momentum_gap", "evidence_confidence"],
+        )
+
+        result = generator.compute(assessment, skeptic_score=50.0)
+
+        assert "Arus asing/broker" in result.explanation
+        assert "Foreign/broker" not in result.explanation
+        assert "Foreign/broker" in result.explanation_en
 
     def test_valuation_not_diluted_by_news_or_market(self, judge, generator):
         # A valuation claim must ignore news/market sentiment in confidence.

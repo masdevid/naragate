@@ -122,6 +122,47 @@ class SectorsClient:
     async def get_corporate_actions(self, ticker: str) -> dict:
         return await self._get(f"/v2/company/corporate-actions/{ticker}/")
 
+    async def get_foreign_flow(self, ticker: str, start: str | None = None, end: str | None = None) -> list:
+        params = {}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return await self._get(f"/v2/foreign-flow/{ticker}/", params=params or None)
+
+    async def get_broker_summary(self, ticker: str, start: str | None = None, end: str | None = None) -> dict:
+        params = {}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return await self._get(f"/v2/broker-summary/{ticker}/", params=params or None)
+
+    async def get_top_changes(
+        self,
+        classifications: str = "top_gainers",
+        periods: str = "1d",
+        n_stock: int = 5,
+    ) -> dict:
+        """Top gainers/losers. Cost = 1 credit per classification × period pair,
+        so always pass explicit (never omit, which would bill the 2×5 default = 10)."""
+        return await self._get(
+            "/v2/companies/top-changes/",
+            params={"classifications": classifications, "periods": periods, "n_stock": n_stock},
+        )
+
+    async def get_segments(self, ticker: str, financial_year: int | None = None) -> dict:
+        params = {"financial_year": financial_year} if financial_year else None
+        return await self._get(f"/v2/company/get-segments/{ticker}/", params=params)
+
+    async def get_index_daily(self, index_code: str, start: str | None = None, end: str | None = None) -> list:
+        params = {}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        return await self._get(f"/v2/index-daily/{index_code}/", params=params or None)
+
     async def get_filings(self, ticker: str, filing_type: str | None = None) -> dict:
         """Insider-trade filings for a ticker.
 

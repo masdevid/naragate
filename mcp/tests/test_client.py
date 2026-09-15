@@ -87,6 +87,11 @@ def test_low_level_sectors_tools_hit_tool_endpoints():
     client.sectors_quarterly_financials("tlkm", 4)
     client.sectors_daily_transaction("unvr", "2026-01-01", "2026-03-01")
     client.sectors_filings("bbri", "buy")
+    client.sectors_foreign_flow("bbca", "2026-01-01", "2026-03-01")
+    client.sectors_broker_summary("tlkm")
+    client.sectors_top_changes("top_gainers,top_losers", "1d", 10)
+    client.sectors_segments("bbca", 2024)
+    client.sectors_index_daily("ihsg", "2026-01-01", "2026-03-01")
     client.evidence_cache_merge("bbca", "valuation", {"metrics": {"pe": 25}})
     client.llm_complete("classify", role="news")
 
@@ -94,5 +99,14 @@ def test_low_level_sectors_tools_hit_tool_endpoints():
     assert seen["/api/v1/tools/sectors/quarterly-financials"] == {"ticker": "tlkm", "n_quarters": "4"}
     assert seen["/api/v1/tools/sectors/daily-transaction"]["start"] == "2026-01-01"
     assert seen["/api/v1/tools/sectors/filings"] == {"ticker": "bbri", "filing_type": "buy"}
+    assert seen["/api/v1/tools/sectors/foreign-flow"] == {"ticker": "bbca", "start": "2026-01-01", "end": "2026-03-01"}
+    assert seen["/api/v1/tools/sectors/broker-summary"] == {"ticker": "tlkm"}
+    assert seen["/api/v1/tools/sectors/top-changes"] == {
+        "classifications": "top_gainers,top_losers", "periods": "1d", "n_stock": "10",
+    }
+    assert seen["/api/v1/tools/sectors/segments"] == {"ticker": "bbca", "financial_year": "2024"}
+    assert seen["/api/v1/tools/sectors/index-daily"] == {
+        "index_code": "ihsg", "start": "2026-01-01", "end": "2026-03-01",
+    }
     assert "/api/v1/tools/evidence-cache" in seen
     assert "/api/v1/tools/llm-complete" in seen

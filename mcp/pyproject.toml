@@ -1,6 +1,6 @@
 [project]
 name = "naragate-mcp"
-version = "0.3.1"
+version = "0.4.0"
 description = "MCP server exposing the Naragate reality-gap evidence engine to any MCP-capable agent (desktop, CLI, IDE)."
 readme = "README.md"
 requires-python = ">=3.10"

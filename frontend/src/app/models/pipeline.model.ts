@@ -33,6 +33,10 @@ export interface FundamentalEvidence {
   trend: { revenue_trend: string; earnings_trend: string; quarters_analyzed: number };
   evidence_freshness: string;
   cache_hit: boolean;
+  segments?: {
+    financial_year?: number;
+    top_sources: { source: string; value: number; share_pct: number }[];
+  };
 }
 
 export interface MarketEvidence {
@@ -46,6 +50,21 @@ export interface MarketEvidence {
   volatility: number;
   evidence_freshness: string;
   cache_hit: boolean;
+  foreign_flow?: unknown[] | Record<string, unknown>;
+  broker_flow?: Record<string, unknown>;
+  flow_summary?: {
+    foreign_net?: number;
+    foreign_bias?: 'net_inflow' | 'net_outflow' | 'balanced';
+    broker_net?: number;
+    broker_bias?: 'net_buy' | 'net_sell' | 'balanced';
+  };
+  market_movers?: {
+    classification: 'top_gainers' | 'top_losers';
+    period: string;
+    rank: number;
+    price_change?: number;
+  };
+  relative_strength?: { '1d'?: number; '7d'?: number; '30d'?: number };
 }
 
 export interface InsiderFiling {
@@ -84,6 +103,7 @@ export interface EvidenceAssessment {
   direction?: 'above' | 'below' | 'between' | 'neutral';
   evidence_summary: { valuation?: ValuationEvidence; fundamental?: FundamentalEvidence; market?: MarketEvidence };
   contradictions: string[];
+  contradictions_i18n?: { id: string; en: string }[];
   skeptic_challenges: string[];
   evidence_confidence: number;
   applicable_dimensions: string[];

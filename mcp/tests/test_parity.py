@@ -36,6 +36,8 @@ def test_known_low_level_tool_names_present():
     expected = {
         "sectors_company_report", "sectors_subsector_report", "sectors_quarterly_financials",
         "sectors_daily_transaction", "sectors_news", "sectors_corporate_actions", "sectors_filings",
+        "sectors_foreign_flow", "sectors_broker_summary",
+        "sectors_top_changes", "sectors_segments", "sectors_index_daily",
         "evidence_cache_get", "evidence_cache_merge", "llm_complete",
     }
     assert expected <= _declared_tools()

@@ -207,6 +207,36 @@ def sectors_corporate_actions(ticker: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def sectors_foreign_flow(ticker: str, start: str | None = None, end: str | None = None) -> Any:
+    """Sectors v2 foreign investor flow for a ticker (net inflow/outflow)."""
+    return NaragateClient().sectors_foreign_flow(ticker, start, end)
+
+
+@mcp.tool()
+def sectors_broker_summary(ticker: str, start: str | None = None, end: str | None = None) -> dict[str, Any]:
+    """Sectors v2 broker accumulation/distribution summary for a ticker."""
+    return NaragateClient().sectors_broker_summary(ticker, start, end)
+
+
+@mcp.tool()
+def sectors_top_changes(classifications: str = "top_gainers", periods: str = "1d", n_stock: int = 5) -> dict[str, Any]:
+    """Sectors v2 top gainers/losers across the IDX universe (market-wide)."""
+    return NaragateClient().sectors_top_changes(classifications, periods, n_stock)
+
+
+@mcp.tool()
+def sectors_segments(ticker: str, financial_year: int | None = None) -> dict[str, Any]:
+    """Sectors v2 revenue-segment breakdown for a company."""
+    return NaragateClient().sectors_segments(ticker, financial_year)
+
+
+@mcp.tool()
+def sectors_index_daily(index_code: str, start: str | None = None, end: str | None = None) -> list[dict[str, Any]]:
+    """Sectors v2 daily closing prices for an IDX index (e.g. ihsg)."""
+    return NaragateClient().sectors_index_daily(index_code, start, end)
+
+
+@mcp.tool()
 def sectors_filings(ticker: str, filing_type: str | None = None) -> dict[str, Any]:
     """Sectors v2 insider-trade filings for a ticker (filing_type: buy, sell, others)."""
     return NaragateClient().sectors_filings(ticker, filing_type)

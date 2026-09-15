@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from app.core.sectors_client import sectors_client, to_slug
 from app.core.evidence_cache import cache
 from app.core.usage_tracker import record_sectors_cache_hit
 from app.config.settings import settings
+from app.services.policy_signal import daily_epoch_chunks, DAILY_CHUNK_TTL
 from app.models.schemas import (
     Claim, ValuationEvidence, FundamentalEvidence, MarketEvidence
 )
@@ -123,6 +124,37 @@ class ValuationAgent:
 
 
 class FundamentalAgent:
+    @staticmethod
+    def _summarize_segments(data) -> dict | None:
+        """Compact revenue-segment view from `company/get-segments`.
+
+        Documented shape: {financial_year, revenue_breakdown: [{value, source, target}]}.
+        Not every company has segment data (404); that degrades to None.
+        """
+        if not isinstance(data, dict):
+            return None
+        breakdown = data.get("revenue_breakdown")
+        if not isinstance(breakdown, list) or not breakdown:
+            return None
+        totals: dict[str, float] = {}
+        for row in breakdown:
+            if not isinstance(row, dict):
+                continue
+            source, value = row.get("source"), row.get("value")
+            if isinstance(source, str) and isinstance(value, (int, float)):
+                totals[source] = totals.get(source, 0) + value
+        if not totals:
+            return None
+        total = sum(totals.values()) or 1
+        top = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)[:6]
+        return {
+            "financial_year": data.get("financial_year"),
+            "top_sources": [
+                {"source": source, "value": value, "share_pct": round(value / total * 100, 2)}
+                for source, value in top
+            ],
+        }
+
     async def analyze(self, claim: Claim) -> FundamentalEvidence:
         ticker = claim.ticker
 
@@ -145,6 +177,18 @@ class FundamentalAgent:
         else:
             quarterly_data = await sectors_client.get_quarterly_financials(ticker)
             await cache.merge(ticker, "quarterly_financials", quarterly_data)
+
+        segments_raw = None
+        if cached and "segments" in cached:
+            segments_raw = cached["segments"]
+            record_sectors_cache_hit()
+        else:
+            try:
+                segments_raw = await sectors_client.get_segments(ticker)
+            except Exception:
+                segments_raw = None
+            if segments_raw:
+                await cache.merge(ticker, "segments", segments_raw)
 
         metrics = {}
         if company_data and "financials" in company_data:
@@ -194,10 +238,204 @@ class FundamentalAgent:
             trend=trend,
             evidence_freshness=datetime.now().isoformat(),
             cache_hit=cache_hit,
+            segments=self._summarize_segments(segments_raw),
         )
 
 
 class MarketAgent:
+    async def _enrich(self, ticker: str, key: str, cached: dict | None, fetcher, ttl: int):
+        """Cache-first enrichment fetch for the Evidence Graph.
+
+        Reuses the cached section (0 credits) when present; otherwise makes
+        exactly one Sectors call and merges the result. A failed enrichment
+        never fails the market claim — it degrades to no extra context.
+        """
+        if cached and key in cached:
+            record_sectors_cache_hit()
+            return cached[key]
+        try:
+            data = await fetcher()
+        except Exception:
+            return None
+        if data:
+            await cache.merge(ticker, key, data, ttl=ttl)
+        return data
+
+    @staticmethod
+    def _summarize_flows(foreign_flow, broker_flow) -> dict:
+        """Normalize foreign/broker flow into a compact summary.
+
+        Documented shapes (docs.sectors.app/schema.json):
+          foreign-flow:  {symbol, start, end, data: [{date, net_foreign_inflow}]}
+          broker-summary:{symbol, start, end, data: [{date, summary: [{bval, sval, nval, ...}]}]}
+        Alternate/flat shapes are still probed defensively so a schema change
+        degrades to an empty summary rather than a wrong number.
+        """
+        summary: dict = {}
+
+        rows = foreign_flow
+        if isinstance(foreign_flow, dict):
+            rows = foreign_flow.get("data") or foreign_flow.get("results") or foreign_flow.get("flow") or []
+        if isinstance(rows, list):
+            net = 0.0
+            found = False
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                for k in ("net_foreign_inflow", "net_foreign", "foreign_net", "net", "net_buy"):
+                    if isinstance(row.get(k), (int, float)):
+                        net += row[k]
+                        found = True
+                        break
+                else:
+                    buy = row.get("foreign_buy") if isinstance(row.get("foreign_buy"), (int, float)) else row.get("buy")
+                    sell = row.get("foreign_sell") if isinstance(row.get("foreign_sell"), (int, float)) else row.get("sell")
+                    if isinstance(buy, (int, float)) or isinstance(sell, (int, float)):
+                        net += (buy or 0) - (sell or 0)
+                        found = True
+            if found:
+                summary["foreign_net"] = round(net, 2)
+                summary["foreign_bias"] = "net_inflow" if net > 0 else "net_outflow" if net < 0 else "balanced"
+
+        days = broker_flow
+        if isinstance(broker_flow, dict):
+            days = broker_flow.get("data") or broker_flow.get("results") or broker_flow.get("brokers") or []
+        if isinstance(days, list):
+            buy = sell = 0.0
+            found = False
+            for day in days:
+                if not isinstance(day, dict):
+                    continue
+                # Documented shape nests per-broker rows under `summary`.
+                nested = day.get("summary")
+                broker_rows = nested if isinstance(nested, list) else [day]
+                for row in broker_rows:
+                    if not isinstance(row, dict):
+                        continue
+                    b = next((row.get(k) for k in ("bval", "buy_value", "buy") if isinstance(row.get(k), (int, float))), None)
+                    s = next((row.get(k) for k in ("sval", "sell_value", "sell") if isinstance(row.get(k), (int, float))), None)
+                    if isinstance(b, (int, float)):
+                        buy += b
+                        found = True
+                    if isinstance(s, (int, float)):
+                        sell += s
+                        found = True
+            if found:
+                net = buy - sell
+                summary["broker_net"] = round(net, 2)
+                summary["broker_bias"] = "net_buy" if net > 0 else "net_sell" if net < 0 else "balanced"
+
+        return summary
+
+    @staticmethod
+    def _find_in_movers(ticker: str, data) -> dict | None:
+        """Locate the ticker in the top-gainers/losers payload, if present."""
+        if not isinstance(data, dict):
+            return None
+        symbol = ticker.upper()
+        for classification in ("top_gainers", "top_losers"):
+            periods = data.get(classification) or {}
+            if not isinstance(periods, dict):
+                continue
+            for period, rows in periods.items():
+                if not isinstance(rows, list):
+                    continue
+                for i, row in enumerate(rows):
+                    if not isinstance(row, dict):
+                        continue
+                    code = str(row.get("symbol") or "").split(".")[0].upper()
+                    if code == symbol:
+                        return {
+                            "classification": classification,
+                            "period": period,
+                            "rank": i + 1,
+                            "price_change": row.get("price_change"),
+                        }
+        return None
+
+    async def _market_movers(self, ticker: str) -> dict | None:
+        """Daily top-mover membership, cached market-wide (2 credits/day, shared
+        by every claim). A cache miss on a whole day is still 0 per-claim credit
+        once the day's ranking is warm."""
+        day = date.today().isoformat()
+        key = f"top-changes:{day}:1d"
+        data = await cache.get_market(key)
+        if data is None:
+            try:
+                data = await sectors_client.get_top_changes("top_gainers,top_losers", "1d", n_stock=10)
+            except Exception:
+                return None
+            await cache.set_market(key, data, ttl=settings.EVIDENCE_CACHE_TTL_DAILY)
+        else:
+            record_sectors_cache_hit()
+        return self._find_in_movers(ticker, data)
+
+    async def _index_closes(self, index_code: str, start: date, end: date) -> dict | None:
+        """Index closes keyed by date, assembled from the fixed 90-day epoch grid
+        (a re-run reuses cached epochs, so only a new epoch costs a call)."""
+        merged: dict[str, float] = {}
+        for epoch_start, epoch_end, fetch_start, fetch_end in daily_epoch_chunks(start, end):
+            rows = await cache.get_index_chunk(index_code, epoch_start.isoformat())
+            if rows is None:
+                try:
+                    rows = await sectors_client.get_index_daily(
+                        index_code, epoch_start.isoformat(), epoch_end.isoformat()
+                    )
+                except Exception:
+                    return merged or None
+                await cache.set_index_chunk(index_code, epoch_start.isoformat(), rows or [], ttl=DAILY_CHUNK_TTL)
+            else:
+                record_sectors_cache_hit()
+            for row in rows or []:
+                if not isinstance(row, dict):
+                    continue
+                day = str(row.get("date", ""))[:10]
+                price = row.get("price")
+                if day and fetch_start.isoformat() <= day <= fetch_end.isoformat() and isinstance(price, (int, float)):
+                    merged[day] = price
+        return merged or None
+
+    async def _relative_strength(self, tx_data: list, prices: list, index_code: str = "ihsg") -> dict | None:
+        """Stock return minus index return per window — the beta-adjusted move.
+
+        `tx_data` is newest-first and `prices` aligns with it. Returns None when
+        the index series is unavailable, so momentum falls back to the raw move.
+        """
+        if not prices or len(prices) < 2 or not tx_data:
+            return None
+        dates = [str(d.get("date", ""))[:10] for d in tx_data if isinstance(d, dict)]
+        dates = [d for d in dates if d]
+        if len(dates) < 2:
+            return None
+        try:
+            start, end = date.fromisoformat(min(dates)), date.fromisoformat(max(dates))
+        except ValueError:
+            return None
+        closes = await self._index_closes(index_code, start, end)
+        if not closes:
+            return None
+
+        idx_dates = sorted(closes)
+
+        def idx_on_or_before(target: str) -> float | None:
+            prior = [d for d in idx_dates if d <= target]
+            return closes[prior[-1]] if prior else None
+
+        latest_idx = idx_on_or_before(dates[0])
+        if not latest_idx:
+            return None
+        out: dict[str, float] = {}
+        for window in (1, 7, 30):
+            if len(prices) <= window or not prices[window]:
+                continue
+            base_idx = idx_on_or_before(dates[window])
+            if not base_idx:
+                continue
+            stock_ret = (prices[0] - prices[window]) / prices[window] * 100
+            idx_ret = (latest_idx - base_idx) / base_idx * 100
+            out[f"{window}d"] = round(stock_ret - idx_ret, 2)
+        return out or None
+
     async def analyze(self, claim: Claim) -> MarketEvidence:
         ticker = claim.ticker
 
@@ -211,8 +449,26 @@ class MarketAgent:
             await cache.merge(ticker, "daily_transaction", tx_data, ttl=settings.EVIDENCE_CACHE_TTL_DAILY)
             cache_hit = False
 
+        foreign_flow = await self._enrich(
+            ticker, "foreign_flow", cached,
+            lambda: sectors_client.get_foreign_flow(ticker),
+            settings.EVIDENCE_CACHE_TTL_DAILY,
+        )
+        broker_flow = await self._enrich(
+            ticker, "broker_summary", cached,
+            lambda: sectors_client.get_broker_summary(ticker),
+            settings.EVIDENCE_CACHE_TTL_DAILY,
+        )
+        flow_summary = self._summarize_flows(foreign_flow, broker_flow)
+        try:
+            market_movers = await self._market_movers(ticker)
+        except Exception:
+            market_movers = None
+
         performance = {}
         volatility = 0.0
+        prices: list = []
+        relative_strength = None
 
         if tx_data and isinstance(tx_data, list) and len(tx_data) > 0:
             tx_data = list(reversed(tx_data))
@@ -244,6 +500,11 @@ class MarketAgent:
                     variance = sum((r - mean_ret) ** 2 for r in returns) / len(returns)
                     volatility = round(variance ** 0.5 * 100, 4)
 
+            try:
+                relative_strength = await self._relative_strength(tx_data, prices)
+            except Exception:
+                relative_strength = None
+
         return MarketEvidence(
             claim_ticker=ticker,
             category="market",
@@ -251,6 +512,11 @@ class MarketAgent:
             volatility=volatility,
             evidence_freshness=datetime.now().isoformat(),
             cache_hit=cache_hit,
+            foreign_flow=foreign_flow if isinstance(foreign_flow, (list, dict)) else None,
+            broker_flow=broker_flow if isinstance(broker_flow, dict) else None,
+            flow_summary=flow_summary or None,
+            market_movers=market_movers,
+            relative_strength=relative_strength,
         )
 
 

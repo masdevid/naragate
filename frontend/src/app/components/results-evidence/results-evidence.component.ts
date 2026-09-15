@@ -64,6 +64,12 @@ import { TPipe } from '../../pipes/t.pipe';
               <span class="metric__key">{{ 'metric.debt_equity' | t }}</span>
               <span class="metric__val">{{ fmtNumber(fundamental().metrics.debt_to_equity, 2) }}</span>
             </div>
+            @if (fundamental().segments?.top_sources?.length) {
+              <div class="metric">
+                <span class="metric__key">{{ 'metric.top_segment' | t }}</span>
+                <span class="metric__val">{{ fmtPercent(fundamental().segments.top_sources[0].share_pct, 0) }} · {{ fundamental().segments.top_sources[0].source }}</span>
+              </div>
+            }
           </div>
         </app-evidence-card>
       }
@@ -83,6 +89,24 @@ import { TPipe } from '../../pipes/t.pipe';
               <span class="metric__key">{{ 'metric.change_30d' | t }}</span>
               <span class="metric__val" [class]="'metric__val ' + changeClass(market().performance['30d']?.price_change_pct)">{{ fmtPercent(market().performance['30d']?.price_change_pct, 2) }}</span>
             </div>
+            @if (market().relative_strength?.['1d'] != null) {
+              <div class="metric">
+                <span class="metric__key">{{ 'metric.relative_strength' | t }}</span>
+                <span class="metric__val" [class]="'metric__val ' + changeClass(market().relative_strength['1d'])">{{ fmtPercent(market().relative_strength['1d'], 2) }}</span>
+              </div>
+            }
+            @if (market().flow_summary?.foreign_bias) {
+              <div class="metric">
+                <span class="metric__key">{{ 'metric.foreign_flow' | t }}</span>
+                <span class="metric__val" [class]="'metric__val ' + flowClass(market().flow_summary.foreign_bias)">{{ flowLabel(market().flow_summary.foreign_bias) }}</span>
+              </div>
+            }
+            @if (market().flow_summary?.broker_bias) {
+              <div class="metric">
+                <span class="metric__key">{{ 'metric.broker_flow' | t }}</span>
+                <span class="metric__val" [class]="'metric__val ' + flowClass(market().flow_summary.broker_bias)">{{ flowLabel(market().flow_summary.broker_bias) }}</span>
+              </div>
+            }
           </div>
         </app-evidence-card>
       }
@@ -141,5 +165,15 @@ export class ResultsEvidenceComponent {
 
   changeClass(value: number | null | undefined): string {
     return this.format.changeClass(value);
+  }
+
+  flowLabel(bias: string): string {
+    return this.i18n.t(`flow.${bias}`);
+  }
+
+  flowClass(bias: string): string {
+    if (bias === 'net_inflow' || bias === 'net_buy') return 'trend--up';
+    if (bias === 'net_outflow' || bias === 'net_sell') return 'trend--down';
+    return 'trend--flat';
   }
 }

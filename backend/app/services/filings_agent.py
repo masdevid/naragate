@@ -78,14 +78,21 @@ class FilingsAgent:
                 f"{buy_count} pembelian, {sell_count} penjualan. "
                 f"Pola: {recent_bias}."
             )
+            summary_en = (
+                f"{len(filings)} insider transactions: "
+                f"{buy_count} buys, {sell_count} sells. "
+                f"Bias: {recent_bias}."
+            )
         else:
             summary = "Tidak ada data transaksi insider yang tersedia."
+            summary_en = "No insider transaction data available."
 
         return FilingsEvidence(
             claim_ticker=ticker,
             category="insider_trading",
             filings=filings,
             summary=summary,
+            summary_en=summary_en,
             recent_bias=recent_bias,
             evidence_freshness=datetime.now().isoformat(),
             cache_hit=cache_hit,

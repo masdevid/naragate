@@ -352,6 +352,294 @@ class TestMarketAgent:
             assert evidence.volatility == 0.0
 
 
+class TestMarketAgentFlowEnrichment:
+    """Foreign-flow / broker-summary enrichment — cache-first, credit-safe."""
+
+    @pytest.fixture
+    def claim(self):
+        return Claim(
+            ticker="BBCA",
+            category=ClaimCategory.MARKET,
+            assertion="foreign investors are buying",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.7,
+        )
+
+    @pytest.mark.asyncio
+    async def test_cold_cache_fetches_each_enrichment_exactly_once(self, claim):
+        tx_data = [{"close": 9400, "volume": 1000}, {"close": 9500, "volume": 1000}]
+        foreign = [{"date": "2026-01-01", "net_foreign": 1_000_000}]
+        broker = {"results": [{"buy_value": 5_000_000, "sell_value": 3_000_000}]}
+
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_daily_transaction = AsyncMock(return_value=tx_data)
+            mock_sectors.get_foreign_flow = AsyncMock(return_value=foreign)
+            mock_sectors.get_broker_summary = AsyncMock(return_value=broker)
+
+            evidence = await MarketAgent().analyze(claim)
+
+        assert mock_sectors.get_foreign_flow.await_count == 1
+        assert mock_sectors.get_broker_summary.await_count == 1
+        summary = evidence.flow_summary or {}
+        assert summary["foreign_net"] == 1_000_000
+        assert summary["foreign_bias"] == "net_inflow"
+        assert summary["broker_net"] == 2_000_000
+        assert summary["broker_bias"] == "net_buy"
+
+    @pytest.mark.asyncio
+    async def test_warm_cache_spends_zero_sectors_calls(self, claim):
+        cached = {
+            "daily_transaction": [{"close": 9400, "volume": 1000}, {"close": 9500, "volume": 1000}],
+            "foreign_flow": [{"date": "2026-01-01", "net_foreign": -500}],
+            "broker_summary": {"results": [{"buy_value": 1, "sell_value": 2}]},
+        }
+
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors, \
+             patch("app.services.evidence_agents.record_sectors_cache_hit") as hit:
+            mock_cache.get = AsyncMock(return_value=cached)
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_daily_transaction = AsyncMock(side_effect=AssertionError("must not fetch"))
+            mock_sectors.get_foreign_flow = AsyncMock(side_effect=AssertionError("must not fetch"))
+            mock_sectors.get_broker_summary = AsyncMock(side_effect=AssertionError("must not fetch"))
+
+            evidence = await MarketAgent().analyze(claim)
+
+        mock_sectors.get_daily_transaction.assert_not_awaited()
+        mock_sectors.get_foreign_flow.assert_not_awaited()
+        mock_sectors.get_broker_summary.assert_not_awaited()
+        assert hit.call_count == 3  # daily + foreign + broker served from the graph
+        assert evidence.cache_hit is True
+
+    @pytest.mark.asyncio
+    async def test_enrichment_failure_degrades_without_failing_claim(self, claim):
+        tx_data = [{"close": 9400, "volume": 1000}, {"close": 9500, "volume": 1000}]
+
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_daily_transaction = AsyncMock(return_value=tx_data)
+            mock_sectors.get_foreign_flow = AsyncMock(side_effect=Exception("API down"))
+            mock_sectors.get_broker_summary = AsyncMock(side_effect=Exception("API down"))
+
+            evidence = await MarketAgent().analyze(claim)
+
+        assert evidence.claim_ticker == "BBCA"
+        assert evidence.foreign_flow is None
+        assert evidence.broker_flow is None
+        assert evidence.flow_summary is None
+
+    def test_summarize_flows_parses_documented_api_shapes(self):
+        # docs.sectors.app/schema.json shapes
+        foreign = {
+            "symbol": "BBCA.JK", "start": "2025-05-01", "end": "2025-05-05",
+            "data": [
+                {"date": "2025-05-02", "net_foreign_inflow": 200_000_000},
+                {"date": "2025-05-03", "net_foreign_inflow": -50_000_000},
+            ],
+        }
+        broker = {
+            "symbol": "BBCA.JK", "start": "2025-05-01", "end": "2025-05-02",
+            "data": [
+                {"date": "2025-05-02", "summary": [
+                    {"broker_code": "AF", "bval": 48_950_000, "sval": 44_875_000, "nval": 4_075_000},
+                    {"broker_code": "BK", "bval": 10_000_000, "sval": 20_000_000, "nval": -10_000_000},
+                ]},
+            ],
+        }
+
+        summary = MarketAgent._summarize_flows(foreign, broker)
+
+        assert summary["foreign_net"] == 150_000_000
+        assert summary["foreign_bias"] == "net_inflow"
+        assert summary["broker_net"] == -5_925_000
+        assert summary["broker_bias"] == "net_sell"
+
+    def test_summarize_flows_handles_alternate_shapes_and_empty(self):
+        assert MarketAgent._summarize_flows(None, None) == {}
+        assert MarketAgent._summarize_flows([], {"results": []}) == {}
+
+        alt = MarketAgent._summarize_flows(
+            [{"date": "2026-01-01", "foreign_buy": 10, "foreign_sell": 4}],
+            {"data": [{"buy": 3, "sell": 8}]},
+        )
+        assert alt["foreign_net"] == 6
+        assert alt["broker_net"] == -5
+        assert alt["broker_bias"] == "net_sell"
+
+
+class TestMarketAgentMarketWideEnrichment:
+    """Top-movers (market-wide) and index relative-strength enrichment."""
+
+    @pytest.fixture
+    def claim(self):
+        return Claim(
+            ticker="BBCA",
+            category=ClaimCategory.MARKET,
+            assertion="BBCA is a top gainer",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.7,
+        )
+
+    def _patch(self):
+        return patch("app.services.evidence_agents.cache"), patch("app.services.evidence_agents.sectors_client")
+
+    @pytest.mark.asyncio
+    async def test_top_movers_fetched_once_and_cached_market_wide(self, claim):
+        tx = [{"close": 9400, "volume": 1000}, {"close": 9500, "volume": 1000}]
+        movers = {
+            "top_gainers": {"1d": [{"symbol": "BBCA.JK", "price_change": 0.25}]},
+            "top_losers": {"1d": []},
+        }
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_cache.get_market = AsyncMock(return_value=None)  # cold market cache
+            mock_cache.set_market = AsyncMock()
+            mock_sectors.get_daily_transaction = AsyncMock(return_value=tx)
+            mock_sectors.get_foreign_flow = AsyncMock(return_value=None)
+            mock_sectors.get_broker_summary = AsyncMock(return_value=None)
+            mock_sectors.get_top_changes = AsyncMock(return_value=movers)
+
+            evidence = await MarketAgent().analyze(claim)
+
+        mock_sectors.get_top_changes.assert_awaited_once()
+        mock_cache.set_market.assert_awaited_once()
+        assert evidence.market_movers["classification"] == "top_gainers"
+        assert evidence.market_movers["rank"] == 1
+
+    @pytest.mark.asyncio
+    async def test_warm_market_cache_makes_no_top_changes_call(self, claim):
+        tx = [{"close": 9400, "volume": 1000}, {"close": 9500, "volume": 1000}]
+        cached_movers = {"top_gainers": {"1d": [{"symbol": "BBCA.JK", "price_change": 0.25}]}}
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_cache.get_market = AsyncMock(return_value=cached_movers)
+            mock_cache.set_market = AsyncMock()
+            mock_sectors.get_daily_transaction = AsyncMock(return_value=tx)
+            mock_sectors.get_foreign_flow = AsyncMock(return_value=None)
+            mock_sectors.get_broker_summary = AsyncMock(return_value=None)
+            mock_sectors.get_top_changes = AsyncMock(side_effect=AssertionError("must not fetch"))
+
+            evidence = await MarketAgent().analyze(claim)
+
+        mock_sectors.get_top_changes.assert_not_awaited()
+        assert evidence.market_movers["classification"] == "top_gainers"
+
+    @pytest.mark.asyncio
+    async def test_relative_strength_subtracts_index_return(self, claim):
+        # API returns oldest-first; MarketAgent reverses to newest-first.
+        tx = [
+            {"date": "2026-01-01", "close": 100, "volume": 1000},
+            {"date": "2026-01-02", "close": 110, "volume": 1000},
+        ]
+        index_rows = [
+            {"index_code": "IHSG", "date": "2026-01-01", "price": 1000},
+            {"index_code": "IHSG", "date": "2026-01-02", "price": 1050},
+        ]
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_cache.get_market = AsyncMock(return_value={})
+            mock_cache.get_index_chunk = AsyncMock(return_value=None)  # cold index cache
+            mock_cache.set_index_chunk = AsyncMock()
+            mock_sectors.get_daily_transaction = AsyncMock(return_value=tx)
+            mock_sectors.get_foreign_flow = AsyncMock(return_value=None)
+            mock_sectors.get_broker_summary = AsyncMock(return_value=None)
+            mock_sectors.get_top_changes = AsyncMock(return_value={})
+            mock_sectors.get_index_daily = AsyncMock(return_value=index_rows)
+
+            evidence = await MarketAgent().analyze(claim)
+
+        # stock +10% vs index +5% => relative 1d = +5.0
+        assert evidence.relative_strength["1d"] == 5.0
+        mock_sectors.get_index_daily.assert_awaited_once()
+        mock_cache.set_index_chunk.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_index_failure_degrades_without_failing_claim(self, claim):
+        tx = [
+            {"date": "2026-01-01", "close": 100, "volume": 1000},
+            {"date": "2026-01-02", "close": 110, "volume": 1000},
+        ]
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_cache.get_market = AsyncMock(return_value={})
+            mock_cache.get_index_chunk = AsyncMock(return_value=None)
+            mock_cache.set_index_chunk = AsyncMock()
+            mock_sectors.get_daily_transaction = AsyncMock(return_value=tx)
+            mock_sectors.get_foreign_flow = AsyncMock(return_value=None)
+            mock_sectors.get_broker_summary = AsyncMock(return_value=None)
+            mock_sectors.get_top_changes = AsyncMock(return_value={})
+            mock_sectors.get_index_daily = AsyncMock(side_effect=Exception("index down"))
+
+            evidence = await MarketAgent().analyze(claim)
+
+        assert evidence.relative_strength is None
+        assert evidence.performance["1d"]["price_change_pct"] == 10.0
+
+
+class TestFundamentalSegmentEnrichment:
+    @pytest.fixture
+    def claim(self):
+        return Claim(
+            ticker="BBCA",
+            category=ClaimCategory.FUNDAMENTAL,
+            assertion="segmen kredit tumbuh",
+            direction=ClaimDirection.ABOVE,
+            confidence=0.8,
+        )
+
+    @pytest.mark.asyncio
+    async def test_includes_segment_summary(self, claim):
+        segments = {
+            "symbol": "BBCA.JK",
+            "financial_year": 2024,
+            "revenue_breakdown": [
+                {"value": 60, "source": "Loans", "target": "Interest Income"},
+                {"value": 40, "source": "Fees", "target": "Fee Income"},
+            ],
+        }
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_company_report = AsyncMock(return_value={})
+            mock_sectors.get_quarterly_financials = AsyncMock(return_value=[])
+            mock_sectors.get_segments = AsyncMock(return_value=segments)
+
+            evidence = await FundamentalAgent().analyze(claim)
+
+        mock_sectors.get_segments.assert_awaited_once()
+        assert evidence.segments["financial_year"] == 2024
+        assert evidence.segments["top_sources"][0]["source"] == "Loans"
+        assert evidence.segments["top_sources"][0]["share_pct"] == 60.0
+
+    @pytest.mark.asyncio
+    async def test_segments_absent_or_failing_degrades_to_none(self, claim):
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors:
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_sectors.get_company_report = AsyncMock(return_value={})
+            mock_sectors.get_quarterly_financials = AsyncMock(return_value=[])
+            mock_sectors.get_segments = AsyncMock(side_effect=Exception("404"))
+
+            evidence = await FundamentalAgent().analyze(claim)
+
+        assert evidence.segments is None
+
+
 class TestGetEvidenceForClaim:
     """Tests for the evidence routing function."""
 

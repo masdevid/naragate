@@ -80,6 +80,96 @@ class TestGetFilings:
                 await client.get_filings("ZZZZ")
 
 
+class TestForeignFlow:
+    """Tests for SectorsClient.get_foreign_flow (high-value market enrichment)."""
+
+    @pytest.mark.asyncio
+    async def test_calls_correct_endpoint_without_dates(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = []
+            await client.get_foreign_flow("BBCA")
+            mock_get.assert_called_once_with("/v2/foreign-flow/BBCA/", params=None)
+
+    @pytest.mark.asyncio
+    async def test_forwards_date_window(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = []
+            await client.get_foreign_flow("BBCA", start="2026-01-01", end="2026-03-01")
+            mock_get.assert_called_once_with(
+                "/v2/foreign-flow/BBCA/",
+                params={"start": "2026-01-01", "end": "2026-03-01"},
+            )
+
+
+class TestBrokerSummary:
+    """Tests for SectorsClient.get_broker_summary (high-value market enrichment)."""
+
+    @pytest.mark.asyncio
+    async def test_calls_correct_endpoint_without_dates(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {"results": []}
+            await client.get_broker_summary("BBCA")
+            mock_get.assert_called_once_with("/v2/broker-summary/BBCA/", params=None)
+
+    @pytest.mark.asyncio
+    async def test_forwards_date_window(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {"results": []}
+            await client.get_broker_summary("BBCA", start="2026-01-01")
+            mock_get.assert_called_once_with(
+                "/v2/broker-summary/BBCA/",
+                params={"start": "2026-01-01"},
+            )
+
+
+class TestTopChanges:
+    """Tests for SectorsClient.get_top_changes (market-wide movers)."""
+
+    @pytest.mark.asyncio
+    async def test_passes_explicit_classification_and_period(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {}
+            await client.get_top_changes("top_gainers,top_losers", "1d", n_stock=10)
+            mock_get.assert_called_once_with(
+                "/v2/companies/top-changes/",
+                params={"classifications": "top_gainers,top_losers", "periods": "1d", "n_stock": 10},
+            )
+
+
+class TestSegments:
+    """Tests for SectorsClient.get_segments."""
+
+    @pytest.mark.asyncio
+    async def test_calls_correct_endpoint_without_year(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {}
+            await client.get_segments("BBCA")
+            mock_get.assert_called_once_with("/v2/company/get-segments/BBCA/", params=None)
+
+    @pytest.mark.asyncio
+    async def test_forwards_financial_year(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = {}
+            await client.get_segments("BBCA", financial_year=2024)
+            mock_get.assert_called_once_with(
+                "/v2/company/get-segments/BBCA/", params={"financial_year": 2024}
+            )
+
+
+class TestIndexDaily:
+    """Tests for SectorsClient.get_index_daily."""
+
+    @pytest.mark.asyncio
+    async def test_calls_correct_endpoint(self, client):
+        with patch.object(client, "_get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = []
+            await client.get_index_daily("ihsg", "2026-01-01", "2026-03-01")
+            mock_get.assert_called_once_with(
+                "/v2/index-daily/ihsg/",
+                params={"start": "2026-01-01", "end": "2026-03-01"},
+            )
+
+
 class TestValidateTicker:
     """Tests for ticker format validation (free, no API call)."""
 

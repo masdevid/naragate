@@ -62,6 +62,9 @@ class TestFilingsAgent:
             assert len(evidence.filings) == 2
             assert evidence.filings[0]["insider_name"] == "Budi Santoso"
             assert evidence.filings[1]["transaction_type"] == "buy"
+            # bilingual summary so the EN result page never shows Indonesian
+            assert "2 insider transactions" in (evidence.summary_en or "")
+            assert "transaksi insider" in evidence.summary
 
     @pytest.mark.asyncio
     async def test_computes_net_selling_bias(self, claim):

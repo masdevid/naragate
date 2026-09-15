@@ -13,6 +13,13 @@ tools:
       n_quarters: number
     returns: QuarterlyFinancials[]
 
+  - name: sectors_segments
+    description: Fetch the revenue-segment breakdown for a company from Sectors v2 API
+    parameters:
+      ticker: string
+      financial_year: number
+    returns: RevenueSegments
+
   - name: evidence_cache_get
     description: Read the full Evidence Graph for a ticker from the cache
     parameters:

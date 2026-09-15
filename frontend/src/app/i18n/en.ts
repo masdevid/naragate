@@ -338,6 +338,15 @@ export default {
   'metric.change_1d': '1D Change',
   'metric.change_7d': '7D Change',
   'metric.change_30d': '30D Change',
+  'metric.foreign_flow': 'Foreign Flow',
+  'metric.broker_flow': 'Broker Flow',
+  'metric.relative_strength': 'Relative vs IHSG',
+  'metric.top_segment': 'Top Segment',
+  'flow.net_inflow': 'Net Inflow',
+  'flow.net_outflow': 'Net Outflow',
+  'flow.net_buy': 'Net Buy',
+  'flow.net_sell': 'Net Sell',
+  'flow.balanced': 'Balanced',
 
   // Verdicts
   'verdict.contradicted': 'Contradicted',
