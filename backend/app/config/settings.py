@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     SECTORS_OAUTH_CLIENT_ID: str = Field(default="", validation_alias="SECTORS_OAUTH_CLIENT_ID")
     SECTORS_OAUTH_CLIENT_SECRET: str = Field(default="", validation_alias="SECTORS_OAUTH_CLIENT_SECRET")
     SECTORS_OAUTH_REFRESH_TOKEN: str = Field(default="", validation_alias="SECTORS_OAUTH_REFRESH_TOKEN")
+    # Account email/password: POST /auth/token/ mints fresh access/refresh
+    # tokens directly (no client_id), so the account view self-heals.
+    SECTORS_ACCOUNT_EMAIL: str = Field(default="", validation_alias="SECTORS_ACCOUNT_EMAIL")
+    SECTORS_ACCOUNT_PASSWORD: str = Field(default="", validation_alias="SECTORS_ACCOUNT_PASSWORD")
 
     # LLM Provider (OpenAI-compatible)
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", validation_alias="OLLAMA_BASE_URL")

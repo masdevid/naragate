@@ -109,6 +109,23 @@ def sectors_key_for_ip(data: dict, ip: str) -> str:
     return ""
 
 
+def sectors_oauth_tokens() -> dict:
+    """Resolve Sectors first-party OAuth tokens.
+
+    Runtime settings (set via the Settings UI) take precedence over env, so a
+    pasted token updates immediately without a redeploy.
+    """
+    data = _migrate_runtime(_load_runtime())
+    return {
+        "access_token": data.get("sectors_oauth_access_token") or settings.SECTORS_OAUTH_ACCESS_TOKEN,
+        "refresh_token": data.get("sectors_oauth_refresh_token") or settings.SECTORS_OAUTH_REFRESH_TOKEN,
+        "client_id": data.get("sectors_oauth_client_id") or settings.SECTORS_OAUTH_CLIENT_ID,
+        "client_secret": data.get("sectors_oauth_client_secret") or settings.SECTORS_OAUTH_CLIENT_SECRET,
+        "email": data.get("sectors_oauth_email") or settings.SECTORS_ACCOUNT_EMAIL,
+        "password": data.get("sectors_oauth_password") or settings.SECTORS_ACCOUNT_PASSWORD,
+    }
+
+
 def sectors_api_key() -> str:
     """Resolve the Sectors API key for the current request's client IP.
 

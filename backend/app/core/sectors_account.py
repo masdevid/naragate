@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from app.config.settings import settings
+from app.core.sectors_config import sectors_oauth_tokens
 
 BASE = "https://api.sectors.app"
 USER_AGENT = (
@@ -54,13 +54,43 @@ def _headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}
 
 
-async def _refresh_access_token(client: httpx.AsyncClient) -> str | None:
-    client_id = settings.SECTORS_OAUTH_CLIENT_ID.strip()
-    refresh = settings.SECTORS_OAUTH_REFRESH_TOKEN.strip()
+def _tokens() -> dict:
+    """Runtime-settings-first OAuth tokens (env fallback)."""
+    return sectors_oauth_tokens()
+
+
+async def _login_access_token(client: httpx.AsyncClient) -> str | None:
+    """Mint an access token via POST /auth/token/ (email + password).
+
+    This is the dashboard's own login: it needs no client_id and returns
+    `{refresh, access}`, so it is the durable renewal path.
+    """
+    tokens = _tokens()
+    email = (tokens.get("email") or "").strip()
+    password = tokens.get("password") or ""
+    if not email or not password:
+        return None
+    try:
+        resp = await client.post(
+            f"{BASE}/auth/token/",
+            json={"email": email, "password": password},
+            headers={"User-Agent": USER_AGENT},
+        )
+        resp.raise_for_status()
+        return resp.json().get("access")
+    except Exception:  # noqa: BLE001 — best-effort; caller degrades
+        return None
+
+
+async def _refresh_grant_token(client: httpx.AsyncClient) -> str | None:
+    """OAuth refresh_token grant (needs a registered client_id)."""
+    tokens = _tokens()
+    client_id = (tokens.get("client_id") or "").strip()
+    refresh = (tokens.get("refresh_token") or "").strip()
     if not client_id or not refresh:
         return None
     data = {"grant_type": "refresh_token", "refresh_token": refresh, "client_id": client_id}
-    secret = settings.SECTORS_OAUTH_CLIENT_SECRET.strip()
+    secret = (tokens.get("client_secret") or "").strip()
     if secret:
         data["client_secret"] = secret
     try:
@@ -69,8 +99,13 @@ async def _refresh_access_token(client: httpx.AsyncClient) -> str | None:
         )
         resp.raise_for_status()
         return resp.json().get("access_token")
-    except Exception:  # noqa: BLE001 — best-effort; caller degrades
+    except Exception:  # noqa: BLE001
         return None
+
+
+async def _renew_access_token(client: httpx.AsyncClient) -> str | None:
+    """Best-effort renewal: email/password login first, then refresh grant."""
+    return await _login_access_token(client) or await _refresh_grant_token(client)
 
 
 def _sum(daily: dict) -> int:
@@ -114,15 +149,17 @@ async def fetch_account_snapshot(
     owns_client = client is None
     client = client or httpx.AsyncClient(timeout=15.0, follow_redirects=True)
     try:
-        token = settings.SECTORS_OAUTH_ACCESS_TOKEN.strip()
+        tokens = _tokens()
+        token = (tokens.get("access_token") or "").strip()
         if not _unexpired(token):  # covers absent, malformed, and expired
-            refreshed = await _refresh_access_token(client)
-            if refreshed and _unexpired(refreshed):
-                token = refreshed
+            renewed = await _renew_access_token(client)
+            if renewed and _unexpired(renewed):
+                token = renewed
         if not _unexpired(token):
             any_configured = bool(
-                settings.SECTORS_OAUTH_ACCESS_TOKEN.strip()
-                or settings.SECTORS_OAUTH_REFRESH_TOKEN.strip()
+                (tokens.get("access_token") or "").strip()
+                or (tokens.get("refresh_token") or "").strip()
+                or ((tokens.get("email") or "").strip() and tokens.get("password"))
             )
             result = {
                 "configured": any_configured,

@@ -44,6 +44,21 @@ refresh programmatically.
 
 `user_id` comes from the access-token JWT payload.
 
+## Renewal: `POST /auth/token/` (no client_id needed)
+
+The dashboard's own login mints tokens directly:
+
+```bash
+curl -s https://api.sectors.app/auth/token/ -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"…"}'
+# => {"refresh":"eyJ…","access":"eyJ…"}
+```
+
+This bypasses the whole OAuth client problem (no `client_id`, no browser). The
+backend uses `SECTORS_ACCOUNT_EMAIL` / `SECTORS_ACCOUNT_PASSWORD` to renew
+automatically when the access token expires, so no manual capture is required.
+A `username` field is rejected (`"email" is required`).
+
 ## Configure
 
 Put the captured values in the repo `.env` (git-ignored):

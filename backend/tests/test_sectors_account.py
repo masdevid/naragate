@@ -8,7 +8,6 @@ cheap and credit-safe.
 import base64
 import json
 import time
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import httpx
@@ -62,15 +61,10 @@ def _reset():
     sectors_account.reset_cache()
 
 
-def _settings(**kw) -> SimpleNamespace:
-    base = dict(
-        SECTORS_OAUTH_ACCESS_TOKEN="",
-        SECTORS_OAUTH_CLIENT_ID="",
-        SECTORS_OAUTH_CLIENT_SECRET="",
-        SECTORS_OAUTH_REFRESH_TOKEN="",
-    )
+def _tokens(**kw) -> dict:
+    base = dict(access_token="", refresh_token="", client_id="", client_secret="", email="", password="")
     base.update(kw)
-    return SimpleNamespace(**base)
+    return base
 
 
 def _client(handler, calls: list) -> httpx.AsyncClient:
@@ -82,7 +76,7 @@ def _client(handler, calls: list) -> httpx.AsyncClient:
 
 @pytest.mark.asyncio
 async def test_no_token_is_not_configured(monkeypatch):
-    monkeypatch.setattr(sectors_account, "settings", _settings())
+    monkeypatch.setattr(sectors_account, "_tokens", _tokens)
     snapshot = await sectors_account.fetch_account_snapshot()
     assert snapshot["configured"] is False
     assert snapshot["ok"] is False
@@ -91,7 +85,7 @@ async def test_no_token_is_not_configured(monkeypatch):
 @pytest.mark.asyncio
 async def test_fetches_profile_and_usage_with_bearer(monkeypatch):
     token = _jwt({"user_id": 6915, "exp": _future()})
-    monkeypatch.setattr(sectors_account, "settings", _settings(SECTORS_OAUTH_ACCESS_TOKEN=token))
+    monkeypatch.setattr(sectors_account, "_tokens", lambda: _tokens(access_token=token))
     calls: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -117,7 +111,7 @@ async def test_fetches_profile_and_usage_with_bearer(monkeypatch):
 @pytest.mark.asyncio
 async def test_snapshot_is_cached(monkeypatch):
     token = _jwt({"user_id": 6915, "exp": _future()})
-    monkeypatch.setattr(sectors_account, "settings", _settings(SECTORS_OAUTH_ACCESS_TOKEN=token))
+    monkeypatch.setattr(sectors_account, "_tokens", lambda: _tokens(access_token=token))
     calls: list[str] = []
     handler = lambda r: httpx.Response(200, json=PROFILE_BODY if "users" in r.url.path else USAGE_BODY)
 
@@ -130,7 +124,7 @@ async def test_snapshot_is_cached(monkeypatch):
 @pytest.mark.asyncio
 async def test_usage_error_degrades(monkeypatch):
     token = _jwt({"user_id": 6915, "exp": _future()})
-    monkeypatch.setattr(sectors_account, "settings", _settings(SECTORS_OAUTH_ACCESS_TOKEN=token))
+    monkeypatch.setattr(sectors_account, "_tokens", lambda: _tokens(access_token=token))
     calls: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -147,7 +141,7 @@ async def test_usage_error_degrades(monkeypatch):
 @pytest.mark.asyncio
 async def test_expired_token_without_refresh_is_unavailable(monkeypatch):
     token = _jwt({"user_id": 6915, "exp": _future(-3600)})
-    monkeypatch.setattr(sectors_account, "settings", _settings(SECTORS_OAUTH_ACCESS_TOKEN=token))
+    monkeypatch.setattr(sectors_account, "_tokens", lambda: _tokens(access_token=token))
     calls: list[str] = []
 
     snapshot = await sectors_account.fetch_account_snapshot(_client(lambda r: httpx.Response(200), calls))
@@ -175,11 +169,36 @@ async def test_usage_endpoint_fetches_and_records_account(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_email_password_login_mints_when_access_expired(monkeypatch):
+    monkeypatch.setattr(sectors_account, "_tokens", lambda: _tokens(
+        access_token=_jwt({"user_id": 6915, "exp": _future(-10)}),
+        email="devid.wahid@gmail.com",
+        password="secret",
+    ))
+    calls: list[str] = []
+    new_token = _jwt({"user_id": 6915, "exp": _future()})
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/auth/token/":
+            return httpx.Response(200, json={"refresh": "r", "access": new_token})
+        if request.url.path == "/auth/users/6915/":
+            return httpx.Response(200, json=PROFILE_BODY)
+        if request.url.path == "/api/usage/":
+            return httpx.Response(200, json=USAGE_BODY)
+        return httpx.Response(404, json={})
+
+    snapshot = await sectors_account.fetch_account_snapshot(_client(handler, calls))
+
+    assert snapshot["ok"] is True
+    assert calls[0] == "/auth/token/"  # email/password login used, no client_id needed
+
+
+@pytest.mark.asyncio
 async def test_refresh_token_exchanges_when_access_expired(monkeypatch):
-    monkeypatch.setattr(sectors_account, "settings", _settings(
-        SECTORS_OAUTH_ACCESS_TOKEN=_jwt({"user_id": 6915, "exp": _future(-10)}),
-        SECTORS_OAUTH_CLIENT_ID="client-abc",
-        SECTORS_OAUTH_REFRESH_TOKEN="refresh-xyz",
+    monkeypatch.setattr(sectors_account, "_tokens", lambda: _tokens(
+        access_token=_jwt({"user_id": 6915, "exp": _future(-10)}),
+        client_id="client-abc",
+        refresh_token="refresh-xyz",
     ))
     calls: list[str] = []
     new_token = _jwt({"user_id": 6915, "exp": _future()})
