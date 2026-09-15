@@ -69,25 +69,10 @@ SECTORS_OAUTH_CLIENT_SECRET=<only if the client is confidential>
 SECTORS_OAUTH_REFRESH_TOKEN=<refresh_token>
 ```
 
-## Fetch
+## View
 
-```
-python3 references/sectors_usage.py
-```
-
-The script uses `SECTORS_OAUTH_ACCESS_TOKEN` directly while it is unexpired, and
-otherwise refreshes it from the refresh token, then prints `/api/usage/`. The
-usage payload includes the running success/error counts plus `credits`,
-`promo_credits`, and their expiry. (`/api/credits/` is POST-only.) Refresh
-tokens often rotate — if the response includes a new `refresh_token`, update
-`.env`.
-
-Raw equivalent:
-
-```bash
-source /dev/stdin <<< "$(grep -E '^SECTORS_OAUTH_' .env | sed 's/^/export /')"
-ACCESS=$(curl -s https://api.sectors.app/oauth/token/ \
-  -d grant_type=refresh_token -d "refresh_token=$SECTORS_OAUTH_REFRESH_TOKEN" \
-  -d "client_id=$SECTORS_OAUTH_CLIENT_ID" | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
-curl -s https://api.sectors.app/api/usage/ -H "Authorization: Bearer $ACCESS"
-```
+No manual script is needed. The backend fetches this automatically
+(`app/core/sectors_account.py`), caches it ~5 minutes, and exposes it at
+`GET /api/v1/usage` — shown on the **Usage** page. The payload includes the
+period's success/error call counts plus `credits`, `promo_credits`, and their
+expiries.
