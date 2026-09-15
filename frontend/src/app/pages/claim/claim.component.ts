@@ -215,6 +215,45 @@ export class ClaimComponent implements OnInit, OnDestroy {
   private terminalEvent = false;
   private pipelineStart = 0;
 
+  // Map the pipeline's granular events onto the five agent stages so the flow
+  // graph shows the stage that is genuinely active, not the last raw event.
+  private static readonly STAGE_ORDER = [
+    'claim_parsing',
+    'evidence_fetching',
+    'skeptic_analysis',
+    'judge_assessment',
+    'score_computing',
+  ];
+
+  private static readonly STAGE_BY_EVENT: Record<string, string> = {
+    pipeline_started: 'claim_parsing',
+    claim_parsing: 'claim_parsing',
+    claim_parsed: 'claim_parsing',
+    policy_sector_resolved: 'evidence_fetching',
+    evidence_fetching: 'evidence_fetching',
+    sector_evidence_ready: 'evidence_fetching',
+    evidence_ready: 'evidence_fetching',
+    skeptic_analysis: 'skeptic_analysis',
+    skeptic_ready: 'skeptic_analysis',
+    judge_assessment: 'judge_assessment',
+    assessment_ready: 'judge_assessment',
+    score_computing: 'score_computing',
+    score_computed: 'score_computing',
+  };
+
+  // Events that mean the stage finished — only these move a stage to completed.
+  // "Starting" events (claim_parsing, evidence_fetching, policy_sector_resolved,
+  // ...) must keep their stage active, otherwise the animation marks it done
+  // before work begins.
+  private static readonly COMPLETION_EVENTS = new Set([
+    'claim_parsed',
+    'sector_evidence_ready',
+    'evidence_ready',
+    'skeptic_ready',
+    'assessment_ready',
+    'score_computed',
+  ]);
+
   ngOnInit() {
     this.sub = this.route.queryParams.subscribe(params => {
       this.narrative.set(params['narrative'] || '');
@@ -261,10 +300,7 @@ export class ClaimComponent implements OnInit, OnDestroy {
         }
         this.currentEvent.set(event);
         this.claimId.set(event.data?.claim_id || event.claim_id);
-        if (!this.completedSteps().includes(event.event_type) && event.event_type !== 'pipeline_started') {
-          this.completedSteps.update(steps => [...steps, event.event_type]);
-        }
-        this.currentStep.set(event.event_type);
+        this.applyStage(event.event_type);
         if (event.event_type === 'pipeline_complete') {
           this.navigateToResults();
         }
@@ -290,6 +326,21 @@ export class ClaimComponent implements OnInit, OnDestroy {
     const next = current + delta;
     this.thinkingMap.set(agent, next);
     this.thinking.set({ agent, text: next });
+  }
+
+  private applyStage(eventType: string): void {
+    const stage = ClaimComponent.STAGE_BY_EVENT[eventType];
+    if (!stage) return;
+
+    if (ClaimComponent.COMPLETION_EVENTS.has(eventType)) {
+      this.completedSteps.update(steps => steps.includes(stage) ? steps : [...steps, stage]);
+      // Advance the active highlight to the next unfinished stage so the flow
+      // keeps moving even while the stream idles between events.
+      const next = ClaimComponent.STAGE_ORDER.find(s => !this.completedSteps().includes(s));
+      this.currentStep.set(next ?? stage);
+    } else {
+      this.currentStep.set(stage);
+    }
   }
 
   private navigateToResults() {
