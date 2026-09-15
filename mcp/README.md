@@ -32,13 +32,12 @@ asserting the MCP package never references the Sectors API.
 ## Install
 
 ```bash
-# from a checkout
-pip install -e mcp
-
-# or, once published
-uvx naragate-mcp
+uvx naragate-mcp           # run without installing (recommended)
+pip install naragate-mcp   # or install into your environment
 pipx install naragate-mcp
 ```
+
+From a checkout: `pip install -e mcp`.
 
 Point it at your backend (default `http://127.0.0.1:5678`):
 
@@ -168,9 +167,29 @@ python -m pytest -q
 Covers the REST client (mock transport), the tool surface, compact-report shaping, and the
 credit-safety guarantee. No live backend or Sectors access required.
 
+## Publishing
+
+Releases publish automatically via [`.github/workflows/publish-mcp.yml`](https://github.com/masdevid/naragate/blob/master/.github/workflows/publish-mcp.yml)
+when a GitHub release is published (using the `PYPI_TOKEN` repository secret), or locally:
+
+```bash
+mcp/publish.sh              # PyPI
+mcp/publish.sh testpypi     # TestPyPI
+```
+
+`publish.sh` reads `PYPI_TOKEN` from the environment or the repo-root `.env`, builds with
+`python -m build`, validates with `twine check`, and uploads — the token is never echoed. Manual
+equivalent:
+
+```bash
+python -m build
+python -m twine check dist/*
+TWINE_USERNAME=__token__ TWINE_PASSWORD="$PYPI_TOKEN" python -m twine upload dist/*
+```
+
 ## Related
 
-- [`../README.md`](../README.md) — project overview and the "Use Naragate from any MCP agent" section
-- [`../skills/README.md`](../skills/README.md) — the 13 skills whose `tools.yaml` this server satisfies
-- [`../agents/README.md`](../agents/README.md) — optional subagent topology for harnesses that support it
-- `tests/test_parity.py` — enforces that every `skills/*/tools.yaml` tool is exposed here
+- [Naragate README](https://github.com/masdevid/naragate#readme) — project overview and the "Use Naragate from any MCP agent" section
+- [Skills](https://github.com/masdevid/naragate/blob/master/skills/README.md) — the 13 skills whose `tools.yaml` this server satisfies
+- [Agents](https://github.com/masdevid/naragate/blob/master/agents/README.md) — optional subagent topology for harnesses that support it
+- [Parity test](https://github.com/masdevid/naragate/blob/master/mcp/tests/test_parity.py) — enforces that every `skills/*/tools.yaml` tool is exposed here

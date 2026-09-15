@@ -221,8 +221,9 @@ Every surface goes through the **same backend pipeline, Evidence Graph cache, an
 ### Install & run
 
 ```bash
+pip install naragate-mcp                        # from PyPI
 pip install -e mcp                              # from a checkout
-# or: uvx naragate-mcp / pipx install naragate-mcp
+# or run without installing: uvx naragate-mcp
 export NARAGATE_BACKEND_URL="http://127.0.0.1:5678"
 naragate-mcp                                    # stdio transport
 ```

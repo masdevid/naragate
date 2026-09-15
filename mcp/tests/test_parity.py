@@ -6,6 +6,8 @@ the web backend's evidence agents.
 import re
 from pathlib import Path
 
+import pytest
+
 from naragate_mcp import server
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +22,7 @@ def _declared_tools() -> set[str]:
     return names
 
 
+@pytest.mark.skipif(not SKILLS_DIR.is_dir(), reason="skills/ not present (running from an installed sdist)")
 async def test_every_declared_skill_tool_is_exposed_by_the_mcp_server():
     declared = _declared_tools()
     assert declared, f"no tools.yaml declarations found under {SKILLS_DIR}"
@@ -28,6 +31,7 @@ async def test_every_declared_skill_tool_is_exposed_by_the_mcp_server():
     assert not missing, f"MCP server is missing tools declared in tools.yaml: {sorted(missing)}"
 
 
+@pytest.mark.skipif(not SKILLS_DIR.is_dir(), reason="skills/ not present (running from an installed sdist)")
 def test_known_low_level_tool_names_present():
     expected = {
         "sectors_company_report", "sectors_subsector_report", "sectors_quarterly_financials",
