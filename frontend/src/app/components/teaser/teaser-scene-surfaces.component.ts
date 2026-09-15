@@ -22,11 +22,14 @@ import { Component } from '@angular/core';
         <div class="win">
           <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">repository</span></div>
           <div class="body">
+            <img class="body__cover" src="assets/result-screenshot.png" alt="" aria-hidden="true">
+            <div class="body__content">
             <div class="repo-path">github.com/<b>masdevid/naragate</b></div>
             <div class="bundle-item bi1"><span class="ic">&#128268;</span><span class="tx"><b>mcp/</b><span>MCP server &mdash; 19 tools siap pakai</span></span></div>
             <div class="bundle-item bi2"><span class="ic">&#128218;</span><span class="tx"><b>skills/</b><span>Skills package untuk agent apa pun</span></span></div>
             <div class="bundle-item bi3"><span class="ic">&#129302;</span><span class="tx"><b>agents/</b><span>Agent definitions siap deploy</span></span></div>
             <div class="repo-note">Satu <b>clone</b>, tiga cara pakai.</div>
+            </div>
           </div>
         </div>
         <div class="pane-label">Bundle MCP &middot; Skills &middot; Agents &mdash; satu repository</div>
@@ -65,7 +68,14 @@ import { Component } from '@angular/core';
     /* Real product screenshot (the image already contains its own browser chrome) */
     .win .shot { display: block; width: 100%; }
 
-    .body { padding: 20px; }
+    /* repository window body: screenshot as the cover background */
+    .body { position: relative; padding: 20px; overflow: hidden; }
+    .body__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+    .body::after {
+      content: ""; position: absolute; inset: 0; z-index: 1;
+      background: linear-gradient(180deg, rgba(20,26,38,.88), rgba(11,14,23,.94));
+    }
+    .body__content { position: relative; z-index: 2; }
     .repo-path { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
     .repo-path b { color: var(--text-primary); font-weight: 600; }
     .bundle-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--bg-deep); border: 1px solid var(--line); margin-bottom: 10px; opacity: 0; transform: translateX(10px); animation: suItemIn .4s ease-out forwards; }

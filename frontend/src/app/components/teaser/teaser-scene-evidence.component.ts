@@ -9,7 +9,8 @@ import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 
       <div class="hero">
         <span class="wordmark"><span class="nara">NARA</span><span class="gate">GATE</span></span>
-        <span class="tagline">Mesin Pemeriksa Fakta Keuangan</span>
+        <span class="tagline">Agent dan Asisten Pemeriksa Fakta Keuangan</span>
+        <span class="tagline tagline--2">Jembatan Navigasi Finansial di Era Narasi Palsu</span>
       </div>
 
       <div class="badge"><span class="wordmark"><span class="nara">NARA</span><span class="gate">GATE</span></span></div>
@@ -61,7 +62,8 @@ import { Component, OnDestroy, OnInit, signal } from '@angular/core';
       animation-delay: .15s, 2.15s;
     }
     .hero .wordmark { font-size: 64px; }
-    .hero .tagline { font-family: var(--font-display); font-weight: 500; font-size: 22px; color: var(--text-muted); }
+    .hero .tagline { font-family: var(--font-display); font-weight: 500; font-size: 22px; color: var(--text-primary); }
+    .hero .tagline--2 { font-size: 18px; color: var(--text-muted); }
     @keyframes evHeroIn { to { opacity: 1; } }
     @keyframes evHeroOut { to { opacity: 0; visibility: hidden; } }
 
