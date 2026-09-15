@@ -21,10 +21,55 @@ import { TPipe } from '../../pipes/t.pipe';
         } @else if (error()) {
           <p class="usage__status usage__status--err">{{ error() }}</p>
         } @else if (usage()) {
+          <!-- Sectors account (authoritative, from /api/usage/) -->
+          <section class="usage__card">
+            <div class="usage__card-head">
+              <h2 class="usage__card-title">{{ 'usage.section_account' | t }}</h2>
+              @if (usage()!.sectors_account?.subscription_tier) {
+                <span class="usage__card-model">{{ usage()!.sectors_account!.subscription_tier }}</span>
+              }
+            </div>
+            @if (usage()!.sectors_account?.ok) {
+              <div class="usage__stats">
+                <div class="usage__stat">
+                  <span class="usage__stat-key">{{ 'usage.account_credits' | t }}</span>
+                  <span class="usage__stat-val">{{ fmt(usage()!.sectors_account!.credits ?? 0) }}</span>
+                </div>
+                <div class="usage__stat">
+                  <span class="usage__stat-key">{{ 'usage.account_promo' | t }}</span>
+                  <span class="usage__stat-val">{{ fmt(usage()!.sectors_account!.promo_credits ?? 0) }}</span>
+                </div>
+                <div class="usage__stat">
+                  <span class="usage__stat-key">{{ 'usage.account_success' | t }}</span>
+                  <span class="usage__stat-val usage__stat-val--ok">{{ fmt(usage()!.sectors_account!.period?.success ?? 0) }}</span>
+                </div>
+                <div class="usage__stat">
+                  <span class="usage__stat-key">{{ 'usage.account_error' | t }}</span>
+                  <span class="usage__stat-val usage__stat-val--err">{{ fmt(usage()!.sectors_account!.period?.error ?? 0) }}</span>
+                </div>
+                <div class="usage__stat">
+                  <span class="usage__stat-key">{{ 'usage.account_spent' | t }}</span>
+                  <span class="usage__stat-val">{{ fmt(usage()!.sectors_account!.credits_spent_observed ?? 0) }}</span>
+                </div>
+              </div>
+              @if (usage()!.sectors_account!.promo_label) {
+                <p class="usage__note">
+                  {{ usage()!.sectors_account!.promo_label }}
+                  @if (usage()!.sectors_account!.promo_credits_expire_at) {
+                    · {{ 'usage.account_expires' | t }} {{ usage()!.sectors_account!.promo_credits_expire_at | date:'mediumDate' }}
+                  }
+                </p>
+              }
+            } @else {
+              <p class="usage__note">{{ 'usage.account_unavailable' | t }}</p>
+              <p class="usage__note usage__note--dim">{{ 'usage.account_hint' | t }}</p>
+            }
+          </section>
+
           <!-- Sectors API -->
           <section class="usage__card">
             <div class="usage__card-head">
-              <h2 class="usage__card-title">{{ 'usage.section_sectors' | t }}</h2>
+              <h2 class="usage__card-title">{{ 'usage.section_instance' | t }}</h2>
               <span class="usage__card-pct">{{ usage()!.sectors.budget_pct }}%</span>
             </div>
             <div class="usage__bar">
@@ -238,6 +283,13 @@ import { TPipe } from '../../pipes/t.pipe';
     }
     .usage__stat-val--ok { color: var(--color-success); }
     .usage__stat-val--err { color: var(--color-danger); }
+    .usage__note {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-muted);
+      margin-top: var(--space-md);
+    }
+    .usage__note--dim { color: var(--color-dim); }
 
     .usage__table {
       width: 100%;

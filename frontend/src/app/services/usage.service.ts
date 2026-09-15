@@ -22,6 +22,23 @@ export interface UsageSummary {
     completed: number;
     failed: number;
   };
+  sectors_account?: {
+    configured: boolean;
+    ok: boolean;
+    error?: string | null;
+    email?: string | null;
+    subscription_tier?: string | null;
+    credits?: number | null;
+    credits_expire_at?: string | null;
+    promo_credits?: number | null;
+    promo_credits_expire_at?: string | null;
+    promo_label?: string | null;
+    period?: { success: number; error: number; since?: string | null; until?: string | null };
+    fetched_at?: string;
+    first_total?: number;
+    credits_spent_observed?: number;
+    observed_since?: string | null;
+  } | null;
   daily: {
     date: string;
     sectors_calls: number;

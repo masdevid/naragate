@@ -97,6 +97,47 @@ def record_llm_call(model: str, input_tokens: int, output_tokens: int):
     _save(data)
 
 
+def record_account_snapshot(snapshot: dict):
+    """Persist the authoritative Sectors account snapshot and credit history.
+
+    Only successful snapshots are stored. History is capped so the file stays
+    small; the first entry anchors the observed credit-burn delta.
+    """
+    if not isinstance(snapshot, dict) or not snapshot.get("ok"):
+        return
+    data = _ensure_structure(_load())
+    acct = data.setdefault("sectors_account", {})
+    credits = snapshot.get("credits")
+    promo = snapshot.get("promo_credits")
+    total = None
+    if isinstance(credits, (int, float)) or isinstance(promo, (int, float)):
+        total = (credits or 0) + (promo or 0)
+    hist = acct.get("history") or []
+    hist.append({
+        "ts": snapshot.get("fetched_at") or datetime.now().isoformat(),
+        "credits": credits,
+        "promo_credits": promo,
+        "total": total,
+    })
+    acct["history"] = hist[-200:]
+    acct["latest"] = snapshot
+    _save(data)
+
+
+def _account_view(acct: dict | None) -> Optional[dict]:
+    """Latest authoritative snapshot + observed credit burn since first sample."""
+    if not acct or not acct.get("latest"):
+        return None
+    view = dict(acct["latest"])
+    hist = acct.get("history") or []
+    totals = [h.get("total") for h in hist if isinstance(h.get("total"), (int, float))]
+    if totals:
+        view["first_total"] = totals[0]
+        view["credits_spent_observed"] = max(0, totals[0] - totals[-1])
+        view["observed_since"] = hist[0].get("ts") if hist else None
+    return view
+
+
 def record_pipeline(completed: bool = True):
     data = _ensure_structure(_load())
     data["pipelines"]["total"] += 1
@@ -164,6 +205,7 @@ def get_usage_summary(budget: int = 1600) -> dict:
             "estimated_cost_usd": llm_cost,
         },
         "pipelines": pipelines,
+        "sectors_account": _account_view(data.get("sectors_account")),
         "daily": daily,
     }
 

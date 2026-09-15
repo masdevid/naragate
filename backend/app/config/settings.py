@@ -10,6 +10,15 @@ class Settings(BaseSettings):
     # Required
     SECTORS_API_KEY: str = Field(default="", validation_alias="SECTORS_API_KEY")
 
+    # Sectors first-party OAuth — for the account endpoints (/api/usage/,
+    # /auth/users/{id}/), not the v2 data API. Optional: when absent, the
+    # account-usage block is simply unavailable. See
+    # references/sectors-account-usage.md.
+    SECTORS_OAUTH_ACCESS_TOKEN: str = Field(default="", validation_alias="SECTORS_OAUTH_ACCESS_TOKEN")
+    SECTORS_OAUTH_CLIENT_ID: str = Field(default="", validation_alias="SECTORS_OAUTH_CLIENT_ID")
+    SECTORS_OAUTH_CLIENT_SECRET: str = Field(default="", validation_alias="SECTORS_OAUTH_CLIENT_SECRET")
+    SECTORS_OAUTH_REFRESH_TOKEN: str = Field(default="", validation_alias="SECTORS_OAUTH_REFRESH_TOKEN")
+
     # LLM Provider (OpenAI-compatible)
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", validation_alias="OLLAMA_BASE_URL")
     # Empty by default: the model is configured via the web UI settings page.
