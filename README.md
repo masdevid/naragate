@@ -331,10 +331,15 @@ ollama pull gemma3:12b
 
 ### 3. Start Naragate
 
-- **macOS / Linux:** double-click `start.sh` (or run `./start.sh` in a terminal).
-- **Windows:** double-click `start.bat`.
+```bash
+git clone https://github.com/masdevid/naragate && cd naragate
+cp .env.example .env
+docker compose up -d --build
+```
 
-The script checks Docker, copies `.env.example` to `.env` if needed, builds the containers (a few minutes the first time), and opens the app in your browser.
+The first build takes a few minutes. When it finishes, open **http://localhost:4273**.
+
+> Prefer not to self-host? Point the MCP server at the hosted app instead with `NARAGATE_BACKEND_URL=https://naragate.ilkomers.com` — see [Use Naragate from any MCP agent](#use-naragate-from-any-mcp-agent).
 
 ### 4. Complete the setup wizard
 
@@ -345,7 +350,7 @@ On first run, Naragate opens a short setup wizard:
 
 That's it. You can now paste an Indonesian market narrative and click **Analyze**.
 
-To stop Naragate: run `stop.sh` (macOS/Linux) or `stop.bat` (Windows).
+To stop Naragate: run `docker compose down`.
 
 ### First Analysis
 
@@ -379,7 +384,7 @@ Keys and models set in the web UI take precedence over `.env`. You can leave `.e
 | "Ollama not detected" warning | Naragate still starts, but analysis needs an LLM. Install Ollama (https://ollama.com) and pull a model, or set a cloud endpoint in the setup wizard. |
 | First build takes a long time | Normal — Docker is downloading images. Subsequent starts are fast. |
 | Browser opens but the app says "backend not ready" | Wait a moment and refresh. If it persists, run `docker compose logs backend` to see errors. |
-| Port already in use | Set different ports in `.env` (`FRONTEND_PORT`, `BACKEND_PORT`), then run `start.sh` again. |
+| Port already in use | Set different ports in `.env` (`FRONTEND_PORT`, `BACKEND_PORT`), then run `docker compose up -d` again. |
 | "No API key configured" in Settings | Paste your Sectors key in the setup wizard or Settings page and click **Validate**. |
 | Model list is empty | Make sure Ollama is running and you have pulled a model (`ollama pull gemma3:12b`). |
 
