@@ -32,6 +32,9 @@ Skeptic notes: {skeptic}
 User preference profile (recently clicked templates and preferred topics; may be empty):
 {preferences}
 
+Questions already shown to this user (do NOT repeat or closely paraphrase these — find fresh angles):
+{exclude}
+
 Return ONLY a JSON object with this exact shape:
 {{
   "suggestions": [
@@ -84,7 +87,14 @@ def _topic_counts(rows: list[dict], field: str) -> list[tuple]:
     return sorted(counts.items(), key=lambda kv: -kv[1])[:3]
 
 
-def _build_prompt(claim_state: dict, preferences: str) -> str:
+def _format_exclude(exclude: list[str] | None) -> str:
+    items = [q.strip() for q in (exclude or []) if q and q.strip()]
+    if not items:
+        return "(none)"
+    return "\n".join(f"- {q}" for q in items[:12])
+
+
+def _build_prompt(claim_state: dict, preferences: str, exclude: list[str] | None = None) -> str:
     claim = claim_state.get("claim") or {}
     evidence = claim_state.get("evidence") or {}
     score = claim_state.get("score") or {}
@@ -104,6 +114,7 @@ def _build_prompt(claim_state: dict, preferences: str) -> str:
         verdict=score.get("verdict", "?"),
         skeptic=skeptic_str,
         preferences=preferences,
+        exclude=_format_exclude(exclude),
     )
 
 
@@ -124,14 +135,14 @@ def _sanitize(raw_suggestions: list) -> list[dict]:
     return clean
 
 
-async def generate_suggestions(claim_state: dict) -> list[dict]:
+async def generate_suggestions(claim_state: dict, exclude: list[str] | None = None) -> list[dict]:
     """Generate contextual follow-up templates for a completed analysis.
 
     Feeds the user's click history into the prompt so the templates adapt to
     their preference. Falls back to static templates when the LLM fails.
     """
     recent = await claims_store.recent_followup_feedback(limit=20)
-    prompt = _build_prompt(claim_state, _format_preferences(recent))
+    prompt = _build_prompt(claim_state, _format_preferences(recent), exclude)
 
     try:
         raw = await llm_client.stream_chat(
@@ -179,6 +190,19 @@ async def get_suggestions(claim_id: str, claim_state: dict) -> dict:
 
     suggestions = await asyncio.shield(task)
     return {"claim_id": claim_id, "suggestions": suggestions, "cached": False}
+
+
+async def generate_replacement(claim_state: dict, exclude: list[str] | None = None) -> dict:
+    """Generate a single new template, avoiding the questions already shown."""
+    excluded = {(t or "").strip().lower() for t in (exclude or []) if t}
+    suggestions = await generate_suggestions(claim_state, exclude=list(exclude or []))
+    for s in suggestions:
+        if (s.get("text") or "").strip().lower() not in excluded:
+            return s
+    for d in DEFAULT_SUGGESTIONS:
+        if d["text"].strip().lower() not in excluded:
+            return d
+    return suggestions[0] if suggestions else DEFAULT_SUGGESTIONS[0]
 
 
 async def record_feedback(claim_id: str, claim_state: dict, suggestion: dict) -> bool:

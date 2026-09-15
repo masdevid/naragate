@@ -6,6 +6,7 @@ import { SettingsService } from './services/settings.service';
 import { UsageService } from './services/usage.service';
 import { NaraWordmarkComponent } from './components/nara-wordmark/nara-wordmark.component';
 import { SectorsHackathonComponent } from './components/sectors-hackathon/sectors-hackathon.component';
+import { ScrollTopComponent } from './components/scroll-top/scroll-top.component';
 import { TPipe } from './pipes/t.pipe';
 
 interface NavItem {
@@ -16,7 +17,7 @@ interface NavItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent, SectorsHackathonComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, UpperCasePipe, NaraWordmarkComponent, SectorsHackathonComponent, ScrollTopComponent],
   template: `
     <nav class="nav" [class.nav--open]="menuOpen()">
       <a routerLink="/dashboard" class="nav__brand" (click)="closeMenu()"><app-nara-wordmark /></a>
@@ -79,6 +80,7 @@ interface NavItem {
       }
     </nav>
     <router-outlet></router-outlet>
+    <app-scroll-top/>
     <footer class="disclaimer">
       <p class="disclaimer__text">{{ 'disclaimer.text' | t }}</p>
       <div class="disclaimer__bottom">

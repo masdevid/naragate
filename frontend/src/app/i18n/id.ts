@@ -38,6 +38,7 @@ export default {
   // History
   'history.title': 'Riwayat & Tren',
   'history.back': 'Kembali ke Dasbor',
+  'common.scroll_top': 'Kembali ke atas',
   'history.empty': 'Belum ada analisis. Jalankan analisis untuk melihat riwayat dan tren.',
   'history.filtering': 'Difilter ke {{ticker}}',
   'history.filter_clear': 'Hapus filter',

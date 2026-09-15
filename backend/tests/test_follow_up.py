@@ -300,3 +300,42 @@ class TestSuggestionsEndpoints:
             assert response.status_code == 200
             assert response.json()["recorded"] is True
             mock_record.assert_awaited_once()
+
+
+class TestGenerateReplacement:
+    @pytest.mark.asyncio
+    async def test_replacement_avoids_excluded_questions(self, store):
+        with patch.object(
+            follow_up.claims_store, "recent_followup_feedback", AsyncMock(return_value=[])
+        ), patch(
+            "app.services.follow_up.llm_client.stream_chat",
+            AsyncMock(return_value=llm_suggestions_json()),
+        ):
+            replacement = await follow_up.generate_replacement(
+                sample_state(),
+                exclude=[
+                    "Kenapa PE BBCA dianggap mahal?",
+                    "Bukti apa yang menaikkan skor?",
+                ],
+            )
+
+        assert replacement["text"] == "Apa yang bisa mengubah verdict?"
+
+    @pytest.mark.asyncio
+    async def test_replacement_falls_back_to_default_when_all_excluded(self, store):
+        with patch.object(
+            follow_up.claims_store, "recent_followup_feedback", AsyncMock(return_value=[])
+        ), patch(
+            "app.services.follow_up.llm_client.stream_chat",
+            AsyncMock(return_value=llm_suggestions_json()),
+        ):
+            replacement = await follow_up.generate_replacement(
+                sample_state(),
+                exclude=[
+                    "Kenapa PE BBCA dianggap mahal?",
+                    "Bukti apa yang menaikkan skor?",
+                    "Apa yang bisa mengubah verdict?",
+                ],
+            )
+
+        assert replacement["text"] == follow_up.DEFAULT_SUGGESTIONS[0]["text"]

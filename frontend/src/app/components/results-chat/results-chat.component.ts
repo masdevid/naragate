@@ -55,7 +55,10 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
         </div>
         <div class="chat__suggestions">
           @for (s of visibleSuggestions(); track s.id) {
-            <button (click)="ask(s)" class="chat__suggestion">{{ suggestionLabel(s) }}</button>
+            <button
+              (click)="ask(s)"
+              class="chat__suggestion"
+              [class.is-leaving]="removingId === s.id">{{ suggestionLabel(s) }}</button>
           }
         </div>
         <div class="chat__input">
@@ -193,8 +196,23 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
       padding: var(--space-2xs) var(--space-sm);
       cursor: pointer;
       transition: color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out);
+      animation: chipIn var(--dur-short) var(--ease-out);
     }
     .chat__suggestion:hover { color: var(--color-accent); border-color: var(--color-accent); }
+    .chat__suggestion.is-leaving {
+      animation: chipOut var(--dur-short) var(--ease-in) forwards;
+    }
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes chipOut {
+      to { opacity: 0; transform: translateY(-4px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .chat__suggestion { animation: none; }
+      .chat__suggestion.is-leaving { opacity: 0; }
+    }
     .chat__input { display: flex; gap: var(--space-sm); }
     .chat__field {
       flex: 1;
@@ -226,6 +244,8 @@ export class ResultsChatComponent {
   @Input() messages: () => { role: string; text: string }[] = () => [];
   @Input() suggestions: () => FollowUpSuggestion[] = () => [];
   @Input() loading = false;
+  @Input() removingId = '';
+  @Input() loaded = false;
   @Output() sendQuestion = new EventEmitter<string>();
   @Output() suggestionClicked = new EventEmitter<FollowUpSuggestion>();
   @Output() opened = new EventEmitter<void>();
@@ -236,6 +256,7 @@ export class ResultsChatComponent {
   private i18n = inject(I18nService);
 
   visibleSuggestions(): FollowUpSuggestion[] {
+    if (this.loaded) return this.suggestions() || [];
     const list = this.suggestions();
     if (list && list.length) return list;
     return this.i18n.language() === 'en' ? FALLBACK_EN : FALLBACK_ID;

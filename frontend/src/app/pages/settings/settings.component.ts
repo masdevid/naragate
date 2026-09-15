@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SettingsService, RuntimeSettings, ValidateResult } from '../../services/settings.service';
 import { TPipe } from '../../pipes/t.pipe';
@@ -9,7 +9,7 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, TPipe, SettingsSectorsSectionComponent],
+  imports: [FormsModule, RouterLink, TPipe, SettingsSectorsSectionComponent],
   template: `
     <div class="settings">
       <div class="settings__inner">
@@ -396,13 +396,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.subs.push(
       this.settingsService.getSettings().subscribe({
         next: (data) => {
-          this.form.set(data);
-          this.clientIp.set(data.client_ip || null);
-          this.ownerIp.set(data.sectors_key_owner_ip || null);
-          this.authorizedIps.set(data.sectors_authorized_ips || []);
-          this.isOwner.set(!!data.sectors_key_is_owner);
-          if (data.llm_endpoint) {
-            this.validateEndpoint(data.llm_endpoint, data.llm_api_key);
+          const s = data || {};
+          this.form.set(s);
+          this.clientIp.set(s.client_ip || null);
+          this.ownerIp.set(s.sectors_key_owner_ip || null);
+          this.authorizedIps.set(s.sectors_authorized_ips || []);
+          this.isOwner.set(!!s.sectors_key_is_owner);
+          if (s.llm_endpoint) {
+            this.validateEndpoint(s.llm_endpoint, s.llm_api_key);
           }
         },
         error: () => {},
@@ -462,12 +463,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   validateEndpoint(endpoint: string, apiKey?: string) {
+    if (!endpoint || !endpoint.trim()) {
+      this.availableModels.set([]);
+      return;
+    }
     this.validating.set(true);
     this.settingsService.validateEndpoint(endpoint, apiKey).subscribe({
       next: (result) => {
-        this.validation.set(result);
+        this.validation.set(result ?? null);
         this.validating.set(false);
-        this.availableModels.set(result.ok ? result.models : []);
+        this.availableModels.set(result?.ok ? (result.models ?? []) : []);
       },
       error: () => {
         this.validating.set(false);

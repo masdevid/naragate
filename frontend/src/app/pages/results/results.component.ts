@@ -123,6 +123,8 @@ import { buildVerdictNarrative } from '../../utils/verdict-narrative';
             <app-results-chat
               [messages]="chatMessages"
               [suggestions]="followupSuggestions"
+              [removingId]="removingId()"
+              [loaded]="suggestionsLoaded()"
               [loading]="chatLoading()"
               (opened)="onChatOpened()"
               (sendQuestion)="sendChat($event)"
@@ -246,6 +248,8 @@ export class ResultsComponent implements OnInit {
   chatMessages = signal<{ role: string; text: string }[]>([]);
   chatLoading = signal(false);
   followupSuggestions = signal<FollowUpSuggestion[]>([]);
+  removingId = signal('');
+  suggestionsLoaded = signal(false);
   suggestionsRequested = false;
 
   ngOnInit() {
@@ -278,10 +282,25 @@ export class ResultsComponent implements OnInit {
     this.narrativeService.getFollowUpSuggestions(this.claimId).subscribe({
       next: (res) => {
         this.followupSuggestions.set(res?.suggestions || []);
+        this.suggestionsLoaded.set(true);
       },
       error: () => {
         this.followupSuggestions.set([]);
+        this.suggestionsLoaded.set(true);
       },
+    });
+  }
+
+  // Replace a clicked template with a fresh one, animating the chip out first.
+  private replaceSuggestion(exclude: string[]) {
+    this.narrativeService.getNextSuggestion(this.claimId, exclude).subscribe({
+      next: (res) => {
+        const next = res?.suggestion;
+        if (next) {
+          this.followupSuggestions.update(list => [...list, next]);
+        }
+      },
+      error: () => {},
     });
   }
 
@@ -353,9 +372,18 @@ export class ResultsComponent implements OnInit {
 
   onSuggestionClick(s: FollowUpSuggestion) {
     const text = this.i18n.language() === 'en' && s.text_en ? s.text_en : s.text;
+    const exclude = this.followupSuggestions().map(x => x.text);
     this.narrativeService.recordSuggestionFeedback(this.claimId, s.id, s.text).subscribe({
       error: () => {},
     });
     this.sendChat(text);
+
+    // Dismiss the clicked chip, then generate a fresh template to replace it.
+    this.removingId.set(s.id);
+    window.setTimeout(() => {
+      this.followupSuggestions.update(list => list.filter(x => x.id !== s.id));
+      this.removingId.set('');
+      this.replaceSuggestion(exclude);
+    }, 200);
   }
 }

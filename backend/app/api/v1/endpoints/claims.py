@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from app.models.schemas import ClaimCreate, Claim, ClaimStatus, ClaimBulkDelete
 from app.services.claims_store import claims_store
 from app.services.chat import answer_followup
-from app.services.follow_up import get_suggestions, record_feedback
+from app.services.follow_up import generate_replacement, get_suggestions, record_feedback
 
 router = APIRouter()
 
@@ -15,6 +15,10 @@ class FollowUpInput(BaseModel):
 class SuggestionFeedbackInput(BaseModel):
     suggestion_id: str = ""
     text: str = ""
+
+
+class NextSuggestionInput(BaseModel):
+    exclude: list[str] = []
 
 
 @router.post("/{claim_id}/chat", response_model=dict)
@@ -37,6 +41,17 @@ async def followup_suggestions(claim_id: str):
     if state.get("status") != ClaimStatus.COMPLETED.value:
         raise HTTPException(status_code=409, detail="Analysis not complete")
     return await get_suggestions(claim_id, state)
+
+
+@router.post("/{claim_id}/suggestions/next", response_model=dict)
+async def next_followup_suggestion(claim_id: str, payload: NextSuggestionInput):
+    state = await claims_store.get_claim(claim_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    if state.get("status") != ClaimStatus.COMPLETED.value:
+        raise HTTPException(status_code=409, detail="Analysis not complete")
+    suggestion = await generate_replacement(state, payload.exclude)
+    return {"claim_id": claim_id, "suggestion": suggestion}
 
 
 @router.post("/{claim_id}/suggestions/feedback", response_model=dict)

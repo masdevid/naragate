@@ -38,6 +38,7 @@ export default {
   // History
   'history.title': 'History & Trends',
   'history.back': 'Back to Dashboard',
+  'common.scroll_top': 'Back to top',
   'history.empty': 'No analyses yet. Run an analysis to see history and trends.',
   'history.filtering': 'Filtered to {{ticker}}',
   'history.filter_clear': 'Clear filter',
