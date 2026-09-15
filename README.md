@@ -20,11 +20,19 @@ Built for the **Sectors Hackathon 2026** — [Track 1 · AI Agents & Assistants]
 
 ## What It Does
 
-Indonesian retail investors are bombarded with market narratives every day — *"BBCA labanya jeblok"*, *"PE-nya masih mahal"*, *"Pemerintah naikkan subsidi BBM"* — and most of them are wrong, misleading, or incomplete.
+Naragate is an **AI-powered financial fact-check engine** for Indonesian market narratives. Paste a claim — from WhatsApp, social media, a news headline, or your own notes — and it extracts the underlying financial claims, verifies each against real Sectors v2 data, and returns a **Reality Gap Score (0–100)** with the evidence behind it.
 
-Naragate is an **AI-powered financial fact-check engine** that takes any Indonesian market narrative, extracts specific financial claims, verifies them against real Sectors v2 financial data, and produces a **Reality Gap Score** (0–100) showing how strongly the evidence aligns with the claim.
+It answers one question: **does this narrative actually match reality?**
 
-**Now with the Policy-Narrative Amplifier** — a first-of-its-kind dimension that detects Indonesian energy policy events, automatically re-scores affected claims when policy news lands, and surfaces the policy-risk signal hidden inside ticker-less narratives like *"subsidi BBM naik"* or *"HBA turun"*.
+**How it works, in three steps**
+
+1. **Extract** — the claim parser turns free text into a structured claim (ticker, category, direction) — or a *policy claim* with no ticker at all.
+2. **Verify** — evidence agents pull valuation, fundamental, market, news, and filing data from Sectors v2 through an Evidence Graph cache, while a skeptic agent argues the opposite case.
+3. **Score** — the judge weighs the evidence and the scorer returns a 0–100 Reality Gap plus a verdict: *Contradicted · Mixed · Supported · Strongly Supported*.
+
+**One engine, three surfaces** — the same pipeline powers the **custom web UI**, an **MCP server** usable from any MCP-capable agent (Claude Code, Cursor, opencode, Codex, …), and the **Pi agent pipeline**. Every surface shares one cache and one credit ledger, so it behaves and costs the same everywhere.
+
+**Policy narratives included** — ticker-less statements like *"subsidi BBM naik"* or *"HBA turun"* resolve to a sector, get dated policy-event labels, and contribute a **policy-gap dimension** instead of falling through the cracks.
 
 ---
 
@@ -73,9 +81,9 @@ Naragate is an **AI-powered financial fact-check engine** that takes any Indones
 
 ## Problem
 
-Indonesian retail investors consume market narratives daily — from WhatsApp groups, social media, YouTube videos, and news headlines. Claims like *"BBCA labanya jeblok"* (BBCA's profits collapsed), *"PE-nya masih murah"* (its price-to-earnings ratio is still cheap), or *"TLKM bakal meroket"* (TLKM will skyrocket) can spread faster than a reader can verify them.
+Market narratives spread fast — WhatsApp groups, social media, YouTube, news headlines — and they arrive as confident claims, not as data. *"BBCA labanya jeblok"*, *"PE-nya masih murah"*, or *"TLKM bakal meroket"* all sound authoritative, yet the reader has no quick way to check them.
 
-This is especially difficult for novice retail traders who have little or no knowledge of how to read a financial report. A financial report contains unfamiliar terms, multiple reporting periods, restatements, accounting categories, and figures that only make sense when compared with the previous quarter, previous year, or another company in the same sector. A beginner may not know:
+It is hardest for novice retail investors, who may have little experience reading a financial report: unfamiliar terms, multiple reporting periods, restatements, and figures that only mean something when compared across quarters, years, or peers. A beginner may not know:
 
 - where to find revenue, profit, debt, cash flow, or margins;
 - whether a number is quarterly, annual, trailing twelve-month, or year-to-date;
@@ -84,29 +92,34 @@ This is especially difficult for novice retail traders who have little or no kno
 - which benchmark or peer group makes a comparison meaningful; or
 - whether a confident statement is supported by evidence or is simply an opinion.
 
-The result is an information gap. Beginners may trust a persuasive narrative because they cannot quickly challenge it, reject useful information because it looks too technical, or make a decision based on a single number without understanding its context. Manually checking a claim means opening several reports, finding comparable periods, calculating changes, and deciding which evidence is relevant. That process is slow and intimidating even before a beginner reaches an investment decision.
+The result is an information gap: people trust a persuasive narrative because they cannot quickly challenge it, or decide from a single number without context. Checking a claim by hand — opening reports, finding comparable periods, calculating changes, judging relevance — is slow and intimidating.
 
-**Now add policy narratives**: statements like *"pemerintah naikkan subsidi BBM"* or *"HBA turun signifikan"* don't name a ticker, but they visibly move energy, commodity, and defense-adjacent stocks. Today, these fall through the cracks — there's no claim to extract, no ticker to verify, and no evidence to score. Naragate's Policy-Narrative Amplifier closes this gap.
+**Policy narratives make it worse**: *"pemerintah naikkan subsidi BBM"* or *"HBA turun signifikan"* name no ticker, yet they visibly move energy and commodity stocks. There is no claim to extract, no ticker to verify, no evidence to score — so these slip through entirely.
 
-## Solution
+## How It Works
 
-Naragate analyzes any Indonesian market narrative in real-time and produces a **Reality Gap Score** — a 0–100 measure of how strongly the financial evidence aligns with the claim. With the Policy-Narrative Amplifier, it also detects policy events, resolves them to affected sector members, and feeds a new policy-narrative gap dimension into the score.
+Give Naragate a narrative; it returns a scored, evidence-backed verdict. Two short examples:
 
-**Input:**
-> *"BBCA labanya jeblok, PE-nya masih mahal banget, mending pindah ke BBRI"*
+**A valuation claim**
 
-**Output:**
-- Extracted claims: "BBCA profits collapsed", "BBCA PE is expensive", "BBRI is better"
-- Evidence: Actual PE ratios, profit margins, quarterly financials
-- Verdict: **Mixed (45/100)** — profits declined but PE is within sector average
+> **Input:** *"PE BBCA mahal di 25x, jauh di atas rata-rata sektor 18x."*
+>
+> **Output:** **Supported (63/100)** — PE is 25.0x against a sector median of 18.0x (a +39% premium), so the valuation-gap dimension is high and evidence confidence is strong.
 
-**Policy Input:**
-> *"Pemerintah naikkan subsidi BBM, dampaknya ke energi"*
+**A policy claim**
 
-**Policy Output:**
-- Resolved sector: Energy (3 member tickers)
-- Policy events verified with timing discipline
-- Policy-narrative gap dimension integrated into Reality Gap Score for market & fundamental claims
+> **Input:** *"HBA batu bara ditetapkan naik untuk Q3 — untung ADRO ikut naik."*
+>
+> **Output:** Resolved to the **coal** sector (members ADRO, ITMG, PTBA); dated policy events labeled from the news corpus; a policy-gap dimension added to the score alongside the usual evidence.
+
+**The verdict bands**
+
+| Reality Gap | Verdict |
+|---|---|
+| 0–30 | **Contradicted** |
+| 31–60 | **Mixed** |
+| 61–80 | **Supported** |
+| 81–100 | **Strongly Supported** |
 
 ## Who It's For
 
