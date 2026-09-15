@@ -302,6 +302,11 @@ export class ClaimComponent implements OnInit, OnDestroy {
   };
 
   thinkingText(): string {
+    const text = (this.thinking()?.text || '').trim();
+    // Prefer the model's real reasoning stream; fall back to a friendly line
+    // when there is none or the stream is raw JSON (non-reasoning providers).
+    const looksJson = text.startsWith('{') || text.startsWith('[') || text.startsWith('```');
+    if (text && !looksJson) return text;
     const agent = this.thinking()?.agent || '';
     return this.i18n.t(ClaimComponent.THINKING_KEYS[agent] || 'claim.thinking.generic');
   }

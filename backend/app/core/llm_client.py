@@ -154,11 +154,15 @@ async def _consume_sse(
                 if not choices:
                     continue
                 delta = choices[0].get("delta") or {}
+                reasoning = delta.get("reasoning_content") or ""
                 piece = delta.get("content") or ""
                 if piece:
                     full += piece
-                    if on_token:
-                        await on_token(piece)
+                # Surface the model's reasoning when the provider exposes it;
+                # otherwise fall back to streaming the content itself.
+                stream_piece = reasoning or piece
+                if stream_piece and on_token:
+                    await on_token(stream_piece)
 
     if input_tokens or output_tokens:
         record_llm_call(model, input_tokens, output_tokens)

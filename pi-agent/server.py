@@ -15,6 +15,9 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "https://dev.idh.am/v1")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3-coder:30b")
 PI_API_KEY = os.getenv("PI_API_KEY", "ollama")
 PI_PROVIDER = os.getenv("PI_PROVIDER", "ollama")
+# Reasoning effort requested from the model (off/minimal/low/medium/high/xhigh).
+# Its thinking stream is surfaced to the UI as the agent's live reasoning.
+PI_THINKING_LEVEL = os.getenv("PI_THINKING_LEVEL", "low")
 SKILLS_DIR = Path(os.getenv("PI_SKILLS_DIR", "/app/.pi/skills"))
 
 # Backend agent role -> skill directory name. The skill file is the canonical
@@ -106,6 +109,7 @@ async def _run_pi_cli(system_prompt: str, user_prompt: str, model: str) -> Async
         "--no-tools",
         "--provider", PI_PROVIDER,
         "--model", f"{PI_PROVIDER}/{model}",
+        "--thinking", PI_THINKING_LEVEL,
         "--api-key", PI_API_KEY,
         "--system-prompt", system_prompt,
         user_prompt,
@@ -130,22 +134,32 @@ async def _run_pi_cli(system_prompt: str, user_prompt: str, model: str) -> Async
         raise RuntimeError(f"Pi CLI exited {process.returncode}: {stderr.decode(errors='replace')[:500]}")
 
 
-def _extract_text_delta(event: dict) -> str:
-    """Extract the incremental text delta from a Pi JSON event."""
+def _extract_content(event: dict) -> tuple[str, str]:
+    """Return (thinking, text) cumulative content from a Pi assistant event.
+
+    Pi emits cumulative content per `message_update`, so callers diff against the
+    previous value to recover the incremental deltas. `thinking` blocks carry the
+    model's reasoning; `text` blocks carry the final answer.
+    """
     etype = event.get("type")
-    if etype not in ("message_start", "message_end", "message_update"):
-        return ""
+    if etype not in ("message_start", "message_update", "message_end"):
+        return ("", "")
     message = event.get("message") or {}
     if message.get("role") != "assistant":
-        return ""
+        return ("", "")
     content = message.get("content")
     if not isinstance(content, list):
-        return ""
+        return ("", "")
+    thinking = ""
     text = ""
     for block in content:
-        if isinstance(block, dict) and block.get("type") == "text":
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "thinking":
+            thinking += block.get("thinking") or ""
+        elif block.get("type") == "text":
             text += block.get("text") or ""
-    return text
+    return (thinking, text)
 
 
 def _extract_usage(event: dict) -> Optional[dict]:
@@ -162,25 +176,33 @@ def _extract_usage(event: dict) -> Optional[dict]:
 
 
 async def _stream_chat_completions(system_prompt: str, user_prompt: str, model: str) -> AsyncGenerator[str, None]:
-    """Run Pi and translate its JSON events into OpenAI chat-completions SSE."""
+    """Run Pi and translate its JSON events into OpenAI chat-completions SSE.
+
+    Reasoning (`thinking`) blocks are emitted as `reasoning_content` deltas so the
+    backend can surface a live reasoning transcript, while `text` blocks remain
+    the answer content. Pi reports cumulative content, so each event is diffed
+    against the previous one to recover the incremental delta.
+    """
     first_sent = False
-    full_text = ""
+    prev_thinking = ""
+    prev_text = ""
     usage = None
     try:
         async for event in _run_pi_cli(system_prompt, user_prompt, model):
-            delta = _extract_text_delta(event)
-            if delta:
-                if not first_sent:
-                    # First chunk carries the opening delta.
-                    yield _sse_chunk(delta)
-                    full_text = delta
-                    first_sent = True
-                elif event.get("type") == "message_end":
-                    # Final chunk carries the full text; emit only the remainder.
-                    remainder = delta[len(full_text):] if delta.startswith(full_text) else delta
-                    if remainder:
-                        yield _sse_chunk(remainder)
-                    full_text = delta
+            if event.get("type") == "message_start":
+                message = event.get("message") or {}
+                if isinstance(message, dict) and message.get("role") == "assistant":
+                    prev_thinking = ""
+                    prev_text = ""
+
+            thinking, text = _extract_content(event)
+            thinking_delta = thinking[len(prev_thinking):] if thinking.startswith(prev_thinking) else thinking
+            text_delta = text[len(prev_text):] if text.startswith(prev_text) else text
+            if thinking_delta or text_delta:
+                yield _sse_chunk(text_delta, reasoning=thinking_delta)
+                first_sent = True
+            prev_thinking, prev_text = thinking, text
+
             u = _extract_usage(event)
             if u:
                 usage = u
@@ -192,12 +214,15 @@ async def _stream_chat_completions(system_prompt: str, user_prompt: str, model: 
     yield _sse_done(usage)
 
 
-def _sse_chunk(delta: str, error: Optional[str] = None) -> str:
+def _sse_chunk(delta: str, reasoning: str = "", error: Optional[str] = None) -> str:
     finish = "stop" if error is None else None
+    chunk_delta: dict = {"content": delta}
+    if reasoning:
+        chunk_delta["reasoning_content"] = reasoning
     payload = {
         "id": "pi-agent",
         "object": "chat.completion.chunk",
-        "choices": [{"index": 0, "delta": {"content": delta}, "finish_reason": finish}],
+        "choices": [{"index": 0, "delta": chunk_delta, "finish_reason": finish}],
     }
     if error:
         payload["error"] = error

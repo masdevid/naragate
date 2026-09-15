@@ -47,30 +47,42 @@ export class TypingTextComponent implements OnChanges, OnDestroy {
   @Input() text = '';
   shown = signal('');
 
+  private target = '';
   private timer?: number;
 
   ngOnChanges(): void {
     const full = this.text ?? '';
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = undefined;
-    }
+    if (full === this.target) return;
 
+    if (full.startsWith(this.target)) {
+      // The stream grew: keep what's shown and reveal the new characters.
+      this.target = full;
+    } else {
+      // A new message: restart from the beginning.
+      this.target = full;
+      this.shown.set('');
+    }
+    this.ensureTyping();
+  }
+
+  private ensureTyping(): void {
+    if (this.timer) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      this.shown.set(full);
+      this.shown.set(this.target);
       return;
     }
+    if (this.shown().length >= this.target.length) return;
 
-    this.shown.set('');
-    let index = 0;
     this.timer = window.setInterval(() => {
-      index += 1;
-      this.shown.set(full.slice(0, index));
-      if (index >= full.length) {
+      const next = this.shown().length + 1;
+      if (next >= this.target.length) {
+        this.shown.set(this.target);
         clearInterval(this.timer);
         this.timer = undefined;
+        return;
       }
-    }, 24);
+      this.shown.set(this.target.slice(0, next));
+    }, 16);
   }
 
   ngOnDestroy(): void {
