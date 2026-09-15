@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Naragate Teaser — Preview Player (60s)</title>
+<style>
+  html,body{margin:0;background:#000;height:100%;}
+  .stage{width:1280px;height:720px;margin:0 auto;position:relative;}
+  iframe{width:1280px;height:720px;border:0;display:block;}
+  .hint{
+    position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    font:13px ui-monospace,monospace;color:#8791A8;background:#12141C;
+    border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:6px 16px;
+  }
+</style>
+</head>
+<body>
+  <div class="stage"><iframe id="frame" src="scene-1-hook.html"></iframe></div>
+  <div class="hint">Preview player — auto-lanjut tiap 10 detik · scene <span id="n">1</span>/6</div>
+  <script>
+    const scenes = [
+      'scene-1-hook.html', 'scene-2-evidence.html', 'scene-3-personas.html',
+      'scene-4-policy.html', 'scene-5-surfaces.html', 'scene-6-cta.html'
+    ];
+    let i = 0;
+    setInterval(() => {
+      i = (i + 1) % scenes.length;
+      document.getElementById('frame').src = scenes[i];
+      document.getElementById('n').textContent = i + 1;
+    }, 10000);
+  </script>
+</body>
+</html>

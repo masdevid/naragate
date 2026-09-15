@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Naragate Teaser — Scene 4: Policy Amplifier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0B0E17; --bg-panel:#141A26; --line: rgba(255,255,255,.09);
+    --text-primary:#F4F6FB; --text-muted:#8791A8;
+    --brand-from:#E31C5F; --brand-to:#F5A623;
+    --font-display:'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#000;}
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;}
+  .canvas{
+    width:1280px;height:720px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(ellipse 900px 500px at 18% -8%, rgba(227,28,95,.16), transparent 55%),
+      radial-gradient(ellipse 900px 500px at 102% 112%, rgba(245,166,35,.12), transparent 55%),
+      var(--bg-deep);
+    font-family:var(--font-mono); color:var(--text-primary);
+  }
+  .progress{position:absolute;top:28px;right:36px;display:flex;gap:8px;z-index:6;}
+  .progress i{width:7px;height:7px;border-radius:50%;background:var(--line);}
+  .progress i.on{background:var(--brand-to);}
+
+  .wordmark{font-family:var(--font-display);font-weight:700;display:inline-flex;user-select:none;}
+  .wordmark .nara{background:linear-gradient(90deg,var(--brand-from),var(--brand-to));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .wordmark .gate{color:#fff;}
+  .badge{position:absolute;top:32px;left:40px;}
+  .badge .wordmark{font-size:22px;}
+
+  /* 🧩 input chip — a claim with no ticker */
+  .chip{
+    position:absolute;top:300px;left:96px;width:300px;
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:14px;
+    padding:20px;opacity:0;animation:fadeUp .5s ease-out forwards;animation-delay:.3s;
+  }
+  .chip .label{font-size:12px;color:var(--text-muted);margin-bottom:8px;}
+  .chip .text{font-size:19px;color:var(--text-primary);}
+  .chip .no-ticker{
+    display:inline-block;margin-top:10px;font-size:12px;color:var(--brand-from);
+    border:1px solid rgba(227,28,95,.4);border-radius:999px;padding:3px 10px;
+    opacity:0;animation:fadeUp .4s ease-out forwards;animation-delay:1.4s;
+  }
+  @keyframes fadeUp{ from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+
+  /* ➜ resolver connector */
+  .resolver{
+    position:absolute;top:328px;left:420px;width:230px;text-align:center;
+    opacity:0;animation:fadeUp .5s ease-out forwards;animation-delay:2.5s;
+  }
+  .resolver .line{height:2px;background:linear-gradient(90deg,var(--brand-from),var(--brand-to));
+    width:0;animation:grow 1s ease-out forwards;animation-delay:2.6s;}
+  @keyframes grow{ to{ width:100%; } }
+  .resolver .tag{margin-top:10px;font-size:13px;color:var(--text-muted);}
+
+  /* 🪙 resolved sector card */
+  .sector{
+    position:absolute;top:268px;right:96px;width:340px;
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:14px;padding:22px;
+    opacity:0;animation:fadeUp .55s ease-out forwards;animation-delay:4.0s;
+  }
+  .sector .label{font-size:12px;color:var(--text-muted);margin-bottom:6px;}
+  .sector .name{font-family:var(--font-display);font-weight:700;font-size:22px;}
+  .sector .members{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
+  .sector .members span{
+    font-size:13px;padding:4px 10px;border-radius:999px;
+    background:var(--bg-deep);border:1px solid var(--line);color:var(--text-muted);
+  }
+  .sector .dim{margin-top:18px;}
+  .sector .dim .dimlabel{font-size:12px;color:var(--text-muted);margin-bottom:6px;}
+  .sector .track{height:8px;border-radius:999px;background:var(--bg-deep);overflow:hidden;}
+  .sector .fill{
+    height:100%;width:0;border-radius:999px;
+    background:linear-gradient(90deg,var(--brand-from),var(--brand-to));
+    animation:fill 1.4s ease-out forwards;animation-delay:5.6s;
+  }
+  @keyframes fill{ to{ width:72%; } }
+
+  .caption{
+    position:absolute;left:0;right:0;bottom:56px;text-align:center;
+    font-family:var(--font-display);font-weight:500;font-size:28px;color:var(--text-primary);
+    opacity:0;animation:fadeUp .6s ease-out forwards;animation-delay:7.4s;
+  }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="progress"><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div>
+    <div class="badge"><span class="wordmark"><span class="nara">NARA</span><span class="gate">GATE</span></span></div>
+
+    <div class="chip">
+      <div class="label">Narasi kebijakan</div>
+      <div class="text">"HBA batu bara naik untuk Q3."</div>
+      <div class="no-ticker">⚠ tanpa ticker</div>
+    </div>
+
+    <div class="resolver">
+      <div class="line"></div>
+      <div class="tag">Sector Resolver</div>
+    </div>
+
+    <div class="sector">
+      <div class="label">Resolved ke</div>
+      <div class="name">Sektor Batu Bara</div>
+      <div class="members"><span>ADRO</span><span>ITMG</span><span>PTBA</span></div>
+      <div class="dim">
+        <div class="dimlabel">+ Policy-Gap dimension</div>
+        <div class="track"><div class="fill"></div></div>
+      </div>
+    </div>
+
+    <div class="caption">Narasi kebijakan tanpa ticker? Tetap terdeteksi.</div>
+  </div>
+
+  <p id="tts-script" hidden>Bahkan narasi kebijakan tanpa ticker, seperti HBA naik, otomatis dipetakan ke sektor yang tepat, dan dampaknya ditambahkan sebagai dimensi skor baru.</p>
+  <script type="application/json" id="tts-meta">{"lang":"id-ID","scene":4,"duration_seconds":10}</script>
+  <script>
+    window.addEventListener('load', () => {
+      if (!('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(document.getElementById('tts-script').textContent.trim());
+      u.lang = 'id-ID'; u.rate = 0.97;
+      setTimeout(() => speechSynthesis.speak(u), 250);
+    });
+  </script>
+</body>
+</html>

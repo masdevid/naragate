@@ -12,7 +12,7 @@ import { Component } from '@angular/core';
 
       <div class="pane left">
         <div class="win">
-          <img class="shot" src="teaser/result-screenshot.png"
+          <img class="shot" src="assets/result-screenshot.png"
             alt="Halaman hasil Naragate: klaim &quot;Saham UNVR turun 15% dalam seminggu&quot;, Reality Gap Score 58.76, verdict Campuran">
         </div>
         <div class="pane-label">Web UI &mdash; hasil verifikasi langsung</div>
