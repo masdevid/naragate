@@ -30,10 +30,15 @@ Support agents:
 
 | Agent | Role |
 |-------|------|
-| `chat` | Answers follow-up questions about a completed analysis using only the evidence |
+| `chat` | Drives follow-up Q&A: offers 3-5 follow-up question templates the user can pick from, or answers a custom-typed question, grounded only in the evidence |
 | `pipeline-orchestrator` | Coordinate multi-stage pipeline execution |
 
 These agents are available outside the main pipeline for secondary tasks.
+
+After a completed analysis, the `chat` agent runs the follow-up loop: it offers follow-up templates
+(via the `follow-up` skill) as a numbered list, lets the user either pick one or type their own question,
+answers it grounded solely in the analysis evidence, and allows a few more rounds (cap ~3). In UI surfaces
+that already render suggestion chips, it skips the template step and answers the question directly.
 
 ## Agents
 

@@ -40,7 +40,7 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-https://dev.idh.am/v1}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b}
       - PI_PROVIDER=ollama
-      - PI_API_KEY=ollama
+      - PI_API_KEY=${PI_AGENT_API_KEY:-ollama}
       - PI_SKILLS_DIR=/app/skills
     volumes:
       - ./.pi:/app/.pi

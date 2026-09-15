@@ -14,7 +14,6 @@ from app.services.sector_evidence import get_sector_evidence
 from app.services.policy_event_agent import extract_policy_events_from_sector
 from app.services.policy_reaction import gather_policy_reactions
 from app.services.policy_rescore import schedule_sector_rescore
-from app.services.follow_up import get_suggestions
 from app.services.skeptic import run_skeptic
 from app.services.judge import evidence_judge, score_generator
 from app.core.usage_tracker import (
@@ -84,21 +83,6 @@ def _usage_event(claim_id: str) -> PipelineEvent:
         "llm_input_tokens": usage["llm_input_tokens"],
         "llm_output_tokens": usage["llm_output_tokens"],
     })
-
-
-async def _pregenerate_followups(claim_id: str) -> None:
-    """Generate follow-up templates right after pipeline completion.
-
-    Runs as a background task so the results page finds the templates already
-    cached instead of waiting for a fresh LLM generation. Failures are
-    swallowed: the suggestions endpoint falls back to lazy generation.
-    """
-    try:
-        state = await claims_store.get_claim(claim_id)
-        if state:
-            await get_suggestions(claim_id, state)
-    except Exception:
-        pass
 
 
 async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
@@ -284,7 +268,6 @@ async def run_pipeline(narrative: str) -> AsyncGenerator[PipelineEvent, None]:
             "score": score.reality_gap_score,
         })
         record_pipeline(completed=True)
-        asyncio.create_task(_pregenerate_followups(claim_id))
 
     except Exception as e:
         message = str(e) or f"{type(e).__name__}"

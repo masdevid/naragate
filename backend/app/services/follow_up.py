@@ -4,8 +4,9 @@ import json
 from app.core import llm_client
 from app.services.claims_store import claims_store
 
-# In-flight suggestion generations keyed by claim id, shared between the
-# pipeline-completion pre-generation and the suggestions endpoint.
+# In-flight suggestion generations keyed by claim id. Suggestions are generated
+# lazily on first request (the results page sidepanel) and cached on the claim
+# state, so generation for the same claim is deduplicated.
 _inflight_generations: dict[str, asyncio.Task] = {}
 
 FOLLOW_UP_PROMPT = """You are Naragate's follow-up assistant. A user just ran a Reality Gap analysis on a market narrative.
@@ -157,11 +158,10 @@ async def _generate_and_cache(claim_id: str, claim_state: dict) -> list[dict]:
 async def get_suggestions(claim_id: str, claim_state: dict) -> dict:
     """Return cached templates for a claim, generating and caching on first call.
 
-    Generation for the same claim is deduplicated through an in-flight task so
-    a request arriving while pre-generation (triggered at pipeline completion)
-    is still running awaits that task instead of starting a second LLM call.
-    The task itself persists the suggestions, so a cancelled request never
-    loses a completed generation.
+    Generation for the same claim is deduplicated through an in-flight task so a
+    burst of requests (e.g. the sidepanel opening) triggers a single LLM call.
+    The task persists the suggestions, so a cancelled request never loses a
+    completed generation.
     """
     cached = claim_state.get("followup_suggestions")
     if cached:

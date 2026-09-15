@@ -12,6 +12,7 @@ import { ResultsChatComponent, FollowUpSuggestion } from '../../components/resul
 import { ResultsPolicyComponent } from '../../components/results-policy/results-policy.component';
 import { ResultsRadarComponent } from '../../components/results-radar/results-radar.component';
 import { TPipe } from '../../pipes/t.pipe';
+import { buildVerdictNarrative } from '../../utils/verdict-narrative';
 
 @Component({
   selector: 'app-results',
@@ -88,7 +89,8 @@ import { TPipe } from '../../pipes/t.pipe';
             <app-results-verdict
               [score]="scoreValue"
               [verdict]="verdictValue"
-              [explanation]="explanation"/>
+              [explanation]="explanation"
+              [narrative]="narrative"/>
             <app-results-radar [dimensions]="dimensions"/>
           }
 
@@ -122,6 +124,7 @@ import { TPipe } from '../../pipes/t.pipe';
               [messages]="chatMessages"
               [suggestions]="followupSuggestions"
               [loading]="chatLoading()"
+              (opened)="onChatOpened()"
               (sendQuestion)="sendChat($event)"
               (suggestionClicked)="onSuggestionClick($event)"/>
           }
@@ -243,6 +246,7 @@ export class ResultsComponent implements OnInit {
   chatMessages = signal<{ role: string; text: string }[]>([]);
   chatLoading = signal(false);
   followupSuggestions = signal<FollowUpSuggestion[]>([]);
+  suggestionsRequested = false;
 
   ngOnInit() {
     this.claimId = this.route.snapshot.paramMap.get('id') || '';
@@ -259,12 +263,15 @@ export class ResultsComponent implements OnInit {
       next: (data) => {
         this.claimData.set(data);
         this.loading.set(false);
-        if (data?.status === 'completed') {
-          this.loadSuggestions();
-        }
       },
       error: (err) => { this.error.set(err.message || this.i18n.t('results.load_error')); this.loading.set(false); },
     });
+  }
+
+  onChatOpened() {
+    if (this.suggestionsRequested) return;
+    this.suggestionsRequested = true;
+    this.loadSuggestions();
   }
 
   loadSuggestions() {
@@ -301,6 +308,11 @@ export class ResultsComponent implements OnInit {
     const score = this.claimData()?.score;
     if (!score) return '';
     return this.i18n.language() === 'en' && score.explanation_en ? score.explanation_en : score.explanation;
+  };
+
+  narrative = () => {
+    const lang = this.i18n.language() === 'en' ? 'en' : 'id';
+    return buildVerdictNarrative(this.claimData(), lang);
   };
 
   scoreValue = () => this.claimData()?.score?.reality_gap_score ?? 0;

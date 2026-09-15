@@ -48,6 +48,20 @@ npx skills add /path/to/market-narrative-gap -a claude-code
 
 Each skill outputs structured JSON. The `renderer` skill converts any agent's JSON output into narrative prose for non-UI consumers.
 
+## Follow-up Q&A after an analysis
+
+After a completed analysis, non-web users can keep asking questions about it:
+
+1. The agent offers 3-5 contextual follow-up question templates via the `follow-up` skill (presented as a
+   numbered list), alongside a free-text input.
+2. The user picks a template number OR types their own question.
+3. The `chat` skill answers the chosen/custom question, grounded strictly in the analysis evidence.
+4. The agent may offer one more round of templates (cap ~3 rounds), then asks if the user wants anything else.
+
+Templates always come with a free-text alternative — the user is never forced to pick one. In UI surfaces
+that already render suggestion chips (the Naragate web results page), the `chat` flow skips the template
+presentation and answers the question directly.
+
 The `pipeline-orchestrator` skill defines the full pipeline sequence:
 
 ```mermaid

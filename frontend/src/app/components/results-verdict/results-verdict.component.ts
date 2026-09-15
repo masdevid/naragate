@@ -17,6 +17,16 @@ import { TPipe } from '../../pipes/t.pipe';
         <p class="verdict__explanation">{{ explanation() }}</p>
       </div>
     </div>
+    @if (narrative().length) {
+      <div class="verdict__narration">
+        <p class="verdict__narration-title">{{ 'verdict.narrative.title' | t }}</p>
+        <ul class="verdict__narration-list">
+          @for (point of narrative(); track $index) {
+            <li class="verdict__narration-item">{{ point }}</li>
+          }
+        </ul>
+      </div>
+    }
     <div class="legend">
       <p class="legend__title">{{ 'verdict.legend.title' | t }}</p>
       <ul class="legend__list">
@@ -45,6 +55,29 @@ import { TPipe } from '../../pipes/t.pipe';
     }
     .verdict__text { display: flex; flex-direction: column; gap: var(--space-md); }
     .verdict__explanation { font-size: var(--text-sm); color: var(--color-muted); max-width: 40ch; line-height: 1.55; }
+    .verdict__narration {
+      border-top: 1px solid var(--color-rule);
+      border-left: 3px solid var(--color-accent);
+      padding: var(--space-lg);
+      background: var(--color-paper-2);
+      margin-bottom: var(--space-lg);
+    }
+    .verdict__narration-title {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-dim);
+      margin-bottom: var(--space-sm);
+    }
+    .verdict__narration-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2xs); }
+    .verdict__narration-item {
+      font-size: var(--text-sm);
+      color: var(--color-muted);
+      line-height: 1.55;
+      padding-left: var(--space-sm);
+      border-left: 1px solid var(--color-rule);
+    }
     .legend {
       border-top: 1px solid var(--color-rule);
       padding: var(--space-lg) 0 var(--space-xl);
@@ -123,6 +156,7 @@ export class ResultsVerdictComponent {
   @Input() score: () => number = () => 0;
   @Input() verdict: () => string = () => '';
   @Input() explanation: () => string = () => '';
+  @Input() narrative: () => string[] = () => [];
 
   readonly bands = [
     { id: 'contradicted', min: 0, max: 30, key: 'verdict.contradicted', descKey: 'verdict.legend.contradicted' },

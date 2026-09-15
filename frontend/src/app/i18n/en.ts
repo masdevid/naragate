@@ -278,9 +278,12 @@ export default {
 
   // Follow-up chat
   'chat.title': 'Ask a Follow-Up',
+  'chat.open': 'Ask',
+  'chat.close': 'Close',
   'chat.placeholder': 'Ask about this analysis…',
-  'chat.send': 'Ask',
+  'chat.send': 'Send',
   'chat.sending': '…',
+  'chat.thinking': 'Thinking…',
   'chat.error': 'Unable to get an answer right now.',
 
   // Claim directions
@@ -329,6 +332,7 @@ export default {
   'verdict.mixed': 'Mixed',
   'verdict.supported': 'Supported',
   'verdict.strongly_supported': 'Strongly Supported',
+  'verdict.narrative.title': 'Analysis Summary',
 
   // Verdict legend
   'verdict.legend.title': 'How to read the score',

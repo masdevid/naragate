@@ -31,6 +31,11 @@ Drive the agent sequence that turns an Indonesian market narrative into a Realit
 4. **Skeptic** — invoke `skeptic-agent` with the claim and evidence to get a SkepticAnalysis JSON
 5. **Judge** — invoke `evidence-judge` with the claim, evidence, and skeptic analysis to get an Assessment JSON
 6. **Score** — invoke `score-generator` with the assessment and the skeptic score to get the Reality Gap score and verdict
+7. **Follow-up Q&A (optional, interactive)** — after delivering the score, the user may keep asking questions about this analysis. Drive the follow-up loop via the `chat` agent:
+   - On request (or when the user says "what should I ask next?"), the `chat` agent offers 3-5 follow-up question templates (from the `follow-up` skill) as a numbered list.
+   - The user can pick a template OR type their own question.
+   - The `chat` agent answers the chosen/custom question grounded strictly in this analysis's evidence.
+   - Allow a couple more rounds (cap ~3) before asking if the user wants anything else.
 
 ## Handoffs
 - After parsing, run the ticker guardrail; only pass a valid ticker to the evidence agents
@@ -38,6 +43,7 @@ Drive the agent sequence that turns an Indonesian market narrative into a Realit
 - Pass claim + evidence to `skeptic-agent`
 - Pass claim + evidence + skeptic to `evidence-judge`
 - Pass assessment + skeptic score to `score-generator`
+- Pass the completed analysis (claim + evidence + skeptic + assessment + score) to the `chat` agent for all follow-up questions
 
 ## Output contract
-Return the final Reality Gap score and verdict as specified by the `score-generator` skill. If the ticker guardrail halts the pipeline, return the clarification request (ticker: null, needs_clarification: true) instead of a score.
+Return the final Reality Gap score and verdict as specified by the `score-generator` skill. If the ticker guardrail halts the pipeline, return the clarification request (ticker: null, needs_clarification: true) instead of a score. Follow-up answers (template-picked or custom) are returned by the `chat` agent grounded in the analysis evidence.

@@ -278,9 +278,12 @@ export default {
 
   // Follow-up chat
   'chat.title': 'Tanya Lanjutan',
+  'chat.open': 'Tanya',
+  'chat.close': 'Tutup',
   'chat.placeholder': 'Tanya tentang analisis ini…',
-  'chat.send': 'Tanya',
+  'chat.send': 'Kirim',
   'chat.sending': '…',
+  'chat.thinking': 'Menganalisis…',
   'chat.error': 'Tidak dapat menjawab saat ini.',
 
   // Claim directions
@@ -329,6 +332,7 @@ export default {
   'verdict.mixed': 'Campuran',
   'verdict.supported': 'Didukung',
   'verdict.strongly_supported': 'Sangat Didukung',
+  'verdict.narrative.title': 'Ringkasan Analisis',
 
   // Verdict legend
   'verdict.legend.title': 'Cara membaca skor',
