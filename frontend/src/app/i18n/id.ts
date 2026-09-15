@@ -293,6 +293,7 @@ export default {
   'chat.send': 'Kirim',
   'chat.sending': '…',
   'chat.thinking': 'Menganalisis…',
+  'chat.generating_question': 'Membuat pertanyaan baru…',
   'chat.error': 'Tidak dapat menjawab saat ini.',
 
   // Claim directions

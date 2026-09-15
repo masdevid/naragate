@@ -54,6 +54,9 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
           }
         </div>
         <div class="chat__suggestions">
+          @if (suggestionLoading) {
+            <span class="chat__thinking-text">{{ 'chat.generating_question' | t }}</span>
+          }
           @for (s of visibleSuggestions(); track s.id) {
             <button
               (click)="ask(s)"
@@ -246,6 +249,7 @@ export class ResultsChatComponent {
   @Input() loading = false;
   @Input() removingId = '';
   @Input() loaded = false;
+  @Input() suggestionLoading = false;
   @Output() sendQuestion = new EventEmitter<string>();
   @Output() suggestionClicked = new EventEmitter<FollowUpSuggestion>();
   @Output() opened = new EventEmitter<void>();

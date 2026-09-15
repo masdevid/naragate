@@ -293,6 +293,7 @@ export default {
   'chat.send': 'Send',
   'chat.sending': '…',
   'chat.thinking': 'Thinking…',
+  'chat.generating_question': 'Generating a new question…',
   'chat.error': 'Unable to get an answer right now.',
 
   // Claim directions

@@ -38,6 +38,12 @@ The domain of an evidence engine that detects financial claims in Indonesian mar
 
 **Agent Surface**: Any client the engine is driven from — the custom web UI, the MCP server, or the Pi agent pipeline. Every surface shares one backend pipeline, Evidence Graph cache, and credit ledger. _Avoid_: client, frontend, interface.
 
+**Reasoning Stream**: The model's live reasoning tokens, streamed from the Pi harness as `reasoning_content` and shown on the claim page as a typing transcript — distinct from the final answer JSON. _Avoid_: logs, output, raw JSON.
+
+**Follow-up Template**: A clickable question chip on the results page, generated per completed analysis and adapted to the user's click history. Lifecycle: click → dismissed → answered → one fresh template generated in its place (repeats avoided). _Avoid_: suggestion, canned question.
+
+**Agent Circuit**: The claim-page loader that renders each pipeline stage as a circuit block with a per-stage hue, a completion indicator, and a communication pulse between stages. _Avoid_: spinner, progress bar, animation.
+
 **Evidence Dimension**: A specific gap measured for the Reality Gap Score — *valuation gap*, *earnings gap*, *market momentum gap*, *peer relative gap*, or *evidence confidence*. Only dimensions relevant to the claim category are computed. _Avoid_: metric, factor, indicator.
 
 **Credit**: A unit of Sectors API usage. The project operates within a 1,600-credit budget (1,000 hackathon + 600 onboarding). Each API call consumes credits; caching is mandatory to stay within budget. _Avoid_: token, point, quota.
@@ -54,3 +60,4 @@ The domain of an evidence engine that detects financial claims in Indonesian mar
 - The system supports any OpenAI-compatible LLM provider — users are not locked to Ollama.
 - Settings are persisted in SQLite and editable via the web UI at runtime (no restart required).
 - All agent surfaces (web UI, MCP server, Pi pipeline) must obtain evidence through the same backend pipeline and Evidence Graph cache. No surface may call Sectors directly; the MCP server in particular is a thin client over the backend.
+- Clicking a follow-up template replaces that one template with a newly generated one (dismiss → answer → generate); the whole set is never regenerated on click.

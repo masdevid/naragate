@@ -125,6 +125,7 @@ import { buildVerdictNarrative } from '../../utils/verdict-narrative';
               [suggestions]="followupSuggestions"
               [removingId]="removingId()"
               [loaded]="suggestionsLoaded()"
+              [suggestionLoading]="suggestionLoading()"
               [loading]="chatLoading()"
               (opened)="onChatOpened()"
               (sendQuestion)="sendChat($event)"
@@ -250,6 +251,7 @@ export class ResultsComponent implements OnInit {
   followupSuggestions = signal<FollowUpSuggestion[]>([]);
   removingId = signal('');
   suggestionsLoaded = signal(false);
+  suggestionLoading = signal(false);
   suggestionsRequested = false;
 
   ngOnInit() {
@@ -293,14 +295,18 @@ export class ResultsComponent implements OnInit {
 
   // Replace a clicked template with a fresh one, animating the chip out first.
   private replaceSuggestion(exclude: string[]) {
+    this.suggestionLoading.set(true);
     this.narrativeService.getNextSuggestion(this.claimId, exclude).subscribe({
       next: (res) => {
         const next = res?.suggestion;
         if (next) {
           this.followupSuggestions.update(list => [...list, next]);
         }
+        this.suggestionLoading.set(false);
       },
-      error: () => {},
+      error: () => {
+        this.suggestionLoading.set(false);
+      },
     });
   }
 
@@ -353,8 +359,8 @@ export class ResultsComponent implements OnInit {
     return this.i18n.t(`direction.${direction}`);
   }
 
-  sendChat(question: string) {
-    if (!question || this.chatLoading()) return;
+  sendChat(question: string, onAnswered?: () => void): boolean {
+    if (!question || this.chatLoading()) return false;
     this.chatMessages.update(m => [...m, { role: 'user', text: question }]);
     this.chatLoading.set(true);
     this.narrativeService.askFollowUp(this.claimId, question).subscribe({
@@ -362,28 +368,31 @@ export class ResultsComponent implements OnInit {
         const text = this.i18n.language() === 'en' && res.answer_en ? res.answer_en : res.answer;
         this.chatMessages.update(m => [...m, { role: 'assistant', text }]);
         this.chatLoading.set(false);
+        onAnswered?.();
       },
       error: () => {
         this.chatMessages.update(m => [...m, { role: 'assistant', text: this.i18n.t('chat.error') }]);
         this.chatLoading.set(false);
+        onAnswered?.();
       },
     });
+    return true;
   }
 
+  // Order: dismiss the clicked template -> answer it -> generate a replacement.
   onSuggestionClick(s: FollowUpSuggestion) {
     const text = this.i18n.language() === 'en' && s.text_en ? s.text_en : s.text;
     const exclude = this.followupSuggestions().map(x => x.text);
     this.narrativeService.recordSuggestionFeedback(this.claimId, s.id, s.text).subscribe({
       error: () => {},
     });
-    this.sendChat(text);
 
-    // Dismiss the clicked chip, then generate a fresh template to replace it.
     this.removingId.set(s.id);
     window.setTimeout(() => {
       this.followupSuggestions.update(list => list.filter(x => x.id !== s.id));
       this.removingId.set('');
-      this.replaceSuggestion(exclude);
+      const started = this.sendChat(text, () => this.replaceSuggestion(exclude));
+      if (!started) this.replaceSuggestion(exclude);
     }, 200);
   }
 }
