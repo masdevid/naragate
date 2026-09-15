@@ -23,7 +23,7 @@ import { TPipe } from '../../pipes/t.pipe';
         <span class="recent__narrative">{{ claim.narrative }}</span>
         <span class="recent__meta" [class.recent__meta--failed]="claim.status === 'failed'"
           [class.recent__meta--pending]="claim.status === 'pending'">
-          {{ statusLabel(claim.status) }} &middot; {{ claim.created_at | date:'short' }}
+          {{ statusLabel(claim.status) }} &middot; {{ toJakarta(claim.created_at) | date:'short':'Asia/Jakarta' }}
         </span>
       </button>
       <button
@@ -100,6 +100,18 @@ export class RecentItemComponent {
   @Output() toggle = new EventEmitter<{ id: string; checked: boolean }>();
 
   private i18n = inject(I18nService);
+
+  /**
+   * Normalize a stored timestamp into a real UTC instant so the date pipe can
+   * render it in Jakarta time (WIB). The backend stores naive UTC ISO strings
+   * (no offset), which the pipe would otherwise read as browser-local.
+   */
+  toJakarta(iso: string | null | undefined): Date | null {
+    if (!iso) return null;
+    const hasOffset = /(?:z|[+-]\d{2}:?\d{2})$/i.test(iso);
+    const parsed = new Date(hasOffset ? iso : `${iso}Z`);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
 
   statusLabel(status: string): string {
     switch (status) {
