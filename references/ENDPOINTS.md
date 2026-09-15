@@ -26,6 +26,25 @@
 
 ---
 
+## First-party account endpoints (not v2)
+
+Login + account credits. These use **OAuth2 bearer** auth, not the
+`SECTORS_API_KEY`, and are not in the v2 OpenAPI schema. See
+`references/sectors-account-usage.md`.
+
+| Endpoint | Method | Returns | Used by Naragate |
+|----------|--------|---------|------------------|
+| `/auth/token/` | POST | `{refresh, access}` for `{email, password}` (no `client_id`) | ✅ login + token renewal (`core/sectors_account.login_with_password`) |
+| `/auth/users/{user_id}/` | GET | Profile: email, `subscription_tier`, `credits`, `promo_credits`, expiries | ✅ `fetch_account_snapshot` |
+| `/api/usage/` | GET | Per-day success/error counts + current/previous period + credit balances | ✅ `GET /api/v1/usage` → Usage page |
+| `/api/credits/` | POST | — | ❌ |
+
+**Ownership:** the Sectors API key is bound to the logged-in account **email**
+(`sectors_keys_by_email`), replacing the earlier IP-owner model. Account
+endpoints are Cloudflare-fronted and need a browser User-Agent.
+
+---
+
 ## IDX Endpoints (`/v2/...`)
 
 ### Company & Screener
