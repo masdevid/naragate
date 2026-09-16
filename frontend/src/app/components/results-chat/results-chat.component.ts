@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../services/i18n.service';
 import { TPipe } from '../../pipes/t.pipe';
+import { ChatSuggestionComponent } from '../chat-suggestion/chat-suggestion.component';
 
 export interface FollowUpSuggestion {
   id: string;
@@ -24,7 +25,7 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
 @Component({
   selector: 'app-results-chat',
   standalone: true,
-  imports: [FormsModule, TPipe],
+  imports: [FormsModule, TPipe, ChatSuggestionComponent],
   template: `
     @if (!open) {
       <button (click)="toggle()" class="chat__fab" [attr.aria-expanded]="open">
@@ -58,10 +59,11 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
             <span class="chat__thinking-text">{{ 'chat.generating_question' | t }}</span>
           }
           @for (s of visibleSuggestions(); track s.id) {
-            <button
-              (click)="ask(s)"
-              class="chat__suggestion"
-              [class.is-leaving]="removingId === s.id">{{ suggestionLabel(s) }}</button>
+            <app-chat-suggestion
+              [label]="suggestionLabel(s)"
+              [disabled]="suggestionsDisabled"
+              [leaving]="removingId === s.id"
+              (picked)="ask(s)"/>
           }
         </div>
         <div class="chat__input">
@@ -190,32 +192,6 @@ const FALLBACK_ID: FollowUpSuggestion[] = [
       letter-spacing: 0.06em;
     }
     .chat__suggestions { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
-    .chat__suggestion {
-      background: none;
-      border: 1px dashed var(--color-rule);
-      color: var(--color-muted);
-      font-family: var(--font-mono);
-      font-size: var(--text-xs);
-      padding: var(--space-2xs) var(--space-sm);
-      cursor: pointer;
-      transition: color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out);
-      animation: chipIn var(--dur-short) var(--ease-out);
-    }
-    .chat__suggestion:hover { color: var(--color-accent); border-color: var(--color-accent); }
-    .chat__suggestion.is-leaving {
-      animation: chipOut var(--dur-short) var(--ease-in) forwards;
-    }
-    @keyframes chipIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: none; }
-    }
-    @keyframes chipOut {
-      to { opacity: 0; transform: translateY(-4px); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .chat__suggestion { animation: none; }
-      .chat__suggestion.is-leaving { opacity: 0; }
-    }
     .chat__input { display: flex; gap: var(--space-sm); }
     .chat__field {
       flex: 1;
@@ -259,6 +235,10 @@ export class ResultsChatComponent {
 
   private i18n = inject(I18nService);
 
+  get suggestionsDisabled(): boolean {
+    return this.loading || this.suggestionLoading || !!this.removingId;
+  }
+
   visibleSuggestions(): FollowUpSuggestion[] {
     if (this.loaded) return this.suggestions() || [];
     const list = this.suggestions();
@@ -291,6 +271,7 @@ export class ResultsChatComponent {
   }
 
   ask(s: FollowUpSuggestion) {
+    if (this.suggestionsDisabled) return;
     this.suggestionClicked.emit(s);
   }
 }

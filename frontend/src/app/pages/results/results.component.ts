@@ -381,6 +381,7 @@ export class ResultsComponent implements OnInit {
 
   // Order: dismiss the clicked template -> answer it -> generate a replacement.
   onSuggestionClick(s: FollowUpSuggestion) {
+    if (this.chatLoading() || this.suggestionLoading() || this.removingId()) return;
     const text = this.i18n.language() === 'en' && s.text_en ? s.text_en : s.text;
     const exclude = this.followupSuggestions().map(x => x.text);
     this.narrativeService.recordSuggestionFeedback(this.claimId, s.id, s.text).subscribe({
@@ -392,7 +393,11 @@ export class ResultsComponent implements OnInit {
       this.followupSuggestions.update(list => list.filter(x => x.id !== s.id));
       this.removingId.set('');
       const started = this.sendChat(text, () => this.replaceSuggestion(exclude));
-      if (!started) this.replaceSuggestion(exclude);
+      if (!started) {
+        // Chat became busy during the dismiss animation: restore the template.
+        this.followupSuggestions.update(list =>
+          list.some(x => x.id === s.id) ? list : [...list, s]);
+      }
     }, 200);
   }
 }
