@@ -66,6 +66,7 @@ Select the evidence agent by the claim's `category`:
 - `fundamental` → `fundamental-agent`
 - `market` → `market-agent`
 - `peer_comparison` → `valuation-agent` (peer comparison uses valuation evidence)
+- `insider_trading` → `filings-agent`
 
 Also run `news-agent` to corroborate or contradict the claim via recent headlines.
 

@@ -48,7 +48,18 @@ naragate-mcp
 
 Transport is **stdio**.
 
+### Where the Sectors API key lives
+
+The **backend owns the Sectors key and LLM configuration**; this server never sees them and never talks to Sectors directly. Point it at a backend that already has a key:
+
+- the hosted app (`NARAGATE_BACKEND_URL=https://naragate.ilkomers.com`) — operator-configured; or
+- a self-host with `SECTORS_API_KEY` (and `OLLAMA_BASE_URL` / `OLLAMA_MODEL`) set in `.env` before `docker compose up -d`.
+
+The backend falls back to that deployment key whenever no web session is bound — exactly the MCP case. Binding a key to a user account (per-email ownership) is a web-UI action and is intentionally not exposed over MCP.
+
 ## Tools
+
+**24 tools total — 9 high-level + 15 low-level** (every primitive declared in `skills/*/tools.yaml`).
 
 | Tool | What it does |
 |---|---|
@@ -76,6 +87,11 @@ per-agent exactly like the Pi pipeline (check the cache, then fetch on a miss an
 | `sectors_news(ticker, limit)` | Sectors v2 news headlines |
 | `sectors_corporate_actions(ticker)` | Sectors v2 corporate actions |
 | `sectors_filings(ticker, filing_type)` | Sectors v2 insider-trade filings |
+| `sectors_foreign_flow(ticker, start, end)` | Sectors v2 foreign investor flow (net inflow/outflow) |
+| `sectors_broker_summary(ticker, start, end)` | Sectors v2 broker accumulation/distribution summary |
+| `sectors_top_changes(classifications, periods, n_stock)` | Sectors v2 top gainers/losers across the IDX universe |
+| `sectors_segments(ticker, financial_year)` | Sectors v2 revenue-segment breakdown |
+| `sectors_index_daily(index_code, start, end)` | Sectors v2 daily closing prices for an IDX index (e.g. `ihsg`) |
 | `evidence_cache_get(ticker)` | Read the Evidence Graph (null on miss) |
 | `evidence_cache_merge(ticker, key, value, ttl?)` | Merge one section into the cache |
 | `llm_complete(prompt, system?, response_format?, role?)` | One-shot completion on Naragate's configured LLM |

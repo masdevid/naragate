@@ -2,6 +2,8 @@
 
 A multi-agent template for the **Naragate Reality Gap** evidence engine. It defines the agent topology that turns an Indonesian market narrative into a Reality Gap score (0-100) and verdict, and it can be installed into any harness that supports multiple agents.
 
+The template ships **13 agents — one per skill in the Naragate skills package** — so the generated topology covers the whole pipeline plus the follow-up/renderer utilities.
+
 This template **complements** the Naragate skills package. Each agent loads its corresponding skill from `skills/`; the skills remain the single source of truth for the actual instructions. This template only wires the agents together.
 
 ## Topology
@@ -24,6 +26,9 @@ flowchart TD
     JJ -->|4. Assessment JSON| SG[score-generator]
     SG -->|5. score| RG([Reality Gap score + verdict])
     RG -.->|completed analysis| CH[chat<br/>follow-up Q&A]
+    RG -.->|completed analysis| FU[follow-up<br/>question templates]
+    CH -.->|template request| FU
+    SG -.->|CLI / non-UI prose| RD[renderer]
 ```
 
 Support agents:
@@ -31,6 +36,8 @@ Support agents:
 | Agent | Role |
 |-------|------|
 | `chat` | Drives follow-up Q&A: offers 3-5 follow-up question templates the user can pick from, or answers a custom-typed question, grounded only in the evidence |
+| `follow-up` | Generates the 3-5 contextual follow-up question templates `chat` presents; usable standalone as a template generator |
+| `renderer` | Converts any agent's JSON output into narrative prose for CLI / non-UI consumers |
 | `pipeline-orchestrator` | Coordinate multi-stage pipeline execution |
 
 These agents are available outside the main pipeline for secondary tasks.
@@ -51,11 +58,14 @@ that already render suggestion chips, it skips the template step and answers the
 | `valuation-agent` | `valuation-agent` | Claim JSON (valuation) | ValuationEvidence JSON |
 | `fundamental-agent` | `fundamental-agent` | Claim JSON (fundamental) | FundamentalEvidence JSON |
 | `market-agent` | `market-agent` | Claim JSON (market) | MarketEvidence JSON |
+| `filings-agent` | `filings-agent` | Claim JSON (insider_trading) | FilingsEvidence JSON |
 | `news-agent` | `news-agent` | Claim JSON | NewsEvidence JSON |
 | `skeptic-agent` | `skeptic-agent` | Claim + evidence | SkepticAnalysis JSON |
 | `evidence-judge` | `evidence-judge` | Claim + evidence + skeptic | Assessment JSON |
 | `score-generator` | `score-generator` | Assessment + skeptic score | RealityGapScore JSON |
 | `chat` | `chat` | question + completed analysis | answer (text) |
+| `follow-up` | `follow-up` | completed analysis + preference profile | 3-5 follow-up templates JSON |
+| `renderer` | `renderer` | any agent's JSON output | narrative prose |
 
 ## Layout
 

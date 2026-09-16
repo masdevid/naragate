@@ -29,11 +29,14 @@ AGENT_FILES = [
     "valuation-agent.md",
     "fundamental-agent.md",
     "market-agent.md",
+    "filings-agent.md",
     "news-agent.md",
     "skeptic-agent.md",
     "evidence-judge.md",
     "score-generator.md",
     "chat.md",
+    "follow-up.md",
+    "renderer.md",
     "pipeline-orchestrator.md",
 ]
 

@@ -18,6 +18,12 @@ services:
       - SECTORS_ACCOUNT_PASSWORD=${SECTORS_ACCOUNT_PASSWORD:-}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+      - CLAIM_PARSER_MODEL=${CLAIM_PARSER_MODEL:-}
+      - SKEPTIC_MODEL=${SKEPTIC_MODEL:-}
+      - SCORER_MODEL=${SCORER_MODEL:-}
+      - NEWS_MODEL=${NEWS_MODEL:-}
+      - CHAT_MODEL=${CHAT_MODEL:-}
+      - FOLLOW_UP_MODEL=${FOLLOW_UP_MODEL:-}
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=sqlite:///./data/naragate.db
       - PI_AGENT_URL=http://pi-agent:3000
