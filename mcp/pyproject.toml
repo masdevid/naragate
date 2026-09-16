@@ -1,6 +1,6 @@
 [project]
 name = "naragate-mcp"
-version = "0.5.0"
+version = "0.6.0"
 description = "MCP server exposing the Naragate reality-gap evidence engine to any MCP-capable agent (desktop, CLI, IDE)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -45,6 +45,12 @@ dependencies = [
 test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+]
+# Embedded mode: run the engine in-process with `naragate-mcp --local`.
+# The engine needs Python 3.12+; on 3.10/3.11 this extra is a no-op (use a
+# remote NARAGATE_BACKEND_URL there).
+local = [
+    'naragate-engine>=0.4.0; python_version >= "3.12"',
 ]
 
 [project.scripts]

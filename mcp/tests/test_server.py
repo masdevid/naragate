@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from naragate_mcp import server
-from naragate_mcp.client import NaragateError
+from naragate_mcp.client import NaragateClient, NaragateError
 
 COMPLETED = {
     "claim_id": "c1",
@@ -158,3 +158,42 @@ def test_mcp_layer_never_touches_sectors_directly():
     source = Path(server.__file__).read_text(encoding="utf-8")
     assert "sectors.app" not in source
     assert "sectors_client" not in source
+
+
+def test_embedded_mode_flag_and_env(monkeypatch):
+    monkeypatch.delenv("NARAGATE_ENGINE", raising=False)
+    assert server._embedded_requested(["--local"]) is True
+    assert server._embedded_requested(["--embedded"]) is True
+    assert server._embedded_requested([]) is False
+
+    monkeypatch.setenv("NARAGATE_ENGINE", "embedded")
+    assert server._embedded_requested([]) is True
+
+
+def test_client_prefers_embedded_base_url(monkeypatch):
+    # The autouse fixture fakes the client; use the real one to inspect base_url.
+    monkeypatch.setattr(server, "NaragateClient", NaragateClient)
+
+    monkeypatch.setenv("NARAGATE_BACKEND_URL", "http://remote.test:1")
+    monkeypatch.setattr(server, "_BASE_URL", None)
+    assert server._client().base_url == "http://remote.test:1"
+
+    monkeypatch.setattr(server, "_BASE_URL", "http://127.0.0.1:9999")
+    assert server._client().base_url == "http://127.0.0.1:9999"
+
+
+def test_embedded_start_errors_helpfully_without_engine(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name.startswith("app") or name == "uvicorn":
+            raise ImportError("not installed")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    from naragate_mcp.local_engine import LocalEngine
+
+    with pytest.raises(RuntimeError, match=r"naragate-mcp\[local\]"):
+        LocalEngine().start()

@@ -284,17 +284,24 @@ If the backend has no key, analysis tools fail until one is configured; the web 
 
 ### Run your own engine (no hosted dependency)
 
-MCP/skills/agents depend on **an** engine, never on *this* project's hosted instance — so tearing the hosted domain down doesn't strand anyone. The engine is a one-command process that needs no Redis (SQLite for claims, an in-process Evidence Graph cache when Redis is absent):
+MCP/skills/agents depend on **an** engine, never on *this* project's hosted instance — so tearing the hosted domain down doesn't strand anyone. Two ways:
+
+**Embedded (zero config):** run the engine inside the MCP process.
 
 ```bash
-# Python
-pip install naragate-engine && SECTORS_API_KEY=... naragate-engine   # → http://127.0.0.1:5678
+pip install "naragate-mcp[local]"        # Python 3.12+
+SECTORS_API_KEY=... naragate-mcp --local # no NARAGATE_BACKEND_URL needed
+```
 
-# or Docker
+**Separate process (shared cache / multiple clients):** the engine needs no Redis (SQLite for claims, in-process Evidence Graph cache when Redis is absent):
+
+```bash
+pip install naragate-engine && SECTORS_API_KEY=... naragate-engine   # → http://127.0.0.1:5678
+# or
 docker run --rm -p 5678:5678 -e SECTORS_API_KEY=... ghcr.io/masdevid/naragate-engine
 ```
 
-Then point the harness at it: `NARAGATE_BACKEND_URL=http://127.0.0.1:5678`. If nothing answers, MCP tools fail with an offline hint telling the user exactly how to start an engine. For the full web UI + Pi harness, use `docker compose up -d --build` instead.
+Then point the harness at it with `NARAGATE_BACKEND_URL`. If nothing answers, MCP tools fail with an offline hint telling the user exactly how to start an engine. For the full web UI + Pi harness, use `docker compose up -d --build` instead.
 
 ### Tools (30) — full skills parity
 

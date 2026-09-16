@@ -57,9 +57,24 @@ The backend owns the Sectors key and LLM configuration; this server never sees t
 - `whoami` confirms the resolved account; `get_setup_status` reports missing config; `bind_sectors_key` sets your key off-web.
 - Tokens are stored hashed server-side and revocable from the same settings page.
 
-### No backend? Start one in one command
+### No backend? Run it embedded
 
-This server depends on **an** engine, not on any particular hosted deployment. The engine runs standalone with no Redis (SQLite + in-process cache):
+`naragate-mcp --local` runs the engine **in this process** — no separate
+process, no `NARAGATE_BACKEND_URL`:
+
+```bash
+pip install "naragate-mcp[local]"     # Python 3.12+; pulls naragate-engine
+SECTORS_API_KEY=... naragate-mcp --local
+# or: NARAGATE_ENGINE=embedded naragate-mcp
+```
+
+It serves the exact same engine as the hosted deployment (one cache, one credit
+ledger), just in-process. Configure the Sectors key / LLM through the
+environment (`SECTORS_API_KEY`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`); per-user
+tokens and `bind_sectors_key` don't apply to a single local user.
+
+Prefer a separate engine process (shared cache, multiple clients)? Run one and
+point `NARAGATE_BACKEND_URL` at it:
 
 ```bash
 pip install naragate-engine && SECTORS_API_KEY=... naragate-engine
@@ -67,7 +82,7 @@ pip install naragate-engine && SECTORS_API_KEY=... naragate-engine
 docker run --rm -p 5678:5678 -e SECTORS_API_KEY=... ghcr.io/masdevid/naragate-engine
 ```
 
-If no engine answers, tools fail with an actionable hint on how to start one. Set `NARAGATE_BACKEND_URL` to wherever the engine runs.
+If no engine answers, tools fail with an actionable hint on how to start one.
 
 ## Tools
 
