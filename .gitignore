@@ -66,3 +66,7 @@ frontend/.angular/
 frontend/playwright-report/
 frontend/test-results/
 frontend/e2e/history/generated-results.json
+
+# uv artifacts (MCP tests use uv run)
+uv.lock
+.venv/
