@@ -1,26 +1,93 @@
 name: Publish engine
 
-# Builds the Naragate engine image so it can run anywhere with one command,
-# independent of any hosted deployment:
-#   docker run --rm -p 5678:5678 ghcr.io/<owner>/naragate-engine
-# MCP/skills/agents only need NARAGATE_BACKEND_URL pointed at it.
+# Publishes the standalone engine (backend/) as:
+#   - a PyPI package `naragate-engine` (console script `naragate-engine`)
+#   - a container image ghcr.io/<owner>/naragate-engine
+# so MCP/skills/agents can run with a one-command local engine, independent of
+# any hosted deployment.
+#
+# PyPI uses Trusted Publishing (OIDC) — no API token secret. One-time setup on
+# PyPI (project -> Publishing -> Add a new publisher):
+#   Owner: masdevid · Repository: naragate · Workflow: publish-engine.yml · Environment: pypi
+#   https://pypi.org/manage/project/naragate-engine/settings/publishing/
 
 on:
   release:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/naragate-engine
 
 jobs:
-  build-and-push:
+  build:
+    name: Build & validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]" build twine
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Validate distributions
+        run: python -m twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: naragate-engine-dist
+          path: backend/dist/*
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/naragate-engine
+    permissions:
+      id-token: write   # OIDC token for Trusted Publishing
+      contents: read
+      actions: read     # download-artifact
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: naragate-engine-dist
+          path: dist
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  publish-image:
+    name: Publish container image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4

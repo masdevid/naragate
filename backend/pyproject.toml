@@ -1,6 +1,6 @@
 [project]
 name = "naragate-engine"
-version = "0.3.0"
+version = "0.4.0"
 description = "AI evidence engine that detects financial claims in Indonesian market narratives and verifies them against Sectors v2 financial data"
 requires-python = ">=3.12"
 dependencies = [
