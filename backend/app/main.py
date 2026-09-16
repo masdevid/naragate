@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import httpx
 import asyncio
+import os
 import time
 import json
 from datetime import datetime
@@ -179,3 +180,25 @@ async def health():
             "cache_ttl_daily": settings.EVIDENCE_CACHE_TTL_DAILY,
         }
     }
+
+
+def run() -> None:
+    """Console entry point: `naragate-engine`.
+
+    Starts the engine as a single process with zero infrastructure — SQLite for
+    claims and an in-process Evidence Graph cache when no Redis is reachable, so
+    an MCP/skill harness can point `NARAGATE_BACKEND_URL` at a one-command local
+    engine instead of depending on a hosted deployment.
+    """
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host=os.getenv("NARAGATE_HOST", "127.0.0.1"),
+        port=int(os.getenv("NARAGATE_PORT", str(settings.BACKEND_PORT))),
+        log_level=os.getenv("NARAGATE_LOG_LEVEL", "info"),
+    )
+
+
+if __name__ == "__main__":
+    run()

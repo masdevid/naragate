@@ -14,6 +14,14 @@ import httpx
 
 DEFAULT_BASE_URL = "http://127.0.0.1:5678"
 
+# Shown when no backend answers, so an agent can tell the user how to recover
+# instead of just failing — the engine is a one-command process.
+OFFLINE_HINT = (
+    "No Naragate engine reachable. Start one and point NARAGATE_BACKEND_URL at it: "
+    "`uvx naragate-engine` (or `pip install naragate-engine && naragate-engine`), "
+    "or `docker run --rm -p 5678:5678 ghcr.io/masdevid/naragate-engine`."
+)
+
 
 class NaragateError(RuntimeError):
     """Raised when the Naragate backend is unreachable or returns an error."""
@@ -46,8 +54,11 @@ class NaragateClient:
             with httpx.Client(timeout=self.timeout, transport=self._transport) as client:
                 resp = client.request(method, url, headers=headers or None, **kwargs)
         except httpx.HTTPError as exc:  # network / timeout
+            hint = ""
+            if isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout)):
+                hint = f" {OFFLINE_HINT}"
             raise NaragateError(
-                f"cannot reach Naragate backend at {self.base_url}: {exc}"
+                f"cannot reach Naragate backend at {self.base_url}: {exc}.{hint}"
             ) from exc
 
         if resp.status_code >= 400:

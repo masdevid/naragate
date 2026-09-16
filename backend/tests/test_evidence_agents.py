@@ -643,6 +643,24 @@ class TestFundamentalSegmentEnrichment:
 class TestGetEvidenceForClaim:
     """Tests for the evidence routing function."""
 
+    @pytest.fixture(autouse=True)
+    def _no_network(self):
+        """Keep routing tests offline: the cached-miss path now degrades to the
+        in-process cache and would otherwise reach the real Sectors client."""
+        with patch("app.services.evidence_agents.cache") as mock_cache, \
+             patch("app.services.evidence_agents.sectors_client") as mock_sectors, \
+             patch("app.services.evidence_agents.news_agent") as mock_news, \
+             patch("app.services.evidence_agents.corporate_actions_agent") as mock_corp, \
+             patch("app.services.evidence_agents.record_sectors_cache_hit"):
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.merge = AsyncMock()
+            mock_cache.set = AsyncMock()
+            mock_sectors.get_company_report = AsyncMock(return_value={})
+            mock_sectors.get_subsector_report = AsyncMock(return_value={})
+            mock_news.analyze = AsyncMock(return_value="news")
+            mock_corp.analyze = AsyncMock(return_value="corporate_actions")
+            yield
+
     @pytest.mark.asyncio
     async def test_routes_to_correct_agent(self):
         claim = Claim(

@@ -68,6 +68,8 @@ def test_unreachable_backend_is_wrapped():
         _client(handler).get_usage()
 
     assert "cannot reach Naragate backend" in str(exc.value)
+    # Actionable recovery hint so an agent can tell the user how to start one.
+    assert "naragate-engine" in str(exc.value)
 
 
 def test_base_url_from_env(monkeypatch):

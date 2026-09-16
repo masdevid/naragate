@@ -282,6 +282,20 @@ The **backend owns all configuration** — the MCP server, skills and agents nev
 
 If the backend has no key, analysis tools fail until one is configured; the web setup wizard, the token flow and `.env` all write to the same backend.
 
+### Run your own engine (no hosted dependency)
+
+MCP/skills/agents depend on **an** engine, never on *this* project's hosted instance — so tearing the hosted domain down doesn't strand anyone. The engine is a one-command process that needs no Redis (SQLite for claims, an in-process Evidence Graph cache when Redis is absent):
+
+```bash
+# Python
+pip install naragate-engine && SECTORS_API_KEY=... naragate-engine   # → http://127.0.0.1:5678
+
+# or Docker
+docker run --rm -p 5678:5678 -e SECTORS_API_KEY=... ghcr.io/masdevid/naragate-engine
+```
+
+Then point the harness at it: `NARAGATE_BACKEND_URL=http://127.0.0.1:5678`. If nothing answers, MCP tools fail with an offline hint telling the user exactly how to start an engine. For the full web UI + Pi harness, use `docker compose up -d --build` instead.
+
 ### Tools (30) — full skills parity
 
 **High-level (credit-safe) — 15:** `analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `get_reality_gap`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, `whoami`, `get_setup_status`, `bind_sectors_key`, `ask_followup`, `get_followup_suggestions`, `next_followup_suggestion`.
@@ -363,7 +377,7 @@ docker compose up -d --build
 
 The first build takes a few minutes. When it finishes, open **http://localhost:4273**.
 
-> Prefer not to self-host? Point the MCP server at the hosted app instead with `NARAGATE_BACKEND_URL=https://naragate.ilkomers.com` — see [Use Naragate from any MCP agent](#use-naragate-from-any-mcp-agent).
+> Prefer not to self-host? Point the MCP server at the hosted app instead with `NARAGATE_BACKEND_URL=https://naragate.ilkomers.com` — or run just the engine (no Redis, no web UI) with `pip install naragate-engine && SECTORS_API_KEY=... naragate-engine`. See [Use Naragate from any MCP agent](#use-naragate-from-any-mcp-agent).
 
 ### 4. Complete the setup wizard
 

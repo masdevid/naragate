@@ -57,6 +57,18 @@ The backend owns the Sectors key and LLM configuration; this server never sees t
 - `whoami` confirms the resolved account; `get_setup_status` reports missing config; `bind_sectors_key` sets your key off-web.
 - Tokens are stored hashed server-side and revocable from the same settings page.
 
+### No backend? Start one in one command
+
+This server depends on **an** engine, not on any particular hosted deployment. The engine runs standalone with no Redis (SQLite + in-process cache):
+
+```bash
+pip install naragate-engine && SECTORS_API_KEY=... naragate-engine
+# or
+docker run --rm -p 5678:5678 -e SECTORS_API_KEY=... ghcr.io/masdevid/naragate-engine
+```
+
+If no engine answers, tools fail with an actionable hint on how to start one. Set `NARAGATE_BACKEND_URL` to wherever the engine runs.
+
 ## Tools
 
 **30 tools total — 15 high-level + 15 low-level** (every primitive declared in `skills/*/tools.yaml`).
