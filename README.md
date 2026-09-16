@@ -303,6 +303,32 @@ docker run --rm -p 5678:5678 -e SECTORS_API_KEY=... ghcr.io/masdevid/naragate-en
 
 Then point the harness at it with `NARAGATE_BACKEND_URL`. If nothing answers, MCP tools fail with an offline hint telling the user exactly how to start an engine. For the full web UI + Pi harness, use `docker compose up -d --build` instead.
 
+### Web UI vs local (same engine, two shapes)
+
+```mermaid
+flowchart TB
+  subgraph WEB["Web UI surface"]
+    direction LR
+    Browser["Browser<br/>Angular UI"] --> API["Backend engine<br/>FastAPI · SQLite · Redis<br/>shared Evidence Graph cache"]
+  end
+
+  subgraph LOCAL["Local / non-web surface"]
+    direction LR
+    Agent["MCP client<br/>Claude Code · Cursor · opencode · Codex"] --> MCP["naragate-mcp"]
+    MCP -->|"--local (in-process)"| Emb["Embedded engine<br/>SQLite · in-memory cache"]
+    MCP -->|"NARAGATE_BACKEND_URL"| Std["Standalone engine<br/>naragate-engine / Docker"]
+  end
+
+  API --> Sectors["Sectors v2"]
+  Emb --> Sectors
+  Std --> Sectors
+  API --> LLM["LLM provider"]
+  Emb --> LLM
+  Std --> LLM
+```
+
+The engine, Evidence Graph cache and credit ledger are the **same code** in all three shapes — the web UI just fronts it with Angular and a shared Redis cache, while non-web runs either **embed** the engine in the MCP process (`--local`) or point at a **standalone** engine. No client surface calls Sectors directly.
+
 ### Tools (30) — full skills parity
 
 **High-level (credit-safe) — 15:** `analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `get_reality_gap`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, `whoami`, `get_setup_status`, `bind_sectors_key`, `ask_followup`, `get_followup_suggestions`, `next_followup_suggestion`.

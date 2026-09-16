@@ -84,6 +84,20 @@ docker run --rm -p 5678:5678 -e SECTORS_API_KEY=... ghcr.io/masdevid/naragate-en
 
 If no engine answers, tools fail with an actionable hint on how to start one.
 
+```mermaid
+flowchart LR
+  Client["MCP client"] --> MCP["naragate-mcp"]
+  MCP -->|"--local"| Emb["Embedded engine<br/>same process · no Redis"]
+  MCP -->|"NARAGATE_BACKEND_URL"| Remote["Remote engine<br/>naragate-engine / Docker / web backend"]
+  Emb --> Sectors["Sectors v2"]
+  Remote --> Sectors
+  Emb --> LLM["LLM provider"]
+  Remote --> LLM
+```
+
+All three shapes run the **same engine and Evidence Graph cache**; this server
+never calls Sectors directly.
+
 ## Tools
 
 **30 tools total — 15 high-level + 15 low-level** (every primitive declared in `skills/*/tools.yaml`).
