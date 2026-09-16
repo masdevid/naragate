@@ -69,4 +69,3 @@ frontend/e2e/history/generated-results.json
 
 # uv artifacts (MCP tests use uv run)
 uv.lock
-.venv/
