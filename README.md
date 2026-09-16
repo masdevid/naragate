@@ -45,7 +45,7 @@ It answers one question: **does this narrative actually match reality?**
 ### Any Agent Surface — MCP + Skills *(New)*
 
 - **One engine, every surface** — the same reality-gap engine runs in the web UI, over **MCP** (Claude Code, Claude Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex, any MCP harness), and through the Pi agent pipeline
-- **Full tool parity** — **24 MCP tools**: 9 high-level (`analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `get_reality_gap`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`) plus all 15 primitives declared by the skills (`sectors_company_report`, `sectors_subsector_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_corporate_actions`, `sectors_filings`, `sectors_foreign_flow`, `sectors_broker_summary`, `sectors_top_changes`, `sectors_segments`, `sectors_index_daily`, `evidence_cache_get`, `evidence_cache_merge`, `llm_complete`), with `naragate://` resources. A test enforces that parity
+- **Full tool parity** — **30 MCP tools**: 15 high-level (`analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `get_reality_gap`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, `whoami`, `get_setup_status`, `bind_sectors_key`, `ask_followup`, `get_followup_suggestions`, `next_followup_suggestion`) plus all 15 primitives declared by the skills (`sectors_company_report`, `sectors_subsector_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_corporate_actions`, `sectors_filings`, `sectors_foreign_flow`, `sectors_broker_summary`, `sectors_top_changes`, `sectors_segments`, `sectors_index_daily`, `evidence_cache_get`, `evidence_cache_merge`, `llm_complete`), with `naragate://` resources. A test enforces that parity
 - **Installable skills package** — 13 harness-agnostic skills; an optional 13-agent template wires them into Claude Code, OpenCode, Codex, Pi, and Deep Agents
 - **Credit-safe by construction** — the MCP server is a thin client over the backend and never calls Sectors directly, so a non-web run shares the web UI's Evidence Graph cache and credit accounting (**0 extra Sectors calls on a warm cache**)
 
@@ -197,7 +197,7 @@ The LLM-driven agents (Claim Parser, News, Skeptic, Chat, Follow-up) run through
 
 ### MCP Surface
 
-The **MCP server** (`mcp/`) is a second, harness-agnostic orchestration path. It is a thin, credit-safe client over the backend that exposes 24 tools and 4 `naragate://` resources to any MCP-capable agent (Claude Code/Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex). High-level tools run the whole pipeline (`analyze_narrative`); low-level tools mirror every `skills/*/tools.yaml` primitive so a harness can compose per-agent. Either way, all evidence flows through the backend's Evidence Graph cache — the MCP layer never calls Sectors directly. See [Use Naragate from any MCP agent](#use-naragate-from-any-mcp-agent).
+The **MCP server** (`mcp/`) is a second, harness-agnostic orchestration path. It is a thin, credit-safe client over the backend that exposes 30 tools and 4 `naragate://` resources to any MCP-capable agent (Claude Code/Desktop, Cursor, Windsurf, Zed, VS Code, opencode, Codex). High-level tools run the whole pipeline (`analyze_narrative`); low-level tools mirror every `skills/*/tools.yaml` primitive so a harness can compose per-agent. Either way, all evidence flows through the backend's Evidence Graph cache — the MCP layer never calls Sectors directly. See [Use Naragate from any MCP agent](#use-naragate-from-any-mcp-agent).
 
 ## Installation (Skills, Agents & MCP)
 
@@ -259,23 +259,34 @@ pip install naragate-mcp                        # from PyPI
 pip install -e mcp                              # from a checkout
 # or run without installing: uvx naragate-mcp
 export NARAGATE_BACKEND_URL="http://127.0.0.1:5678"
+export NARAGATE_TOKEN="nrg_..."                 # optional: act as your own account
 naragate-mcp                                    # stdio transport
 ```
 
+### Your account over MCP (per-user tokens)
+
+The web UI authenticates with a session cookie; MCP has no cookie. Mint an **API token** in **Settings → MCP & API Access**, set it as `NARAGATE_TOKEN`, and the backend resolves it to your email — so the MCP run uses **your own Sectors key, evidence cache and credit ledger**, exactly like the web UI. The token is stored hashed and can be revoked any time.
+
+- `whoami` — confirm which account the MCP session acts as (and whether a key is bound).
+- `get_setup_status` — report missing config (`sectors_api_key`, `llm_model`).
+- `bind_sectors_key(api_key)` — bind your Sectors v2 key off-web (requires `NARAGATE_TOKEN`).
+
+Without a token, MCP falls back to the **deployment key** — fine for single-user self-hosts, but every non-web caller then shares one key and one credit ledger.
+
 ### Where the Sectors API key lives (non-web)
 
-The **backend owns all configuration** — the MCP server, skills and agents never hold the Sectors key or LLM credentials. So a non-web user has two options:
+The **backend owns all configuration** — the MCP server, skills and agents never hold the Sectors key or LLM credentials. Options:
 
-- **Hosted backend** — point `NARAGATE_BACKEND_URL` at `https://naragate.ilkomers.com`; the operator's Sectors key and LLM are already configured. Nothing else to set.
-- **Self-hosted** — set `SECTORS_API_KEY` (and `OLLAMA_BASE_URL` / `OLLAMA_MODEL`) in `.env` before `docker compose up -d`. The backend falls back to this deployment key whenever no web session is bound — exactly the MCP case — and the key is never sent to the agent.
+- **Per-user token (hosted or multi-user)** — mint a token as above; key ownership follows your email.
+- **Self-hosted deployment key** — set `SECTORS_API_KEY` (and `OLLAMA_BASE_URL` / `OLLAMA_MODEL`) in `.env` before `docker compose up -d`. The backend falls back to this deployment key whenever no session/token is bound.
 
-Binding a key to a user account (per-email ownership) is a web-UI action and is intentionally **not** exposed over MCP. If the backend has no key, analysis tools fail until one is configured; the web setup wizard and `.env` both write to the same deployment slot.
+If the backend has no key, analysis tools fail until one is configured; the web setup wizard, the token flow and `.env` all write to the same backend.
 
-### Tools (24) — full skills parity
+### Tools (30) — full skills parity
 
-**High-level (credit-safe):** `analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `get_reality_gap`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`.
+**High-level (credit-safe) — 15:** `analyze_narrative`, `analyze_template`, `list_templates`, `get_claim`, `get_reality_gap`, `list_history`, `get_trend_summary`, `get_policy_precheck`, `get_usage`, `whoami`, `get_setup_status`, `bind_sectors_key`, `ask_followup`, `get_followup_suggestions`, `next_followup_suggestion`.
 
-**Low-level (every primitive declared in `skills/*/tools.yaml`):** `sectors_company_report`, `sectors_subsector_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_corporate_actions`, `sectors_filings`, `sectors_foreign_flow`, `sectors_broker_summary`, `sectors_top_changes`, `sectors_segments`, `sectors_index_daily`, `evidence_cache_get`, `evidence_cache_merge`, `llm_complete`.
+**Low-level (every primitive declared in `skills/*/tools.yaml`) — 15:** `sectors_company_report`, `sectors_subsector_report`, `sectors_quarterly_financials`, `sectors_daily_transaction`, `sectors_news`, `sectors_corporate_actions`, `sectors_filings`, `sectors_foreign_flow`, `sectors_broker_summary`, `sectors_top_changes`, `sectors_segments`, `sectors_index_daily`, `evidence_cache_get`, `evidence_cache_merge`, `llm_complete`.
 
 A test (`mcp/tests/test_parity.py`) asserts that **every tool declared by any skill exists on the server**, so parity can't drift. The same 12 curated templates are available via `list_templates` / `analyze_template`, so a non-web user gets the same entry points as the dashboard tiles.
 
@@ -287,7 +298,10 @@ A test (`mcp/tests/test_parity.py`) asserts that **every tool declared by any sk
 
 ```bash
 # Claude Code
-claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx naragate-mcp
+claude mcp add naragate \
+  -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 \
+  -e NARAGATE_TOKEN=nrg_... \
+  -- uvx naragate-mcp
 ```
 
 ```jsonc
@@ -297,7 +311,7 @@ claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx nar
     "naragate": {
       "command": "uvx",
       "args": ["naragate-mcp"],
-      "env": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678" }
+      "env": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678", "NARAGATE_TOKEN": "nrg_..." }
     }
   }
 }
@@ -308,7 +322,7 @@ claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx nar
 [mcp_servers.naragate]
 command = "uvx"
 args = ["naragate-mcp"]
-env = { NARAGATE_BACKEND_URL = "http://127.0.0.1:5678" }
+env = { NARAGATE_BACKEND_URL = "http://127.0.0.1:5678", NARAGATE_TOKEN = "nrg_..." }
 ```
 
 Per-harness details (opencode `mcp` block, Cursor path, etc.) live in [`mcp/README.md`](mcp/README.md).
@@ -428,7 +442,7 @@ docker exec naragate-backend-1 python -m pytest -q
 cd mcp && python -m pytest -q
 ```
 
-Covers the REST client (mock transport), the 24-tool surface, compact-report shaping, the **credit-safety guarantee** (the MCP layer never references Sectors), and a **parity test** asserting every `skills/*/tools.yaml` tool is exposed.
+Covers the REST client (mock transport), the 30-tool surface, compact-report shaping, the **credit-safety guarantee** (the MCP layer never references Sectors), and a **parity test** asserting every `skills/*/tools.yaml` tool is exposed.
 
 Test docs: `frontend/e2e/templates/claim-templates.md`, `frontend/e2e/history/history.md`, `mcp/README.md`.
 
@@ -438,7 +452,7 @@ Test docs: `frontend/e2e/templates/claim-templates.md`, `frontend/e2e/history/hi
 |-------|------------|
 | Frontend | Angular 22, Tailwind CSS |
 | Backend | FastAPI, Python 3.12 |
-| Agent surfaces | MCP server (`mcp/`, 24 tools + resources), Pi Coding Agent harness |
+| Agent surfaces | MCP server (`mcp/`, 30 tools + resources), Pi Coding Agent harness |
 | Orchestration | Multi-agent pipeline (5 stages + policy amplifier) via Pi Coding Agent harness |
 | Persistence | SQLite (claims), Redis (cache) |
 | LLM | Any OpenAI-compatible provider (Ollama, OpenAI, OpenRouter, Groq, Together) |

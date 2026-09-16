@@ -25,7 +25,13 @@ from app.core.identity import email_from_request, set_current_email
 
 
 class IdentityMiddleware:
-    """Bind the session email to a context var for deep (request-less) code."""
+    """Bind the caller's email to a context var for deep (request-less) code.
+
+    The web UI carries the email in a signed session cookie; non-web surfaces
+    (MCP/skills/agents) carry a per-user API token as `Authorization: Bearer`.
+    Both resolve to the same email, so key ownership, the evidence cache and
+    the credit ledger behave identically on every surface.
+    """
 
     def __init__(self, app):
         self.app = app
@@ -33,7 +39,10 @@ class IdentityMiddleware:
     async def __call__(self, scope, receive, send):
         if scope.get("type") != "http":
             return await self.app(scope, receive, send)
-        set_current_email(email_from_request(Request(scope, receive=receive)))
+        request = Request(scope, receive=receive)
+        set_current_email(
+            sectors_config.bearer_email(request) or email_from_request(request)
+        )
         try:
             await self.app(scope, receive, send)
         finally:

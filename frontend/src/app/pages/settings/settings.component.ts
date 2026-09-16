@@ -5,11 +5,12 @@ import { Subscription } from 'rxjs';
 import { SettingsService, RuntimeSettings, ValidateResult } from '../../services/settings.service';
 import { TPipe } from '../../pipes/t.pipe';
 import { SettingsSectorsSectionComponent } from '../../components/settings-sectors-section/settings-sectors-section.component';
+import { SettingsMcpSectionComponent } from '../../components/settings-mcp-section/settings-mcp-section.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, RouterLink, TPipe, SettingsSectorsSectionComponent],
+  imports: [FormsModule, RouterLink, TPipe, SettingsSectorsSectionComponent, SettingsMcpSectionComponent],
   template: `
     <div class="settings">
       <div class="settings__inner">
@@ -30,6 +31,9 @@ import { SettingsSectorsSectionComponent } from '../../components/settings-secto
           [sectorsApiKey]="form().sectors_api_key"
           [boundEmail]="form().email || null"
           (fieldChange)="onFieldChange($event.field, $event.value)"/>
+
+        <!-- MCP & API access tokens -->
+        <app-settings-mcp-section [authenticated]="!!form().authenticated"/>
 
         <!-- LLM Provider: default model only; manage the connection in the LLM Connector -->
         <section class="settings__section">

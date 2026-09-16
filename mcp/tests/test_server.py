@@ -51,6 +51,24 @@ class FakeClient:
     def get_usage(self):
         return {"sectors": {"total_calls": 0, "cached_calls": 10, "remaining": 1600}}
 
+    def whoami(self):
+        return {"authenticated": True, "email": "a@example.com", "key_bound": True}
+
+    def get_setup_status(self):
+        return {"complete": True, "missing": []}
+
+    def bind_sectors_key(self, api_key):
+        return {"status": "ok", "settings": {"sectors_api_key": "key_...3456"}}
+
+    def ask_followup(self, claim_id, question):
+        return {"claim_id": claim_id, "answer": f"answer to {question}", "answer_en": "answer"}
+
+    def get_followup_suggestions(self, claim_id):
+        return {"claim_id": claim_id, "suggestions": [{"id": "s1", "text": "Kenapa?", "text_en": "Why?"}]}
+
+    def next_followup_suggestion(self, claim_id, exclude=None):
+        return {"claim_id": claim_id, "suggestion": {"id": "s9", "text": "Baru?", "text_en": "New?"}}
+
 
 @pytest.fixture(autouse=True)
 def _fake_client(monkeypatch):
@@ -63,6 +81,10 @@ async def test_tool_surface_is_registered():
         # high-level (credit-safe)
         "analyze_narrative", "analyze_template", "list_templates", "get_claim",
         "get_reality_gap", "list_history", "get_trend_summary", "get_policy_precheck", "get_usage",
+        # identity / configuration
+        "whoami", "get_setup_status", "bind_sectors_key",
+        # follow-up Q&A (web results-page parity)
+        "ask_followup", "get_followup_suggestions", "next_followup_suggestion",
         # low-level (tools.yaml parity)
         "sectors_company_report", "sectors_subsector_report", "sectors_quarterly_financials",
         "sectors_daily_transaction", "sectors_news", "sectors_corporate_actions", "sectors_filings",
@@ -106,6 +128,20 @@ def test_analyze_template_runs_its_narrative():
 
 def test_policy_precheck_passes_sector_through():
     assert server.get_policy_precheck("coal")["sector"] == "coal"
+
+
+def test_identity_and_setup_tools():
+    assert server.whoami()["email"] == "a@example.com"
+    assert server.get_setup_status()["complete"] is True
+    assert server.bind_sectors_key("key_abcdef123456")["status"] == "ok"
+
+
+def test_followup_tools_round_trip():
+    assert server.ask_followup("c1", "Kenapa?")["answer"] == "answer to Kenapa?"
+    chips = server.get_followup_suggestions("c1")["suggestions"]
+    assert chips[0]["id"] == "s1"
+    nxt = server.next_followup_suggestion("c1", exclude=["Kenapa?"])["suggestion"]
+    assert nxt["id"] == "s9"
 
 
 def test_claim_resource_reports_errors_as_json():

@@ -107,6 +107,8 @@ flowchart TD
 
 Sectors API key, credit budget, and LLM provider are injected by the harness — they are not embedded in the skills. Each skill's `tools.yaml` describes the tools it needs; the harness provides the configured implementations.
 
+On an MCP harness, set `NARAGATE_BACKEND_URL` to the Naragate backend and — to act as your own account — `NARAGATE_TOKEN` (mint it in the web UI under **Settings → MCP & API Access**). The token resolves to your email server-side, so the skills run with your own Sectors key, evidence cache and credit ledger; without it they fall back to the backend's deployment key.
+
 ## Development
 
 Skills live in `skills/<name>/SKILL.md` with optional `skills/<name>/tools.yaml`. The `.pi/` directory is local-only harness config (gitignored); locally it symlinks `.pi/skills/<name>` to `skills/<name>` so the Pi CLI harness and web UI consume the same skill content without duplication.

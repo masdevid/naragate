@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.core import sectors_config
-from app.core.identity import email_from_request
+from app.core.identity import get_current_email
 from app.core.sectors_account import login_with_password
 
 router = APIRouter()
@@ -22,6 +22,10 @@ class LoginRequest(BaseModel):
     api_key: str | None = None
 
 
+class TokenCreate(BaseModel):
+    name: str = ""
+
+
 class AuthStatus(BaseModel):
     authenticated: bool
     email: str | None = None
@@ -32,7 +36,7 @@ class AuthStatus(BaseModel):
 
 
 def _status(request: Request) -> AuthStatus:
-    email = email_from_request(request)
+    email = get_current_email()
     if not email:
         return AuthStatus(authenticated=False)
     key = sectors_config.key_for_email(email)
@@ -82,3 +86,32 @@ async def logout(request: Request) -> AuthStatus:
 @router.get("/me")
 async def me(request: Request) -> AuthStatus:
     return _status(request)
+
+
+# --- per-user API tokens (bearer auth for MCP/skills/agents) ---------------
+
+
+def _require_email() -> str:
+    email = get_current_email()
+    if not email:
+        raise HTTPException(status_code=401, detail="Sign in to manage API tokens.")
+    return email
+
+
+@router.get("/tokens")
+async def list_tokens() -> dict:
+    """List the caller's API tokens (metadata only — never the secret)."""
+    return {"tokens": sectors_config.list_api_tokens(_require_email())}
+
+
+@router.post("/tokens")
+async def create_token(req: TokenCreate) -> dict:
+    """Mint a new API token; the raw token is returned exactly once."""
+    return sectors_config.create_api_token(_require_email(), req.name)
+
+
+@router.delete("/tokens/{token_id}")
+async def revoke_token(token_id: str) -> dict:
+    if not sectors_config.revoke_api_token(_require_email(), token_id):
+        raise HTTPException(status_code=404, detail="Token not found")
+    return {"status": "ok", "id": token_id}

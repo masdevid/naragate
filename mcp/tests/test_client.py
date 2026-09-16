@@ -75,6 +75,54 @@ def test_base_url_from_env(monkeypatch):
     assert NaragateClient().base_url == "http://remote.test:9000"
 
 
+def test_bearer_token_header_is_sent(monkeypatch):
+    monkeypatch.setenv("NARAGATE_TOKEN", "nrg_secret")
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["auth"] = request.headers.get("authorization")
+        return httpx.Response(200, json={"authenticated": True})
+
+    _client(handler).whoami()
+    assert seen["auth"] == "Bearer nrg_secret"
+
+
+def test_no_bearer_header_without_token(monkeypatch):
+    monkeypatch.delenv("NARAGATE_TOKEN", raising=False)
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["auth"] = request.headers.get("authorization")
+        return httpx.Response(200, json={})
+
+    _client(handler).get_setup_status()
+    assert seen["auth"] is None
+
+
+def test_identity_and_followup_endpoints():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen[request.url.path] = {"method": request.method, "body": request.content.decode()}
+        return httpx.Response(200, json={})
+
+    client = _client(handler)
+    client.whoami()
+    client.get_setup_status()
+    client.bind_sectors_key("key_abcdef123456")
+    client.ask_followup("c1", "Kenapa skornya tinggi?")
+    client.get_followup_suggestions("c1")
+    client.next_followup_suggestion("c1", exclude=["Kenapa?"])
+
+    assert seen["/api/v1/auth/me"]["method"] == "GET"
+    assert seen["/api/v1/settings/status"]["method"] == "GET"
+    assert seen["/api/v1/settings"]["method"] == "PUT"
+    assert "key_abcdef123456" in seen["/api/v1/settings"]["body"]
+    assert "Kenapa skornya tinggi?" in seen["/api/v1/claims/c1/chat"]["body"]
+    assert seen["/api/v1/claims/c1/suggestions"]["method"] == "GET"
+    assert "Kenapa?" in seen["/api/v1/claims/c1/suggestions/next"]["body"]
+
+
 def test_low_level_sectors_tools_hit_tool_endpoints():
     seen = {}
 

@@ -66,10 +66,11 @@ test.describe('Settings · Sectors auto-configured', () => {
     await page.goto('/settings', { waitUntil: 'domcontentloaded' });
 
     // Real backend: the saved key must resolve for ANY client IP (enforcement off).
-    await expect(page.locator('.sect__heading')).toContainText(/sectors/i);
+    const sectors = page.locator('app-settings-sectors-section');
+    await expect(sectors.locator('.sect__heading')).toContainText(/sectors/i);
     // The key renders in the saved (masked) state — bullets + last4.
-    await expect(page.locator('.secret--saved')).toBeVisible();
-    await expect(page.locator('.secret--saved')).toContainText(/•/);
+    await expect(sectors.locator('.secret--saved')).toBeVisible();
+    await expect(sectors.locator('.secret--saved')).toContainText(/•/);
 
     // Owner gating off: the ready state is visible, no error banner from a failed save.
     await expect(page.locator('.settings__save-error')).toHaveCount(0);

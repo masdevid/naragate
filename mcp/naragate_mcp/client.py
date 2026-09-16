@@ -29,14 +29,22 @@ class NaragateClient:
         self.base_url = (
             base_url or os.environ.get("NARAGATE_BACKEND_URL") or DEFAULT_BASE_URL
         ).rstrip("/")
+        # Per-user token minted in the web UI Settings page. It resolves to the
+        # same email as the web session, so this client uses the user's own
+        # Sectors key, cache and credit ledger. Never sent anywhere but the
+        # Naragate backend.
+        self.token = (os.environ.get("NARAGATE_TOKEN") or "").strip()
         self.timeout = timeout
         self._transport = transport
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         url = f"{self.base_url}{path}"
+        headers = dict(kwargs.pop("headers", None) or {})
+        if self.token:
+            headers.setdefault("Authorization", f"Bearer {self.token}")
         try:
             with httpx.Client(timeout=self.timeout, transport=self._transport) as client:
-                resp = client.request(method, url, **kwargs)
+                resp = client.request(method, url, headers=headers or None, **kwargs)
         except httpx.HTTPError as exc:  # network / timeout
             raise NaragateError(
                 f"cannot reach Naragate backend at {self.base_url}: {exc}"
@@ -54,6 +62,17 @@ class NaragateClient:
                 detail=detail,
             )
         return resp.json()
+
+    # ---- identity / configuration (the non-web parity surface) ----
+
+    def whoami(self) -> dict[str, Any]:
+        return self._request("GET", "/api/v1/auth/me")
+
+    def get_setup_status(self) -> dict[str, Any]:
+        return self._request("GET", "/api/v1/settings/status")
+
+    def bind_sectors_key(self, api_key: str) -> dict[str, Any]:
+        return self._request("PUT", "/api/v1/settings", json={"sectors_api_key": api_key})
 
     # ---- high-level, credit-safe operations (all reuse the backend pipeline) ----
 
@@ -78,6 +97,21 @@ class NaragateClient:
 
     def get_usage(self) -> dict[str, Any]:
         return self._request("GET", "/api/v1/usage")
+
+    # ---- follow-up Q&A (web results-page parity) ----
+
+    def ask_followup(self, claim_id: str, question: str) -> dict[str, Any]:
+        return self._request("POST", f"/api/v1/claims/{claim_id}/chat", json={"question": question})
+
+    def get_followup_suggestions(self, claim_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/api/v1/claims/{claim_id}/suggestions")
+
+    def next_followup_suggestion(self, claim_id: str, exclude: list[str] | None = None) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/api/v1/claims/{claim_id}/suggestions/next",
+            json={"exclude": exclude or []},
+        )
 
     # ---- low-level agent tools (parity with skills/*/tools.yaml) ----
 

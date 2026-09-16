@@ -43,23 +43,23 @@ Point it at your backend (default `http://127.0.0.1:5678`):
 
 ```bash
 export NARAGATE_BACKEND_URL="http://127.0.0.1:5678"
+export NARAGATE_TOKEN="nrg_..."   # optional: act as your own account
 naragate-mcp
 ```
 
 Transport is **stdio**.
 
-### Where the Sectors API key lives
+### Acting as your own account (`NARAGATE_TOKEN`)
 
-The **backend owns the Sectors key and LLM configuration**; this server never sees them and never talks to Sectors directly. Point it at a backend that already has a key:
+The backend owns the Sectors key and LLM configuration; this server never sees them. To use **your own** key, cache and credits, mint a token in the web UI (**Settings → MCP & API Access**) and set `NARAGATE_TOKEN`. Every request then carries `Authorization: Bearer <token>`, which the backend resolves to your email — the same identity the web session uses.
 
-- the hosted app (`NARAGATE_BACKEND_URL=https://naragate.ilkomers.com`) — operator-configured; or
-- a self-host with `SECTORS_API_KEY` (and `OLLAMA_BASE_URL` / `OLLAMA_MODEL`) set in `.env` before `docker compose up -d`.
-
-The backend falls back to that deployment key whenever no web session is bound — exactly the MCP case. Binding a key to a user account (per-email ownership) is a web-UI action and is intentionally not exposed over MCP.
+- Without a token the server falls back to the backend's **deployment key** (fine for single-user self-hosts; all callers share one key/ledger).
+- `whoami` confirms the resolved account; `get_setup_status` reports missing config; `bind_sectors_key` sets your key off-web.
+- Tokens are stored hashed server-side and revocable from the same settings page.
 
 ## Tools
 
-**24 tools total — 9 high-level + 15 low-level** (every primitive declared in `skills/*/tools.yaml`).
+**30 tools total — 15 high-level + 15 low-level** (every primitive declared in `skills/*/tools.yaml`).
 
 | Tool | What it does |
 |---|---|
@@ -72,6 +72,12 @@ The backend falls back to that deployment key whenever no web session is bound �
 | `get_trend_summary()` | Totals, average score, verdict distribution, per-ticker history |
 | `get_policy_precheck(sector)` | Policy→price pre-check, scoped to the claim's sector |
 | `get_usage()` | Sectors/LLM credit usage, cache hits, remaining budget |
+| `whoami()` | Which account this session acts as (email + whether a Sectors key is bound) |
+| `get_setup_status()` | Missing backend config (`sectors_api_key`, `llm_model`) |
+| `bind_sectors_key(api_key)` | Bind a Sectors v2 key to this session's user (requires `NARAGATE_TOKEN`) |
+| `ask_followup(claim_id, question)` | Ask a follow-up about a completed analysis, grounded in its evidence |
+| `get_followup_suggestions(claim_id)` | 3-5 contextual follow-up templates (the web suggestion chips) |
+| `next_followup_suggestion(claim_id, exclude)` | One fresh template, avoiding `exclude` |
 
 ### Low-level tools — full `tools.yaml` parity
 
@@ -111,7 +117,10 @@ exists on the server, so this can't drift.
 ### Claude Code
 
 ```bash
-claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx naragate-mcp
+claude mcp add naragate \
+  -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 \
+  -e NARAGATE_TOKEN=nrg_... \
+  -- uvx naragate-mcp
 ```
 
 ### Claude Desktop (`claude_desktop_config.json`)
@@ -122,7 +131,7 @@ claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx nar
     "naragate": {
       "command": "uvx",
       "args": ["naragate-mcp"],
-      "env": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678" }
+      "env": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678", "NARAGATE_TOKEN": "nrg_..." }
     }
   }
 }
@@ -137,7 +146,7 @@ claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx nar
       "type": "local",
       "command": ["uvx", "naragate-mcp"],
       "enabled": true,
-      "environment": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678" }
+      "environment": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678", "NARAGATE_TOKEN": "nrg_..." }
     }
   }
 }
@@ -151,7 +160,7 @@ claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx nar
     "naragate": {
       "command": "uvx",
       "args": ["naragate-mcp"],
-      "env": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678" }
+      "env": { "NARAGATE_BACKEND_URL": "http://127.0.0.1:5678", "NARAGATE_TOKEN": "nrg_..." }
     }
   }
 }
@@ -163,7 +172,7 @@ claude mcp add naragate -e NARAGATE_BACKEND_URL=http://127.0.0.1:5678 -- uvx nar
 [mcp_servers.naragate]
 command = "uvx"
 args = ["naragate-mcp"]
-env = { NARAGATE_BACKEND_URL = "http://127.0.0.1:5678" }
+env = { NARAGATE_BACKEND_URL = "http://127.0.0.1:5678", NARAGATE_TOKEN = "nrg_..." }
 ```
 
 ## Example prompts

@@ -7,7 +7,7 @@ from typing import Optional
 
 from app.core.setup import missing_setup_items
 from app.core import sectors_config
-from app.core.identity import email_from_request
+from app.core.identity import get_current_email
 
 router = APIRouter()
 
@@ -15,6 +15,7 @@ SETTINGS_FILE = Path(__file__).parent.parent.parent.parent / "data" / "runtime_s
 
 # Never returned verbatim to clients.
 _SENSITIVE_KEYS = {
+    "api_tokens",
     "sectors_keys_by_email",
     "session_secret",
     "sectors_oauth_access_token",
@@ -146,7 +147,7 @@ async def validate_llm_endpoint(req: ValidateEndpointRequest):
 @router.get("")
 async def get_settings(request: Request):
     data = _load()
-    email = email_from_request(request)
+    email = get_current_email()
 
     masked = {k: v for k, v in data.items() if k not in _SENSITIVE_KEYS}
     masked.pop("sectors_api_key", None)
@@ -161,7 +162,7 @@ async def get_settings(request: Request):
 @router.put("")
 async def update_settings(request: Request, update: RuntimeSettings):
     current = _load()
-    email = email_from_request(request)
+    email = get_current_email()
 
     for field_name in RuntimeSettings.model_fields:
         val = getattr(update, field_name)

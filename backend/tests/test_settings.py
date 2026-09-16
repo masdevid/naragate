@@ -32,7 +32,7 @@ class TestSectorsKeyByEmail:
 
     def _as(self, monkeypatch, email):
         monkeypatch.setattr(
-            "app.api.v1.endpoints.settings.email_from_request", lambda request: email
+            "app.api.v1.endpoints.settings.get_current_email", lambda: email
         )
 
     @pytest.mark.asyncio

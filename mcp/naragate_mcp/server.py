@@ -124,6 +124,35 @@ def get_reality_gap(claim_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def ask_followup(claim_id: str, question: str) -> dict[str, Any]:
+    """Ask a follow-up question about a completed analysis.
+
+    Answers are grounded strictly in the stored analysis evidence — the same
+    grounded chat the web results page offers.
+    """
+    return NaragateClient().ask_followup(claim_id, question)
+
+
+@mcp.tool()
+def get_followup_suggestions(claim_id: str) -> dict[str, Any]:
+    """Get 3-5 contextual follow-up question templates for a completed analysis.
+
+    The same suggestion chips the web results page renders, for non-web
+    surfaces that want to offer pickable next questions.
+    """
+    return NaragateClient().get_followup_suggestions(claim_id)
+
+
+@mcp.tool()
+def next_followup_suggestion(claim_id: str, exclude: list[str] | None = None) -> dict[str, Any]:
+    """Generate one fresh follow-up template, avoiding the texts in `exclude`.
+
+    Mirrors the web UI's dismiss -> answer -> generate-one-replacement flow.
+    """
+    return NaragateClient().next_followup_suggestion(claim_id, exclude)
+
+
+@mcp.tool()
 def list_history(limit: int = 20) -> dict[str, Any]:
     """List recent analyses, most recent first (the web UI's History page)."""
     claims = NaragateClient().list_history(limit=limit)
@@ -162,6 +191,37 @@ def get_policy_precheck(sector: str | None = None) -> dict[str, Any]:
 def get_usage() -> dict[str, Any]:
     """Sectors API and LLM credit usage: totals, cache hits, remaining budget, daily breakdown."""
     return NaragateClient().get_usage()
+
+
+@mcp.tool()
+def whoami() -> dict[str, Any]:
+    """Report which Naragate user this MCP session acts as.
+
+    With `NARAGATE_TOKEN` set, this resolves to the token's email and reports
+    whether a Sectors key is bound — so MCP runs use that user's own key, cache
+    and credit ledger. Without a token it reports an anonymous/deployment session.
+    """
+    return NaragateClient().whoami()
+
+
+@mcp.tool()
+def get_setup_status() -> dict[str, Any]:
+    """Report whether the backend is ready to analyze.
+
+    Returns the missing configuration items (e.g. `sectors_api_key`, `llm_model`)
+    so an agent can tell the user exactly what to configure.
+    """
+    return NaragateClient().get_setup_status()
+
+
+@mcp.tool()
+def bind_sectors_key(api_key: str) -> dict[str, Any]:
+    """Bind a Sectors v2 API key to this session's user.
+
+    Requires `NARAGATE_TOKEN` (minted in the web UI Settings page) — the key is
+    stored server-side against that user's email and never returned by the API.
+    """
+    return NaragateClient().bind_sectors_key(api_key)
 
 
 # ---------------------------------------------- low-level tools (tools.yaml parity) --
